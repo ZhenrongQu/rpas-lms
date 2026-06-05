@@ -1,0 +1,1207 @@
+{
+  "schemaVersion": 1,
+  "questions": [
+    {
+      "id": "air-law-0001",
+      "moduleId": "air-law",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "At what weight does an RPA require the pilot to hold an RPA Pilot Certificate?",
+        "FR": "À partir de quel poids un ARP exige-t-il que le pilote détienne un certificat de pilote d'ARP ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "100 grams or more", "FR": "100 grammes ou plus" }, "isCorrect": false },
+        { "id": "b", "label": { "EN": "250 grams or more", "FR": "250 grammes ou plus" }, "isCorrect": true },
+        { "id": "c", "label": { "EN": "1 kilogram or more", "FR": "1 kilogramme ou plus" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "25 kilograms or more", "FR": "25 kilogrammes ou plus" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "An RPA that weighs 250 g (0.55 lb) or more, up to 25 kg, requires the pilot to hold a Basic or Advanced RPA Pilot Certificate. The requirement is risk-based (weight and location), not based on recreational vs commercial intent.",
+        "FR": "Un ARP pesant 250 g (0,55 lb) ou plus, jusqu'à 25 kg, exige que le pilote détienne un certificat de pilote d'ARP de base ou avancé. L'exigence est fondée sur le risque (poids et lieu), et non sur l'intention récréative ou commerciale."
+      },
+      "reference": { "EN": "CARs Part IX; RPAS 101 p.16", "FR": "RAC Partie IX; RPAS 101 p.16" },
+      "tags": ["certificate", "weight", "registration"]
+    },
+    {
+      "id": "air-law-0002",
+      "moduleId": "air-law",
+      "certLevel": "BASIC",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "When operating under a Basic Operations certificate, what is the minimum horizontal distance you must keep from bystanders?",
+        "FR": "En exploitation sous un certificat d'opérations de base, quelle distance horizontale minimale devez-vous maintenir des passants ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "5 m", "FR": "5 m" }, "isCorrect": false },
+        { "id": "b", "label": { "EN": "16.4 m", "FR": "16,4 m" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "30 m (100 ft)", "FR": "30 m (100 pi)" }, "isCorrect": true },
+        { "id": "d", "label": { "EN": "100 m", "FR": "100 m" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Basic operations must remain at least 30 m (100 ft) horizontally from bystanders. Operating closer requires an Advanced certificate and a safety-assured RPAS.",
+        "FR": "Les opérations de base doivent rester à au moins 30 m (100 pi) horizontalement des passants. Voler plus près exige un certificat avancé et un SATP avec assurance de sécurité."
+      },
+      "reference": { "EN": "RPAS 101 p.34 (Basic Operational Environments)", "FR": "RPAS 101 p.34 (Environnements d'exploitation de base)" },
+      "tags": ["basic", "bystanders", "distance"]
+    },
+    {
+      "id": "air-law-0003",
+      "moduleId": "air-law",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "What is the general maximum altitude for an RPA, and the exception near a structure?",
+        "FR": "Quelle est l'altitude maximale générale d'un ARP, et l'exception à proximité d'une structure ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "400 ft AGL; up to 100 ft above a structure when within 200 ft laterally of it", "FR": "400 pi AGL; jusqu'à 100 pi au-dessus d'une structure si dans un rayon de 200 pi de celle-ci" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "400 ft ASL; no exceptions", "FR": "400 pi ASL; aucune exception" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "500 ft AGL; up to 200 ft above a structure", "FR": "500 pi AGL; jusqu'à 200 pi au-dessus d'une structure" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "300 ft AGL; up to 50 ft above a structure", "FR": "300 pi AGL; jusqu'à 50 pi au-dessus d'une structure" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "The general limit is 400 ft AGL. When operating within 200 ft laterally of a structure you may fly up to 100 ft above the top of that structure while staying within the 200 ft lateral zone.",
+        "FR": "La limite générale est de 400 pi AGL. À l'intérieur d'un rayon latéral de 200 pi d'une structure, vous pouvez voler jusqu'à 100 pi au-dessus du sommet de cette structure tout en restant dans la zone latérale de 200 pi."
+      },
+      "reference": { "EN": "CARs Part IX; RPAS 101 p.33", "FR": "RAC Partie IX; RPAS 101 p.33" },
+      "tags": ["altitude", "agl", "structure"]
+    },
+    {
+      "id": "air-law-0004",
+      "moduleId": "air-law",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "Which statement about RPA registration is correct?",
+        "FR": "Quel énoncé sur l'immatriculation d'un ARP est correct ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "All RPA from 250 g up to 25 kg must be registered and marked with the registration number", "FR": "Tous les ARP de 250 g jusqu'à 25 kg doivent être immatriculés et marqués du numéro d'immatriculation" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Registration is optional for commercial use only", "FR": "L'immatriculation est facultative pour un usage commercial seulement" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "The registration number may be marked on the battery", "FR": "Le numéro d'immatriculation peut être marqué sur la batterie" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Registration must be renewed every 12 months", "FR": "L'immatriculation doit être renouvelée tous les 12 mois" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "RPA 250 g–25 kg must be registered ($5) via the Drone Management Portal and marked with the number (starting with 'C') affixed to the aircraft itself, not a removable part. Certificates of registration do not expire.",
+        "FR": "Les ARP de 250 g à 25 kg doivent être immatriculés (5 $) via le Portail de gestion des drones et marqués du numéro (commençant par « C ») apposé sur l'aéronef lui-même, et non sur une pièce amovible. Les certificats d'immatriculation n'expirent pas."
+      },
+      "reference": { "EN": "RPAS 101 p.64", "FR": "RPAS 101 p.64" },
+      "tags": ["registration", "marking"]
+    },
+    {
+      "id": "air-law-0005",
+      "moduleId": "air-law",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "Without an SFOC, how close to a military aerodrome may an RPA be operated?",
+        "FR": "Sans CASS, à quelle distance d'un aérodrome militaire un ARP peut-il être exploité ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "No closer than 3 NM", "FR": "Pas plus près que 3 NM" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "No closer than 1 NM", "FR": "Pas plus près que 1 NM" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "No closer than 5 NM", "FR": "Pas plus près que 5 NM" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "There is no restriction", "FR": "Il n'y a aucune restriction" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "You must not fly within 3 NM of a military aerodrome unless a Special Flight Operations Certificate (SFOC-RPAS) has been issued.",
+        "FR": "Vous ne devez pas voler à moins de 3 NM d'un aérodrome militaire à moins qu'un certificat d'opérations aériennes spécialisées (CASS-SATP) n'ait été délivré."
+      },
+      "reference": { "EN": "CARs Part IX; RPAS 101 p.33", "FR": "RAC Partie IX; RPAS 101 p.33" },
+      "tags": ["military", "sfoc", "distance"]
+    },
+    {
+      "id": "air-law-0006",
+      "moduleId": "air-law",
+      "certLevel": "BASIC",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "Which environment is NOT permitted under a Basic Operations certificate?",
+        "FR": "Quel environnement n'est PAS permis sous un certificat d'opérations de base ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Uncontrolled (Class G) airspace", "FR": "Espace aérien non contrôlé (classe G)" }, "isCorrect": false },
+        { "id": "b", "label": { "EN": "Controlled airspace", "FR": "Espace aérien contrôlé" }, "isCorrect": true },
+        { "id": "c", "label": { "EN": "More than 3 NM from an airport", "FR": "À plus de 3 NM d'un aéroport" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "More than 30 m from bystanders", "FR": "À plus de 30 m des passants" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Basic operations exclude controlled airspace, within 3 NM of an airport, within 1 NM of a heliport, and closer than 30 m to bystanders. Controlled airspace requires an Advanced certificate, NAV CANADA permission, and a safety-assured RPAS.",
+        "FR": "Les opérations de base excluent l'espace aérien contrôlé, le rayon de 3 NM d'un aéroport, le rayon de 1 NM d'un héliport et une distance de moins de 30 m des passants. L'espace aérien contrôlé exige un certificat avancé, l'autorisation de NAV CANADA et un SATP avec assurance de sécurité."
+      },
+      "reference": { "EN": "RPAS 101 p.34", "FR": "RPAS 101 p.34" },
+      "tags": ["basic", "controlled-airspace"]
+    },
+    {
+      "id": "air-law-0007",
+      "moduleId": "air-law",
+      "certLevel": "ADVANCED",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "To operate in controlled airspace (Class C, D or E), an RPAS pilot must have all of the following EXCEPT:",
+        "FR": "Pour voler en espace aérien contrôlé (classe C, D ou E), un pilote de SATP doit avoir tout ce qui suit SAUF :"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "An Advanced Pilot Certificate", "FR": "Un certificat de pilote avancé" }, "isCorrect": false },
+        { "id": "b", "label": { "EN": "Permission from the airspace authority (NAV CANADA)", "FR": "L'autorisation de l'autorité de l'espace aérien (NAV CANADA)" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "An RPAS declared safety-assured for that category", "FR": "Un SATP déclaré conforme à l'assurance de sécurité pour cette catégorie" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "A mode C transponder installed on the RPA", "FR": "Un transpondeur mode C installé sur l'ARP" }, "isCorrect": true }
+      ],
+      "explanation": {
+        "EN": "Controlled airspace requires an Advanced certificate, NAV CANADA permission (via NAV Drone), and a safety-assured RPAS (Standard 922). Small RPAS are not equipped with transponders; they instead need prior authorization to enter transponder airspace.",
+        "FR": "L'espace aérien contrôlé exige un certificat avancé, l'autorisation de NAV CANADA (via NAV Drone) et un SATP avec assurance de sécurité (Norme 922). Les petits SATP ne sont pas équipés de transpondeurs; ils ont plutôt besoin d'une autorisation préalable pour entrer dans l'espace à transpondeur."
+      },
+      "reference": { "EN": "RPAS 101 p.50, p.65", "FR": "RPAS 101 p.50, p.65" },
+      "tags": ["advanced", "controlled-airspace", "nav-canada", "safety-assurance"]
+    },
+    {
+      "id": "air-law-0008",
+      "moduleId": "air-law",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "How often must you complete a recurrent training activity to keep your Pilot Certificate current?",
+        "FR": "À quelle fréquence devez-vous suivre une activité de formation périodique pour maintenir la validité de votre certificat de pilote ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Every 12 months", "FR": "Tous les 12 mois" }, "isCorrect": false },
+        { "id": "b", "label": { "EN": "Every 24 months", "FR": "Tous les 24 mois" }, "isCorrect": true },
+        { "id": "c", "label": { "EN": "Every 36 months", "FR": "Tous les 36 mois" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Never; the certificate does not expire", "FR": "Jamais; le certificat n'expire pas" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Recency requires a recurrent training activity every 24 months (the window resets from your most recent activity). Options include passing a written exam, a flight review, a TC-endorsed seminar, a 921.04 recurrent program, or a TC-endorsed self-paced program.",
+        "FR": "La récence exige une activité de formation périodique tous les 24 mois (la période repart de votre activité la plus récente). Les options incluent réussir un examen écrit, une revue en vol, un séminaire reconnu par TC, un programme périodique 921.04 ou un programme autodirigé reconnu par TC."
+      },
+      "reference": { "EN": "RPAS 101 p.21", "FR": "RPAS 101 p.21" },
+      "tags": ["recency", "currency"]
+    },
+    {
+      "id": "air-law-0009",
+      "moduleId": "air-law",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "Your registered RPA goes missing during a flight. Within what period must you de-register it with Transport Canada?",
+        "FR": "Votre ARP immatriculé disparaît pendant un vol. Dans quel délai devez-vous le radier auprès de Transports Canada ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "24 hours", "FR": "24 heures" }, "isCorrect": false },
+        { "id": "b", "label": { "EN": "7 days", "FR": "7 jours" }, "isCorrect": true },
+        { "id": "c", "label": { "EN": "30 days", "FR": "30 jours" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "60 days", "FR": "60 jours" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Transport Canada must be notified within 7 days of a change to registration (including a missing aircraft). Separately, a certificate of registration can be cancelled once an aircraft has been missing for 60 days or more.",
+        "FR": "Transports Canada doit être avisé dans les 7 jours suivant un changement d'immatriculation (y compris un aéronef disparu). Par ailleurs, un certificat d'immatriculation peut être annulé lorsqu'un aéronef est disparu depuis 60 jours ou plus."
+      },
+      "reference": { "EN": "RPAS 101 p.65, p.93", "FR": "RPAS 101 p.65, p.93" },
+      "tags": ["registration", "reporting"]
+    },
+    {
+      "id": "air-law-0010",
+      "moduleId": "air-law",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "Which regulation requires that even sub-250 g RPA not be operated in a reckless or negligent manner?",
+        "FR": "Quel règlement exige que même les ARP de moins de 250 g ne soient pas exploités de façon imprudente ou négligente ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "CAR 900.06", "FR": "RAC 900.06" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "CAR 901.22", "FR": "RAC 901.22" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Standard 922", "FR": "Norme 922" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "CAR 901.49", "FR": "RAC 901.49" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "CAR 900.06 prohibits operating any RPAS in a reckless or negligent manner likely to endanger aviation safety or any person; it applies to all RPA, including those under 250 g.",
+        "FR": "Le RAC 900.06 interdit d'exploiter un SATP de façon imprudente ou négligente susceptible de compromettre la sécurité aérienne ou celle d'une personne; il s'applique à tous les ARP, y compris ceux de moins de 250 g."
+      },
+      "reference": { "EN": "RPAS 101 p.35 (CAR 900.06)", "FR": "RPAS 101 p.35 (RAC 900.06)" },
+      "tags": ["sub250", "negligence"]
+    },
+    {
+      "id": "air-law-0011",
+      "moduleId": "air-law",
+      "certLevel": "ADVANCED",
+      "type": "MULTI",
+      "selectCount": 3,
+      "difficulty": 3,
+      "stem": {
+        "EN": "Select the THREE situations that require a Special Flight Operations Certificate (SFOC-RPAS).",
+        "FR": "Sélectionnez les TROIS situations qui exigent un certificat d'opérations aériennes spécialisées (CASS-SATP)."
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Flying beyond visual line-of-sight (BVLOS)", "FR": "Voler au-delà de la visibilité directe (BVLOS)" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Flying an RPA over 25 kg", "FR": "Voler un ARP de plus de 25 kg" }, "isCorrect": true },
+        { "id": "c", "label": { "EN": "Flying within 3 NM of a military aerodrome", "FR": "Voler à moins de 3 NM d'un aérodrome militaire" }, "isCorrect": true },
+        { "id": "d", "label": { "EN": "Flying at night with position lights", "FR": "Voler de nuit avec des feux de position" }, "isCorrect": false },
+        { "id": "e", "label": { "EN": "Flying at 350 ft AGL in Class G airspace", "FR": "Voler à 350 pi AGL en espace aérien de classe G" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "An SFOC is required for BVLOS, RPA over 25 kg, operating within 3 NM of a military aerodrome, flying above Part IX height limits, more than 5 RPA at once, special/advertised events, hazardous payloads, and non-citizens/residents. Night flight with position lights and flying below 400 ft AGL in Class G are permitted without an SFOC.",
+        "FR": "Un CASS est requis pour le BVLOS, les ARP de plus de 25 kg, voler à moins de 3 NM d'un aérodrome militaire, voler au-dessus des limites d'altitude de la Partie IX, plus de 5 ARP à la fois, les événements spéciaux/annoncés, les charges dangereuses et les non-citoyens/résidents. Le vol de nuit avec feux de position et le vol sous 400 pi AGL en classe G sont permis sans CASS."
+      },
+      "reference": { "EN": "RPAS 101 p.22 (SFOC)", "FR": "RPAS 101 p.22 (CASS)" },
+      "tags": ["sfoc", "bvlos"]
+    },
+    {
+      "id": "flight-operations-0001",
+      "moduleId": "flight-operations",
+      "certLevel": "BOTH",
+      "type": "MULTI",
+      "selectCount": 3,
+      "difficulty": 2,
+      "stem": {
+        "EN": "Per the CARs, Standard Operating Procedures (SOPs) for Basic and Advanced operations must cover which THREE areas?",
+        "FR": "Selon le RAC, les procédures d'utilisation normalisées (PUN) pour les opérations de base et avancées doivent couvrir quels TROIS domaines ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Normal Procedures", "FR": "Procédures normales" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Emergency Procedures", "FR": "Procédures d'urgence" }, "isCorrect": true },
+        { "id": "c", "label": { "EN": "Site Survey", "FR": "Étude du site" }, "isCorrect": true },
+        { "id": "d", "label": { "EN": "Marketing plan", "FR": "Plan de marketing" }, "isCorrect": false },
+        { "id": "e", "label": { "EN": "Payroll records", "FR": "Registres de paie" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "SOPs must cover Normal Procedures, Emergency Procedures, and a Site Survey, and must be used every flight — for both Basic and Advanced operations.",
+        "FR": "Les PUN doivent couvrir les procédures normales, les procédures d'urgence et une étude du site, et doivent être utilisées à chaque vol — pour les opérations de base comme avancées."
+      },
+      "reference": { "EN": "RPAS 101 p.36", "FR": "RPAS 101 p.36" },
+      "tags": ["sop", "procedures"]
+    },
+    {
+      "id": "flight-operations-0002",
+      "moduleId": "flight-operations",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "How often must a site survey be completed?",
+        "FR": "À quelle fréquence une étude du site doit-elle être réalisée ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Once per registered aircraft", "FR": "Une fois par aéronef immatriculé" }, "isCorrect": false },
+        { "id": "b", "label": { "EN": "Before every flight", "FR": "Avant chaque vol" }, "isCorrect": true },
+        { "id": "c", "label": { "EN": "Only for Advanced operations", "FR": "Seulement pour les opérations avancées" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Once per calendar year", "FR": "Une fois par année civile" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "A site survey is required before each flight for both Basic and Advanced pilots, typically in two stages: a remote assessment and an on-site assessment.",
+        "FR": "Une étude du site est requise avant chaque vol pour les pilotes de base et avancés, généralement en deux étapes : une évaluation à distance et une évaluation sur place."
+      },
+      "reference": { "EN": "RPAS 101 p.38-40", "FR": "RPAS 101 p.38-40" },
+      "tags": ["site-survey"]
+    },
+    {
+      "id": "flight-operations-0003",
+      "moduleId": "flight-operations",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "You are flying a multirotor under a bridge. How should you configure its lost-link behaviour?",
+        "FR": "Vous pilotez un multirotor sous un pont. Comment devriez-vous configurer son comportement en cas de perte de liaison ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Return-to-Home (RTH), which climbs to a safe altitude", "FR": "Retour au point de départ (RTH), qui monte à une altitude sécuritaire" }, "isCorrect": false },
+        { "id": "b", "label": { "EN": "Hover in place", "FR": "Vol stationnaire sur place" }, "isCorrect": true },
+        { "id": "c", "label": { "EN": "Immediate descent to the water", "FR": "Descente immédiate vers l'eau" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Maximum-speed climb", "FR": "Montée à vitesse maximale" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Under obstacles (bridges, tree canopy, indoors), program the aircraft to hover on lost link. RTH can climb to a pre-set 'safe' altitude that may not be safe beneath an obstacle, causing a collision.",
+        "FR": "Sous des obstacles (ponts, couvert d'arbres, intérieur), programmez l'aéronef pour qu'il fasse du vol stationnaire en cas de perte de liaison. Le RTH peut monter à une altitude « sécuritaire » préréglée qui ne l'est pas sous un obstacle, provoquant une collision."
+      },
+      "reference": { "EN": "RPAS 101 p.47", "FR": "RPAS 101 p.47" },
+      "tags": ["lost-link", "rth", "emergency"]
+    },
+    {
+      "id": "flight-operations-0004",
+      "moduleId": "flight-operations",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "What is required to fly an RPA at night?",
+        "FR": "Qu'est-ce qui est requis pour voler un ARP de nuit ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "An SFOC", "FR": "Un CASS" }, "isCorrect": false },
+        { "id": "b", "label": { "EN": "The RPA must be equipped with position lights", "FR": "L'ARP doit être équipé de feux de position" }, "isCorrect": true },
+        { "id": "c", "label": { "EN": "A mode C transponder", "FR": "Un transpondeur mode C" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "An Advanced certificate", "FR": "Un certificat avancé" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Night flight is permitted without additional authorization provided the RPA is equipped with position lights that let the pilot/visual observer determine its position. Scouting the site in daylight is recommended.",
+        "FR": "Le vol de nuit est permis sans autorisation supplémentaire pourvu que l'ARP soit équipé de feux de position permettant au pilote/observateur visuel de déterminer sa position. Il est recommandé de reconnaître le site de jour."
+      },
+      "reference": { "EN": "RPAS 101 p.42", "FR": "RPAS 101 p.42" },
+      "tags": ["night", "lights"]
+    },
+    {
+      "id": "flight-operations-0005",
+      "moduleId": "flight-operations",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "What are the minimum retention periods for flight logs and maintenance logs?",
+        "FR": "Quelles sont les périodes de conservation minimales pour les carnets de vol et les carnets de maintenance ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Flight logs 12 months; maintenance logs 24 months", "FR": "Carnets de vol 12 mois; carnets de maintenance 24 mois" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Flight logs 24 months; maintenance logs 12 months", "FR": "Carnets de vol 24 mois; carnets de maintenance 12 mois" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Both 12 months", "FR": "Les deux 12 mois" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Both 24 months", "FR": "Les deux 24 mois" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Flight logs must be kept for 12 months; maintenance logs for 24 months. Maintenance logs transfer to a new owner on sale; flight logs do not.",
+        "FR": "Les carnets de vol doivent être conservés 12 mois; les carnets de maintenance, 24 mois. Les carnets de maintenance sont transférés au nouveau propriétaire lors de la vente; les carnets de vol, non."
+      },
+      "reference": { "EN": "RPAS 101 p.115", "FR": "RPAS 101 p.115" },
+      "tags": ["logs", "records"]
+    },
+    {
+      "id": "flight-operations-0006",
+      "moduleId": "flight-operations",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "Which accident must be reported to the Transportation Safety Board (TSB)?",
+        "FR": "Quel accident doit être signalé au Bureau de la sécurité des transports (BST) ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "A collision between an RPA of any size and a traditional aircraft", "FR": "Une collision entre un ARP de toute taille et un aéronef traditionnel" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Any hard landing that scratches a propeller", "FR": "Tout atterrissage dur qui égratigne une hélice" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "A flight that exceeds the planned battery time", "FR": "Un vol qui dépasse l'autonomie de batterie prévue" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "A successful return-to-home activation", "FR": "Une activation réussie du retour au point de départ" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Reportable to the TSB: an RPA over 25 kg in an accident; death or serious injury from direct contact with a small RPA; or a collision between an RPA of any size and a manned aircraft. Report ASAP at 1-800-387-3557.",
+        "FR": "À signaler au BST : un ARP de plus de 25 kg impliqué dans un accident; un décès ou une blessure grave par contact direct avec un petit ARP; ou une collision entre un ARP de toute taille et un aéronef habité. Signaler dès que possible au 1-800-387-3557."
+      },
+      "reference": { "EN": "RPAS 101 p.94", "FR": "RPAS 101 p.94" },
+      "tags": ["tsb", "reporting", "accident"]
+    },
+    {
+      "id": "human-factors-0001",
+      "moduleId": "human-factors",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "A pilot who pushes on despite risks to demonstrate skill or impress others is displaying which hazardous attitude?",
+        "FR": "Un pilote qui persiste malgré les risques pour démontrer son habileté ou impressionner les autres affiche quelle attitude dangereuse ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Macho", "FR": "Machisme" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Resignation", "FR": "Résignation" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Anti-authority", "FR": "Anticonformisme" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Invulnerability", "FR": "Invulnérabilité" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "The five hazardous attitudes are Anti-authority, Impulsivity, Invulnerability, Macho, and Resignation. 'I can do it!' to impress others is the Macho attitude.",
+        "FR": "Les cinq attitudes dangereuses sont l'anticonformisme, l'impulsivité, l'invulnérabilité, le machisme et la résignation. « Je suis capable! » pour impressionner les autres est l'attitude machiste."
+      },
+      "reference": { "EN": "RPAS 101 p.106", "FR": "RPAS 101 p.106" },
+      "tags": ["hazardous-attitudes"]
+    },
+    {
+      "id": "human-factors-0002",
+      "moduleId": "human-factors",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "Under the CARs, a crew member must not have consumed alcohol within how many hours before flight duty?",
+        "FR": "Selon le RAC, un membre d'équipage ne doit pas avoir consommé d'alcool dans les combien d'heures précédant les fonctions de vol ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "8 hours", "FR": "8 heures" }, "isCorrect": false },
+        { "id": "b", "label": { "EN": "12 hours", "FR": "12 heures" }, "isCorrect": true },
+        { "id": "c", "label": { "EN": "24 hours", "FR": "24 heures" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "48 hours", "FR": "48 heures" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Crew members must not act if they have consumed alcohol within the previous 12 hours, are under the influence of alcohol, are fatigued, or are using impairing drugs.",
+        "FR": "Les membres d'équipage ne doivent pas agir s'ils ont consommé de l'alcool dans les 12 heures précédentes, sont sous l'influence de l'alcool, sont fatigués ou prennent des médicaments aux effets invalidants."
+      },
+      "reference": { "EN": "RPAS 101 p.97", "FR": "RPAS 101 p.97" },
+      "tags": ["fitness", "alcohol"]
+    },
+    {
+      "id": "human-factors-0003",
+      "moduleId": "human-factors",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "For how long must a crew member abstain from marijuana (including CBD) before participating in flight operations?",
+        "FR": "Pendant combien de temps un membre d'équipage doit-il s'abstenir de cannabis (y compris le CBD) avant de participer aux opérations de vol ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "12 hours", "FR": "12 heures" }, "isCorrect": false },
+        { "id": "b", "label": { "EN": "48 hours", "FR": "48 heures" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "28 days", "FR": "28 jours" }, "isCorrect": true },
+        { "id": "d", "label": { "EN": "90 days", "FR": "90 jours" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Transport Canada policy requires crew members to abstain from marijuana (including CBD products) for a minimum of 28 days prior to flight operations.",
+        "FR": "La politique de Transports Canada exige que les membres d'équipage s'abstiennent de cannabis (y compris les produits CBD) pendant au moins 28 jours avant les opérations de vol."
+      },
+      "reference": { "EN": "RPAS 101 p.98", "FR": "RPAS 101 p.98" },
+      "tags": ["fitness", "marijuana"]
+    },
+    {
+      "id": "human-factors-0004",
+      "moduleId": "human-factors",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "In the 'IM SAFE' self-assessment checklist, what does the 'S' stand for?",
+        "FR": "Dans la liste de vérification « IM SAFE » d'auto-évaluation, que représente le « S » ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Stress", "FR": "Stress" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Safety", "FR": "Sécurité" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Speed", "FR": "Vitesse" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Satellites", "FR": "Satellites" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "IM SAFE = Illness, Medication, Stress, Alcohol, Fatigue, Eating/drinking. It is a tool to assess a crew member's fitness to focus on the task.",
+        "FR": "IM SAFE = Maladie (Illness), Médication, Stress, Alcool, Fatigue, Alimentation/hydratation (Eating). C'est un outil pour évaluer l'aptitude d'un membre d'équipage à se concentrer sur la tâche."
+      },
+      "reference": { "EN": "RPAS 101 p.99", "FR": "RPAS 101 p.99" },
+      "tags": ["im-safe", "fitness"]
+    },
+    {
+      "id": "human-factors-0005",
+      "moduleId": "human-factors",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "Which of the following is a symptom of hypoxia?",
+        "FR": "Lequel des éléments suivants est un symptôme d'hypoxie ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Euphoria, headache and blurred vision", "FR": "Euphorie, mal de tête et vision floue" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Improved night vision", "FR": "Vision nocturne améliorée" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Increased finger dexterity", "FR": "Dextérité accrue des doigts" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Lower heart rate only", "FR": "Seulement une fréquence cardiaque plus basse" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Hypoxia means the body lacks sufficient oxygen. Symptoms include euphoria, headache, blurred vision and nausea. Carbon monoxide (from vehicle/generator exhaust) can cause it at any elevation.",
+        "FR": "L'hypoxie signifie que le corps manque d'oxygène. Les symptômes incluent l'euphorie, le mal de tête, la vision floue et les nausées. Le monoxyde de carbone (gaz d'échappement de véhicules/génératrices) peut la provoquer à toute altitude."
+      },
+      "reference": { "EN": "RPAS 101 p.100", "FR": "RPAS 101 p.100" },
+      "tags": ["physiology", "hypoxia"]
+    },
+    {
+      "id": "human-factors-0006",
+      "moduleId": "human-factors",
+      "certLevel": "ADVANCED",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 3,
+      "stem": {
+        "EN": "In Reason's model, a company lacking documentation and operating procedures is an example of what kind of failure?",
+        "FR": "Dans le modèle de Reason, une entreprise dépourvue de documentation et de procédures d'utilisation est un exemple de quel type de défaillance ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "A latent failure", "FR": "Une défaillance latente" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "An active failure", "FR": "Une défaillance active" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "A mechanical failure", "FR": "Une défaillance mécanique" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "A weather failure", "FR": "Une défaillance météorologique" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Decision-maker and line-management gaps (e.g. no SOPs or training) are latent failures: they can lie hidden for a long time without directly causing an accident. Active failures (e.g. misreading a checklist) directly cause a problem.",
+        "FR": "Les lacunes des décideurs et de la gestion (p. ex. absence de PUN ou de formation) sont des défaillances latentes : elles peuvent rester cachées longtemps sans causer directement un accident. Les défaillances actives (p. ex. mal lire une liste de vérification) causent directement un problème."
+      },
+      "reference": { "EN": "RPAS 101 p.107-108", "FR": "RPAS 101 p.107-108" },
+      "tags": ["reasons-model", "latent-failure"]
+    },
+    {
+      "id": "meteorology-0001",
+      "moduleId": "meteorology",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "What is the approximate standard temperature lapse rate with altitude?",
+        "FR": "Quel est le taux de variation thermique standard approximatif avec l'altitude ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "2 °C per 1000 ft", "FR": "2 °C par 1000 pi" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "5 °C per 1000 ft", "FR": "5 °C par 1000 pi" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "1 °C per 100 ft", "FR": "1 °C par 100 pi" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "10 °C per 1000 ft", "FR": "10 °C par 1000 pi" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Temperature decreases by approximately 2 °C per 1000 ft of altitude gained (the standard lapse rate).",
+        "FR": "La température diminue d'environ 2 °C par 1000 pi d'altitude gagnée (le taux de variation standard)."
+      },
+      "reference": { "EN": "RPAS 101 p.62, p.79", "FR": "RPAS 101 p.62, p.79" },
+      "tags": ["lapse-rate", "temperature"]
+    },
+    {
+      "id": "meteorology-0002",
+      "moduleId": "meteorology",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "As a general rule, how much does atmospheric pressure drop per 1000 ft of altitude increase?",
+        "FR": "En règle générale, de combien la pression atmosphérique diminue-t-elle par tranche de 1000 pi d'augmentation d'altitude ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "About 1 inHg", "FR": "Environ 1 inHg" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "About 2 inHg", "FR": "Environ 2 inHg" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "About 0.1 inHg", "FR": "Environ 0,1 inHg" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "About 5 inHg", "FR": "Environ 5 inHg" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Atmospheric pressure drops roughly 1 inHg per 1000 ft of altitude increase. At higher elevations the thinner air reduces RPA performance and shortens flight time.",
+        "FR": "La pression atmosphérique chute d'environ 1 inHg par 1000 pi d'augmentation d'altitude. En altitude, l'air plus rare réduit les performances de l'ARP et raccourcit l'autonomie."
+      },
+      "reference": { "EN": "RPAS 101 p.79", "FR": "RPAS 101 p.79" },
+      "tags": ["pressure", "altitude"]
+    },
+    {
+      "id": "meteorology-0003",
+      "moduleId": "meteorology",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "You should avoid flying if there is a thunderstorm within what distance of your location?",
+        "FR": "Vous devriez éviter de voler s'il y a un orage à quelle distance de votre emplacement ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "5 NM", "FR": "5 NM" }, "isCorrect": false },
+        { "id": "b", "label": { "EN": "10 NM", "FR": "10 NM" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "15 NM", "FR": "15 NM" }, "isCorrect": true },
+        { "id": "d", "label": { "EN": "25 NM", "FR": "25 NM" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Avoid flying with a thunderstorm within 15 NM. Gust fronts from downbursts/microbursts cause strong, damaging winds, and storms move quickly with impacts far beyond their core.",
+        "FR": "Évitez de voler lorsqu'un orage se trouve à moins de 15 NM. Les fronts de rafales dus aux rabattants et microrafales provoquent des vents forts et dommageables, et les orages se déplacent rapidement avec des effets bien au-delà de leur cœur."
+      },
+      "reference": { "EN": "RPAS 101 p.84", "FR": "RPAS 101 p.84" },
+      "tags": ["thunderstorm", "wind"]
+    },
+    {
+      "id": "meteorology-0004",
+      "moduleId": "meteorology",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 3,
+      "stem": {
+        "EN": "Which condition indicates you are in known icing conditions?",
+        "FR": "Quelle condition indique que vous êtes dans des conditions de givrage connues ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Visible moisture (cloud or fog) at your operating altitude with a temperature of 0 °C or less", "FR": "Humidité visible (nuage ou brouillard) à votre altitude d'exploitation avec une température de 0 °C ou moins" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Clear skies with temperature of +10 °C", "FR": "Ciel dégagé avec une température de +10 °C" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Any wind above 10 km/h", "FR": "Tout vent supérieur à 10 km/h" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "High solar activity (Kp 4+)", "FR": "Forte activité solaire (Kp 4+)" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Known icing = visible moisture (cloud/fog) at your altitude with temperature 0 °C or less. Most RPA have no de-icing and must not fly with ice/snow on them, into known icing, or into forecast icing.",
+        "FR": "Givrage connu = humidité visible (nuage/brouillard) à votre altitude avec une température de 0 °C ou moins. La plupart des ARP n'ont pas de dégivrage et ne doivent pas voler avec glace/neige, dans du givrage connu ou prévu."
+      },
+      "reference": { "EN": "RPAS 101 p.83-84", "FR": "RPAS 101 p.83-84" },
+      "tags": ["icing", "moisture"]
+    },
+    {
+      "id": "meteorology-0005",
+      "moduleId": "meteorology",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "Unstable air is typically associated with which of the following?",
+        "FR": "L'air instable est généralement associé à laquelle des situations suivantes ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Turbulence, cumulus clouds and possible thunderstorms", "FR": "Turbulence, nuages cumulus et orages possibles" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Calm air and stratus cloud", "FR": "Air calme et nuages stratus" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Steady high pressure and clear skies only", "FR": "Haute pression stable et ciel dégagé seulement" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Fog that never lifts", "FR": "Brouillard qui ne se lève jamais" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Unstable air (warm air rising) is associated with turbulence, tall billowing cumulus clouds and can lead to thunderstorms. Stable air (cooled from below) gives stratus cloud and calm conditions.",
+        "FR": "L'air instable (air chaud qui s'élève) est associé à la turbulence, aux grands cumulus bourgeonnants et peut mener à des orages. L'air stable (refroidi par le bas) donne des stratus et des conditions calmes."
+      },
+      "reference": { "EN": "RPAS 101 p.81", "FR": "RPAS 101 p.81" },
+      "tags": ["stability", "clouds"]
+    },
+    {
+      "id": "meteorology-0006",
+      "moduleId": "meteorology",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "How does fog form?",
+        "FR": "Comment le brouillard se forme-t-il ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Air is cooled to the point of saturation and visible moisture appears", "FR": "L'air est refroidi jusqu'au point de saturation et l'humidité visible apparaît" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "High winds lift dust into the air", "FR": "Des vents forts soulèvent la poussière dans l'air" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Solar flares ionize the atmosphere", "FR": "Les éruptions solaires ionisent l'atmosphère" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Pressure rises rapidly behind a cold front", "FR": "La pression monte rapidement derrière un front froid" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Fog is essentially a cloud at or near the ground; it forms when air is cooled to saturation (its dew point) and visible moisture appears. Types include radiation, advection and steam fog.",
+        "FR": "Le brouillard est essentiellement un nuage au sol ou près du sol; il se forme lorsque l'air est refroidi jusqu'à saturation (son point de rosée) et que l'humidité visible apparaît. Les types incluent le brouillard de rayonnement, d'advection et d'évaporation."
+      },
+      "reference": { "EN": "RPAS 101 p.83", "FR": "RPAS 101 p.83" },
+      "tags": ["fog", "dew-point"]
+    },
+    {
+      "id": "navigation-0001",
+      "moduleId": "navigation",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "In aviation, 'variation' refers to what?",
+        "FR": "En aviation, la « déclinaison magnétique » (variation) désigne quoi ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "The difference, in degrees, between true and magnetic north at a location", "FR": "La différence, en degrés, entre le nord vrai et le nord magnétique à un endroit" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "The change in wind speed with altitude", "FR": "Le changement de vitesse du vent avec l'altitude" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "A local magnetic disturbance caused by rebar", "FR": "Une perturbation magnétique locale causée par des armatures" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "The drift of GPS at northern latitudes", "FR": "La dérive du GPS aux latitudes nordiques" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Variation (declination) is the angular difference between true and magnetic north at a given location. Do not confuse it with magnetic deviation, a local disturbance from nearby metal/electrical sources.",
+        "FR": "La déclinaison (variation) est la différence angulaire entre le nord vrai et le nord magnétique à un endroit donné. Ne pas la confondre avec la déviation magnétique, une perturbation locale due à des sources métalliques/électriques proches."
+      },
+      "reference": { "EN": "RPAS 101 p.13 (Definitions), p.71", "FR": "RPAS 101 p.13 (Définitions), p.71" },
+      "tags": ["variation", "compass"]
+    },
+    {
+      "id": "navigation-0002",
+      "moduleId": "navigation",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "What is the minimum number of GNSS satellites required for position information, and the number most manufacturers recommend before launch?",
+        "FR": "Quel est le nombre minimal de satellites GNSS requis pour l'information de position, et le nombre que recommandent la plupart des fabricants avant le décollage ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Minimum 4; recommended 7", "FR": "Minimum 4; recommandé 7" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Minimum 3; recommended 5", "FR": "Minimum 3; recommandé 5" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Minimum 1; recommended 3", "FR": "Minimum 1; recommandé 3" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Minimum 7; recommended 12", "FR": "Minimum 7; recommandé 12" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "A minimum of 4 satellites is required to compute position; most manufacturers recommend at least 7 before launch. Northern latitudes can receive fewer satellites and more positional error.",
+        "FR": "Un minimum de 4 satellites est requis pour calculer la position; la plupart des fabricants recommandent au moins 7 avant le décollage. Les latitudes nordiques peuvent recevoir moins de satellites et plus d'erreur de position."
+      },
+      "reference": { "EN": "RPAS 101 p.70", "FR": "RPAS 101 p.70" },
+      "tags": ["gnss", "gps", "satellites"]
+    },
+    {
+      "id": "navigation-0003",
+      "moduleId": "navigation",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "On the Kp-index scale, what value indicates high solar activity that pilots should consider during a site survey?",
+        "FR": "Sur l'échelle de l'indice Kp, quelle valeur indique une forte activité solaire dont les pilotes devraient tenir compte lors de l'étude du site ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Kp 4 or above", "FR": "Kp 4 ou plus" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Kp 1 or above", "FR": "Kp 1 ou plus" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Kp 9 only", "FR": "Kp 9 seulement" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Kp 0", "FR": "Kp 0" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "The Planetary K-index runs 0–9. A Kp index of 4 or above indicates high solar activity, which can degrade GPS accuracy (especially at northern latitudes) and interfere with C2 links.",
+        "FR": "L'indice K planétaire va de 0 à 9. Un indice Kp de 4 ou plus indique une forte activité solaire, qui peut dégrader la précision du GPS (surtout aux latitudes nordiques) et perturber les liaisons C2."
+      },
+      "reference": { "EN": "RPAS 101 p.48", "FR": "RPAS 101 p.48" },
+      "tags": ["solar-weather", "kp-index", "gps"]
+    },
+    {
+      "id": "navigation-0004",
+      "moduleId": "navigation",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "Unless otherwise specified, a control zone extends upward from the surface to what altitude?",
+        "FR": "Sauf indication contraire, une zone de contrôle s'étend de la surface jusqu'à quelle altitude ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "3000 ft AAE", "FR": "3000 pi AAE" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "400 ft AGL", "FR": "400 pi AGL" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "12 500 ft", "FR": "12 500 pi" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "18 000 ft", "FR": "18 000 pi" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "A control zone is controlled airspace extending upward from the surface up to and including 3000 ft above aerodrome elevation (AAE) unless otherwise specified. Class A begins at 18 000 ft and Class B at 12 500 ft.",
+        "FR": "Une zone de contrôle est un espace aérien contrôlé s'étendant de la surface jusqu'à 3000 pi au-dessus de l'altitude de l'aérodrome (AAE) inclusivement, sauf indication contraire. La classe A commence à 18 000 pi et la classe B à 12 500 pi."
+      },
+      "reference": { "EN": "RPAS 101 p.10 (Definitions), p.49", "FR": "RPAS 101 p.10 (Définitions), p.49" },
+      "tags": ["control-zone", "airspace"]
+    },
+    {
+      "id": "navigation-0005",
+      "moduleId": "navigation",
+      "certLevel": "ADVANCED",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 3,
+      "stem": {
+        "EN": "Approximately what positional accuracy can a Real Time Kinematic (RTK) system provide?",
+        "FR": "Quelle précision de position un système cinématique en temps réel (RTK) peut-il fournir approximativement ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "About 1 cm", "FR": "Environ 1 cm" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "About 10 cm", "FR": "Environ 10 cm" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "About 1 m", "FR": "Environ 1 m" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "About 15 m", "FR": "Environ 15 m" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Standard GPS is roughly 15 m accurate. DGPS improves this to about 10 cm, and RTK to about 1 cm, using a ground reference station.",
+        "FR": "Le GPS standard est précis à environ 15 m. Le DGPS l'améliore à environ 10 cm, et le RTK à environ 1 cm, à l'aide d'une station de référence au sol."
+      },
+      "reference": { "EN": "RPAS 101 p.70", "FR": "RPAS 101 p.70" },
+      "tags": ["rtk", "dgps", "accuracy"]
+    },
+    {
+      "id": "airframes-systems-0001",
+      "moduleId": "airframes-systems",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "What is the most common multirotor configuration?",
+        "FR": "Quelle est la configuration de multirotor la plus courante ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Quadcopter (4 propellers)", "FR": "Quadricoptère (4 hélices)" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Single rotor (1 propeller)", "FR": "Monorotor (1 hélice)" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Octocopter (8 propellers)", "FR": "Octocoptère (8 hélices)" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Fixed wing (0 propellers)", "FR": "Voilure fixe (0 hélice)" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Multirotors come in various configurations; the most common is the quadcopter, which has 4 propellers. Multirotors vary motor speeds to control lift and direction and can hover.",
+        "FR": "Les multirotors existent en diverses configurations; le plus courant est le quadricoptère, qui a 4 hélices. Les multirotors varient la vitesse des moteurs pour contrôler la portance et la direction et peuvent faire du vol stationnaire."
+      },
+      "reference": { "EN": "RPAS 101 p.67", "FR": "RPAS 101 p.67" },
+      "tags": ["multirotor", "quadcopter"]
+    },
+    {
+      "id": "airframes-systems-0002",
+      "moduleId": "airframes-systems",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "To get reliable performance, at what temperature should LiPo batteries ideally be kept prior to flight on cold days?",
+        "FR": "Pour obtenir des performances fiables, à quelle température les batteries LiPo devraient-elles idéalement être maintenues avant le vol par temps froid ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Above 15 °C", "FR": "Au-dessus de 15 °C" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Below 0 °C", "FR": "Sous 0 °C" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Exactly -10 °C", "FR": "Exactement -10 °C" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Above 60 °C", "FR": "Au-dessus de 60 °C" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Keep batteries above 15 °C before flight (store them in a warm vehicle or jacket). Do not let batteries get colder than -10 °C, do not charge them when cold, and never use a swollen battery.",
+        "FR": "Gardez les batteries au-dessus de 15 °C avant le vol (rangez-les dans un véhicule chaud ou votre manteau). Ne laissez pas les batteries descendre sous -10 °C, ne les chargez pas à froid et n'utilisez jamais une batterie gonflée."
+      },
+      "reference": { "EN": "RPAS 101 p.73-74", "FR": "RPAS 101 p.73-74" },
+      "tags": ["lipo", "battery", "cold"]
+    },
+    {
+      "id": "airframes-systems-0003",
+      "moduleId": "airframes-systems",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "When calibrating your compass, what is the recommended minimum distance from vehicles?",
+        "FR": "Lors de l'étalonnage du compas, quelle est la distance minimale recommandée par rapport aux véhicules ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "About 2 m", "FR": "Environ 2 m" }, "isCorrect": false },
+        { "id": "b", "label": { "EN": "About 15 m", "FR": "Environ 15 m" }, "isCorrect": true },
+        { "id": "c", "label": { "EN": "About 55 m", "FR": "Environ 55 m" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Distance does not matter", "FR": "La distance n'a pas d'importance" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Safe compass-calibration guidelines: about 2 m from small metal (rebar), about 15 m from larger objects (vehicles), and about 55 m from high-tension powerlines. Calibrating near a magnetic disturbance calibrates to the anomaly and causes heading/waypoint problems after takeoff.",
+        "FR": "Lignes directrices d'étalonnage du compas : environ 2 m des petits objets métalliques (armatures), environ 15 m des objets plus gros (véhicules) et environ 55 m des lignes électriques à haute tension. Étalonner près d'une perturbation magnétique étalonne sur l'anomalie et cause des problèmes de cap/point de cheminement après le décollage."
+      },
+      "reference": { "EN": "RPAS 101 p.71", "FR": "RPAS 101 p.71" },
+      "tags": ["compass", "magnetometer", "calibration"]
+    },
+    {
+      "id": "airframes-systems-0004",
+      "moduleId": "airframes-systems",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "Why should you leave the aircraft still on a flat surface while it powers on?",
+        "FR": "Pourquoi devriez-vous laisser l'aéronef immobile sur une surface plane pendant sa mise sous tension ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Movement during IMU calibration can cause misreadings throughout the flight", "FR": "Un mouvement pendant l'étalonnage de l'IMU peut causer des lectures erronées tout au long du vol" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "It charges the battery faster", "FR": "Cela charge la batterie plus rapidement" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "It increases GPS satellite count", "FR": "Cela augmente le nombre de satellites GPS" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "It cleans the camera lens", "FR": "Cela nettoie l'objectif de la caméra" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "The Inertial Measurement Unit (IMU) measures orientation and angular movement. Moving the aircraft during IMU initialization can cause misreadings throughout the flight, so keep it flat and still until initialization completes.",
+        "FR": "La centrale inertielle (IMU) mesure l'orientation et le mouvement angulaire. Déplacer l'aéronef pendant l'initialisation de l'IMU peut causer des lectures erronées tout au long du vol; gardez-le donc à plat et immobile jusqu'à la fin de l'initialisation."
+      },
+      "reference": { "EN": "RPAS 101 p.69-70", "FR": "RPAS 101 p.69-70" },
+      "tags": ["imu", "calibration"]
+    },
+    {
+      "id": "airframes-systems-0005",
+      "moduleId": "airframes-systems",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "What is the critical role of the barometer on an RPAS, and what is its altitude reference?",
+        "FR": "Quel est le rôle essentiel du baromètre sur un SATP, et quelle est sa référence d'altitude ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "It measures air pressure to provide altitude, zeroed at the take-off location", "FR": "Il mesure la pression de l'air pour fournir l'altitude, remise à zéro à l'emplacement de décollage" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "It measures wind speed relative to sea level", "FR": "Il mesure la vitesse du vent par rapport au niveau de la mer" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "It measures magnetic heading", "FR": "Il mesure le cap magnétique" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "It reports altitude above sea level (ASL) absolutely", "FR": "Il indique l'altitude au-dessus du niveau de la mer (ASL) de façon absolue" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "The barometer measures air pressure to provide altitude. RPAS barometers zero themselves at take-off, so the indicated height is always relative to your take-off location, not ASL.",
+        "FR": "Le baromètre mesure la pression de l'air pour fournir l'altitude. Les baromètres des SATP se remettent à zéro au décollage; la hauteur indiquée est donc toujours relative à l'emplacement de décollage, et non par rapport à l'ASL."
+      },
+      "reference": { "EN": "RPAS 101 p.71-72", "FR": "RPAS 101 p.71-72" },
+      "tags": ["barometer", "altitude"]
+    },
+    {
+      "id": "airframes-systems-0006",
+      "moduleId": "airframes-systems",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "What should you do with a battery that has become swollen?",
+        "FR": "Que devriez-vous faire d'une batterie qui est devenue gonflée ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Do not use it; dispose of it properly", "FR": "Ne pas l'utiliser; l'éliminer correctement" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Charge it fully to reshape it", "FR": "La charger complètement pour la remodeler" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Use it only for short flights", "FR": "L'utiliser seulement pour de courts vols" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Store it in direct sunlight to dry", "FR": "La ranger au soleil direct pour la sécher" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Never use a swollen battery. If a battery has been dropped or impacted, isolate it and watch for swelling; dispose of damaged batteries properly. LiPo batteries can cause fires if mishandled.",
+        "FR": "N'utilisez jamais une batterie gonflée. Si une batterie a été échappée ou heurtée, isolez-la et surveillez tout gonflement; éliminez correctement les batteries endommagées. Les batteries LiPo peuvent provoquer des incendies si mal manipulées."
+      },
+      "reference": { "EN": "RPAS 101 p.74", "FR": "RPAS 101 p.74" },
+      "tags": ["battery", "safety"]
+    },
+    {
+      "id": "radiotelephony-0001",
+      "moduleId": "radiotelephony",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "In the ITU phonetic alphabet, what word represents the letter 'R'?",
+        "FR": "Dans l'alphabet phonétique de l'UIT, quel mot représente la lettre « R » ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Romeo", "FR": "Romeo" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Roger", "FR": "Roger" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Radio", "FR": "Radio" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Rescue", "FR": "Rescue" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "The ITU phonetic alphabet word for 'R' is Romeo. The phonetic alphabet is used throughout aviation to ensure clear communications.",
+        "FR": "Le mot de l'alphabet phonétique de l'UIT pour « R » est Romeo. L'alphabet phonétique est utilisé partout en aviation pour assurer des communications claires."
+      },
+      "reference": { "EN": "RPAS 101 p.54", "FR": "RPAS 101 p.54" },
+      "tags": ["phonetic-alphabet"]
+    },
+    {
+      "id": "radiotelephony-0002",
+      "moduleId": "radiotelephony",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "What is the aviation emergency frequency used everywhere?",
+        "FR": "Quelle est la fréquence d'urgence aéronautique utilisée partout ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "121.5", "FR": "121,5" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "126.7", "FR": "126,7" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "123.2", "FR": "123,2" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "118.0", "FR": "118,0" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "121.5 is the emergency frequency everywhere. Default frequencies: 126.7 for uncontrolled airspace not near an aerodrome, and 123.2 for aerodromes not listing a specific frequency.",
+        "FR": "121,5 est la fréquence d'urgence partout. Fréquences par défaut : 126,7 pour l'espace aérien non contrôlé loin d'un aérodrome, et 123,2 pour les aérodromes sans fréquence précise."
+      },
+      "reference": { "EN": "RPAS 101 p.57", "FR": "RPAS 101 p.57" },
+      "tags": ["frequency", "emergency"]
+    },
+    {
+      "id": "radiotelephony-0003",
+      "moduleId": "radiotelephony",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "If no specific frequency is shown on a chart, what is the default frequency for uncontrolled airspace not near an aerodrome?",
+        "FR": "Si aucune fréquence précise n'est indiquée sur une carte, quelle est la fréquence par défaut pour l'espace aérien non contrôlé loin d'un aérodrome ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "126.7", "FR": "126,7" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "123.2", "FR": "123,2" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "121.5", "FR": "121,5" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "118.5", "FR": "118,5" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "126.7 is the default for uncontrolled airspace not near an aerodrome. Use 123.2 for aerodromes with no specific listed frequency, and 121.5 for emergencies.",
+        "FR": "126,7 est la valeur par défaut pour l'espace aérien non contrôlé loin d'un aérodrome. Utilisez 123,2 pour les aérodromes sans fréquence précise, et 121,5 pour les urgences."
+      },
+      "reference": { "EN": "RPAS 101 p.57", "FR": "RPAS 101 p.57" },
+      "tags": ["frequency", "uncontrolled"]
+    },
+    {
+      "id": "radiotelephony-0004",
+      "moduleId": "radiotelephony",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "An aircraft referred to as 'NORDO' is one that:",
+        "FR": "Un aéronef qualifié de « NORDO » est un aéronef qui :"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Does not have a radio", "FR": "N'a pas de radio" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Is flying north", "FR": "Vole vers le nord" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Has no GPS", "FR": "N'a pas de GPS" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Is operating at night", "FR": "Vole de nuit" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "'NORDO' indicates an aircraft that does not have a radio. A radio is not mandatory in all types of airspace.",
+        "FR": "« NORDO » indique un aéronef qui n'a pas de radio. Une radio n'est pas obligatoire dans tous les types d'espace aérien."
+      },
+      "reference": { "EN": "RPAS 101 p.55", "FR": "RPAS 101 p.55" },
+      "tags": ["nordo", "radio"]
+    },
+    {
+      "id": "radiotelephony-0005",
+      "moduleId": "radiotelephony",
+      "certLevel": "ADVANCED",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "Which study guide is used to obtain a Restricted Operator Certificate – Aeronautical (ROC-A)?",
+        "FR": "Quel guide d'étude est utilisé pour obtenir un certificat restreint d'opérateur – aéronautique (ROC-A) ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "RIC-21", "FR": "RIC-21" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "TP 15263", "FR": "TP 15263" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Standard 922", "FR": "Norme 922" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "AC-922-001", "FR": "AC-922-001" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "The ROC-A (needed to transmit on aviation frequencies) is studied via ISED's RIC-21 study guide; an exam with an accredited examiner is required. The knowledge is essential for Advanced pilots operating where aviation terminology is used.",
+        "FR": "Le ROC-A (nécessaire pour émettre sur les fréquences aéronautiques) s'étudie avec le guide RIC-21 d'ISDE; un examen avec un examinateur accrédité est requis. Ces connaissances sont essentielles pour les pilotes avancés évoluant là où la terminologie aéronautique est utilisée."
+      },
+      "reference": { "EN": "RPAS 101 p.55, p.121", "FR": "RPAS 101 p.55, p.121" },
+      "tags": ["roc-a", "ric-21", "advanced"]
+    },
+    {
+      "id": "radiotelephony-0006",
+      "moduleId": "radiotelephony",
+      "certLevel": "ADVANCED",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 3,
+      "stem": {
+        "EN": "A mode C transponder is required for aircraft operating in which airspace?",
+        "FR": "Un transpondeur mode C est requis pour les aéronefs évoluant dans quel espace aérien ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Class C airspace (and any airspace specifically requiring one)", "FR": "Espace aérien de classe C (et tout espace l'exigeant spécifiquement)" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Class G airspace", "FR": "Espace aérien de classe G" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "All uncontrolled airspace", "FR": "Tout espace aérien non contrôlé" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Below 400 ft AGL only", "FR": "Sous 400 pi AGL seulement" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "A mode C transponder (which encodes altitude) is required in Class C airspace and any airspace that specifically requires one. Small RPAS lack transponders and therefore always need prior authorization to enter transponder airspace.",
+        "FR": "Un transpondeur mode C (qui code l'altitude) est requis en espace aérien de classe C et dans tout espace qui l'exige spécifiquement. Les petits SATP n'ont pas de transpondeur et ont donc toujours besoin d'une autorisation préalable pour entrer dans l'espace à transpondeur."
+      },
+      "reference": { "EN": "RPAS 101 p.60", "FR": "RPAS 101 p.60" },
+      "tags": ["transponder", "class-c", "advanced"]
+    },
+    {
+      "id": "theory-of-flight-0001",
+      "moduleId": "theory-of-flight",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "Lift relies on what?",
+        "FR": "La portance repose sur quoi ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Smooth air flowing over an aerofoil shape", "FR": "Un écoulement d'air régulier sur une forme d'aile (profil)" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "High battery voltage alone", "FR": "Une tension de batterie élevée à elle seule" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Magnetic attraction to the ground", "FR": "L'attraction magnétique vers le sol" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "GPS signal strength", "FR": "La puissance du signal GPS" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "An RPA operates above the ground due to lift, which relies on smooth air flowing over an aerofoil shape. Fixed wings use stationary aerofoils; multirotors/helicopters use rotating wings (rotors).",
+        "FR": "Un ARP se maintient au-dessus du sol grâce à la portance, qui repose sur un écoulement d'air régulier sur une forme de profil (aile). Les voilures fixes utilisent des profils fixes; les multirotors/hélicoptères utilisent des ailes rotatives (rotors)."
+      },
+      "reference": { "EN": "RPAS 101 p.67", "FR": "RPAS 101 p.67" },
+      "tags": ["lift", "aerofoil"]
+    },
+    {
+      "id": "theory-of-flight-0002",
+      "moduleId": "theory-of-flight",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "What is one key limitation of a fixed-wing RPA compared to a multirotor?",
+        "FR": "Quelle est une limite clé d'un ARP à voilure fixe par rapport à un multirotor ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "It cannot hover", "FR": "Il ne peut pas faire de vol stationnaire" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "It cannot glide", "FR": "Il ne peut pas planer" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "It has shorter flight time", "FR": "Il a une autonomie plus courte" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "It cannot carry a camera", "FR": "Il ne peut pas transporter de caméra" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "A fixed-wing RPA cannot hover; the pilot must constantly manage its flight path, with greater emphasis on flying skill and automation. Fixed wings are efficient, can glide, and suit large-area mapping. Multirotors can hover but have shorter flight times.",
+        "FR": "Un ARP à voilure fixe ne peut pas faire de vol stationnaire; le pilote doit constamment gérer sa trajectoire, avec un accent accru sur l'habileté de pilotage et l'automatisation. Les voilures fixes sont efficaces, peuvent planer et conviennent à la cartographie de grandes surfaces. Les multirotors peuvent faire du stationnaire mais ont une autonomie plus courte."
+      },
+      "reference": { "EN": "RPAS 101 p.15, p.68", "FR": "RPAS 101 p.15, p.68" },
+      "tags": ["fixed-wing", "hover"]
+    },
+    {
+      "id": "theory-of-flight-0003",
+      "moduleId": "theory-of-flight",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 1,
+      "stem": {
+        "EN": "What does VTOL stand for?",
+        "FR": "Que signifie VTOL ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "Vertical Take-Off and Landing", "FR": "Décollage et atterrissage verticaux" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "Variable Throttle Onboard Limiter", "FR": "Limiteur de poussée variable embarqué" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "Visual Tracking Of Landmarks", "FR": "Suivi visuel des repères" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "Vertical Telemetry Output Link", "FR": "Liaison de sortie télémétrie verticale" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "VTOL = Vertical Take-Off and Landing. VTOL fixed wings combine fixed-wing efficiency with a multirotor launch/recovery footprint.",
+        "FR": "VTOL = décollage et atterrissage verticaux. Les voilures fixes VTOL combinent l'efficacité d'une voilure fixe avec l'encombrement de décollage/récupération d'un multirotor."
+      },
+      "reference": { "EN": "RPAS 101 p.15, p.67", "FR": "RPAS 101 p.15, p.67" },
+      "tags": ["vtol", "fixed-wing"]
+    },
+    {
+      "id": "theory-of-flight-0004",
+      "moduleId": "theory-of-flight",
+      "certLevel": "BOTH",
+      "type": "SINGLE",
+      "selectCount": 1,
+      "difficulty": 2,
+      "stem": {
+        "EN": "How does a multirotor control both lift and direction of flight?",
+        "FR": "Comment un multirotor contrôle-t-il à la fois la portance et la direction du vol ?"
+      },
+      "options": [
+        { "id": "a", "label": { "EN": "By varying the speed of the individual motors", "FR": "En faisant varier la vitesse de chaque moteur" }, "isCorrect": true },
+        { "id": "b", "label": { "EN": "By moving ailerons, elevators and a rudder", "FR": "En déplaçant des ailerons, gouvernes de profondeur et une gouverne de direction" }, "isCorrect": false },
+        { "id": "c", "label": { "EN": "By shifting the battery position", "FR": "En déplaçant la position de la batterie" }, "isCorrect": false },
+        { "id": "d", "label": { "EN": "By changing the GPS waypoint only", "FR": "En changeant seulement le point de cheminement GPS" }, "isCorrect": false }
+      ],
+      "explanation": {
+        "EN": "Multirotors control lift and direction by varying the speed of individual motors, relying on sensors for stability. Fixed wings instead use control surfaces (ailerons, elevators, rudder) plus thrust.",
+        "FR": "Les multirotors contrôlent la portance et la direction en faisant varier la vitesse de chaque moteur, en s'appuyant sur des capteurs pour la stabilité. Les voilures fixes utilisent plutôt des gouvernes (ailerons, profondeur, direction) plus la poussée."
+      },
+      "reference": { "EN": "RPAS 101 p.68-69", "FR": "RPAS 101 p.68-69" },
+      "tags": ["multirotor", "control"]
+    }
+  ]
+}

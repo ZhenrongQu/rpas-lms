@@ -1,0 +1,62 @@
+# Question Bank — Authoring Guide (题库编写指南)
+
+`question-bank.json` is the single source of truth for all exam/practice questions. It is validated by the Zod schema in `docs/technical-design.md` §15 and loaded into the DB by the seed script.
+
+## Current coverage (seed set: 50 questions)
+
+| Subject | Count | Mock quota (Basic / Adv) | Target pool* |
+|---|---|---|---|
+| Air Law | 11 | ~10 / ~14 | 45+ |
+| Flight Operations | 6 | ~6 / ~8 | 25+ |
+| Human Factors | 6 | ~4 / ~6 | 20+ |
+| Meteorology | 6 | ~4 / ~5 | 18+ |
+| Navigation | 5 | ~3 / ~5 | 18+ |
+| Airframes & Systems | 6 | ~4 / ~4 | 18+ |
+| Radiotelephony | 6 | ~3 / ~5 | 18+ |
+| Theory of Flight | 4 | ~2 / ~3 | 12+ |
+
+\* Recommended ≈ 3× the largest mock quota so each generated exam is varied. CI warns when a subject pool < 3× its quota.
+
+**Eligibility note:** A question is eligible for an exam when its `certLevel` is the requested level **or** `BOTH`.
+- **Basic:** 44 eligible (50 − 6 Advanced-only) → a full **35-question** Basic mock generates with room to spare. ✓
+- **Advanced:** 48 eligible (50 − 2 Basic-only) → a full **50-question** Advanced mock currently falls **2 short**. Add ≥2 more `ADVANCED`/`BOTH` questions to reach 50 unique. Until then the generator returns 48 (it never repeats or invents questions).
+
+By cert level: 42 `BOTH`, 6 `ADVANCED`, 2 `BASIC`. (`BOTH` questions appear in both exams; add more `BASIC`/`ADVANCED`-specific items as content deepens.)
+
+## Schema (per question)
+
+```jsonc
+{
+  "id": "air-law-0001",          // ^[a-z-]+-\d{4}$, unique, stable
+  "moduleId": "air-law",         // one of the 8 subject ids
+  "certLevel": "BOTH",           // BASIC | ADVANCED | BOTH
+  "type": "SINGLE",              // SINGLE | MULTI
+  "selectCount": 1,              // SINGLE=1; MULTI=N (>=2)
+  "difficulty": 1,               // 1..3
+  "stem":        { "EN": "...", "FR": "..." },
+  "options": [ { "id": "a", "label": { "EN": "...", "FR": "..." }, "isCorrect": true }, ... ],
+  "explanation": { "EN": "...", "FR": "..." },
+  "reference":   { "EN": "CAR 901.xx / RPAS 101 p.NN", "FR": "RAC 901.xx / RPAS 101 p.NN" },
+  "tags": ["registration", "weight"]
+}
+```
+
+## Authoring rules
+1. **Fully bilingual** — every `EN` and `FR` field present and non-empty.
+2. **Correct-count integrity** — `SINGLE`: exactly one `isCorrect`, `selectCount: 1`. `MULTI`: exactly `selectCount` correct options, `selectCount >= 2`.
+3. **Cite a source** in `reference` (CAR number, Standard 921/922, RPAS 101 page, or TP-15263 area).
+4. **French terms** must match `content/glossary.json` (e.g. *aérodrome*, *passant*, *zone de contrôle*, *dérive*, *avis aux navigants aériens*).
+5. **TC-style distractors** — plausible, non-trick; avoid "all of the above". Watch unit traps (400 ft AGL vs 400 ft ASL).
+6. **Tag** every question for analytics and targeted practice.
+7. **`id` is immutable** once shipped (exam sessions reference it); never renumber.
+
+## Workflow
+```
+edit content/question-bank.json
+→ pnpm validate:bank   # Zod + correct-count + locale + glossary lint
+→ pnpm seed            # upsert into DB
+```
+
+## Important
+- Per CARs, do not copy or redistribute the **actual** Transport Canada exam questions. These items are original, written from public reference material (RPAS 101, CARs Part IX, TP-15263) for study only.
+- `isCorrect` must **never** be serialized to the client during an exam — grading is server-side (see technical design §3, §8).
