@@ -3,19 +3,19 @@
 **Last updated:** 2026-06-05
 **Repo:** `/Users/quzhenrong/rpas-lms` (local only, **no remote** — never pushed)
 **Branch:** `exam-engine-core` (base branch: `main`)
-**Test/typecheck state:** 32 tests passing across 8 files; `pnpm typecheck` clean.
+**Status:** ✅ **Plan 1 complete — all 12 tasks done.** 44 tests passing across 11 files; `pnpm typecheck` clean. Passed a final whole-implementation review (ready to merge).
 
-## How to resume
+## How to resume / verify
 ```bash
 cd /Users/quzhenrong/rpas-lms
 pnpm install      # if node_modules missing
-pnpm test         # expect all green
-pnpm typecheck
+pnpm test         # expect 44 passing, 11 files
+pnpm typecheck    # clean
 ```
-Plan being executed: `docs/superpowers/plans/2026-06-05-exam-engine-core.md` (12 tasks, TDD, one commit per task).
-Execution method: Subagent-Driven Development — fresh implementer per task + two-stage review (spec compliance, then code quality).
+Plan: `docs/superpowers/plans/2026-06-05-exam-engine-core.md` (12 tasks, TDD, one commit per task).
+Execution: Subagent-Driven Development — fresh implementer per task + two-stage review (spec compliance, then code quality), plus a final whole-implementation review.
 
-## Completed tasks (9 / 12)
+## Completed tasks (12 / 12)
 
 | # | Task | Commit | Files |
 |---|------|--------|-------|
@@ -28,22 +28,29 @@ Execution method: Subagent-Driven Development — fresh implementer per task + t
 | 7 | Server-side grading (SINGLE + MULTI) | `0dd89f3` | src/lib/exam/grade.ts(.test) |
 | 8 | Scoring + per-subject breakdown | `6111add` | src/lib/exam/score.ts(.test) |
 | 9 | Session store interface + in-memory impl | `fe61b08` | src/lib/exam/store.ts(.test) |
+| 10 | Public question serialization (strips answers) | `c321fa6` | src/lib/exam/serialize.ts(.test) |
+| 11 | ExamService orchestration | `732bbfc` | src/lib/exam/service.ts(.test) |
+| 12 | API route handlers (create/questions/answer/submit) | `fe16027` | src/lib/exam/instance.ts, app/api/exam/** |
 
-All 9 passed both spec-compliance and code-quality review.
+Each task passed both spec-compliance and code-quality review. A progress-log commit (`1bbf3b5`) sits between tasks 9 and 10.
 
-## Remaining tasks (3 / 12)
-- **Task 10** — Public question serialization (`src/lib/exam/serialize.ts`): strips `isCorrect`/explanation/reference so answers never reach the client. *(in progress)*
-- **Task 11** — `ExamService` orchestration (`src/lib/exam/service.ts`): create/serve/answer/submit, ties store + generation + grading + config.
-- **Task 12** — API route handlers under `app/api/exam/**` (web-standard `Request → Response`) + `src/lib/exam/instance.ts` singleton.
+## Definition of Done — met
+- `pnpm test` green (44), `pnpm typecheck` clean.
+- Create a weighted Basic 35-Q mock → fetch public questions with **no `isCorrect`** leaked → submit → scored result with per-subject breakdown. Each step proven by a test (unit + integration + HTTP-handler level).
+- All grading is server-side; in-memory store swappable behind `SessionStore`.
 
-After Task 12: dispatch a final whole-implementation review, then finish the branch.
-
-## Key decisions / honest gaps (carried from the plan)
+## Key decisions / honest gaps (carried forward to Plans 2–4)
 - **Scope is Plan 1 only:** pure engine + route-handler-shaped functions, runnable under Vitest with no running Next.js server. Next.js app shell, i18n UI, Prisma persistence, auth, LMS lesson rendering, dashboard = **Plans 2–4**.
 - **Persistence is in-memory** behind `SessionStore`; Prisma drops in later behind the same interface.
-- **Grading is server-only**; `isCorrect` must never be serialized to clients (Task 10 enforces this; Task 12 test asserts it).
-- **Advanced mock returns 48, not 50:** the seed bank has only 48 eligible (Advanced + BOTH) questions. Generator never repeats/invents → returns `min(total, eligiblePool)`. To reach a true 50-question Advanced mock, author ≥2 more `ADVANCED`/`BOTH` questions in `content/question-bank.json`. This is a content task, not a code bug (asserted in Task 6 test).
+- **Grading is server-only**; `isCorrect` never serialized to clients (enforced by `toPublicQuestion`; asserted at unit, service, and route layers).
+- **Advanced mock returns 48, not 50:** the seed bank has only 48 eligible (Advanced + BOTH) questions. Generator never repeats/invents → returns `min(total, eligiblePool)`. To reach a true 50-question Advanced mock, author ≥2 more `ADVANCED`/`BOTH` questions in `content/question-bank.json`. Content task, not a code bug (asserted in Task 6 test).
+- **Basic air-law is under-quota by 2 (silent distribution skew):** the weight table allocates 11 air-law questions for a Basic mock, but only **9** BASIC-eligible air-law questions exist. The generator draws those 9 and backfills the remaining 2 from other subjects, so every Basic exam silently has 9 (not 11) air-law questions and 2 extra elsewhere. The exam is still a valid 35 questions — this only affects per-subject *distribution*, not totals. Fix cleanly by adding ≥2 more `BASIC`/`BOTH` air-law questions to the bank. (Found in final review.)
+- **Exam expiry is set but NOT enforced server-side in Plan 1:** `expiresAt` is stored on the session and returned to the client, but `answer`/`submit` do not reject late calls. Server-authoritative timer enforcement is a Plan 2 concern (the exam UI shows the countdown; Plan 2/3 should add an `expiresAt < now` check in `answer`/`submit`).
 
 ## Housekeeping notes
 - Repo created fresh (home dir was not a git repo). Design artifacts (technical-design.md, question bank, plan) committed on `main`, then branched.
 - Removed two stray throwaway files (`test-json*.ts`) a reviewer left at repo root during Task 9.
+
+## Suggested next steps (post-Plan-1)
+1. Author ≥2 more `ADVANCED`/`BOTH` and ≥2 more `BASIC`/`BOTH` air-law questions to close the Advanced-50 and Basic-air-law-distribution gaps.
+2. Begin **Plan 2**: Next.js app shell + i18n routing, mount these handlers as real routes, build the exam UI (timer, question palette, per-subject results table) and a `GET /api/exam/[id]/review` endpoint (post-submission explanations).
