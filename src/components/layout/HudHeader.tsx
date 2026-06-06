@@ -10,10 +10,10 @@ export default function HudHeader({ locale }: { locale: string }) {
 
   const isModules = pathname === `/${locale}` || pathname === `/${locale}/`;
   const isExam = pathname.startsWith(`/${locale}/exam`);
-  const otherLocale = locale === 'en' ? 'fr' : 'en';
 
-  // Build same path in the other locale by replacing the locale prefix
-  const otherLocalePath = pathname.replace(new RegExp(`^/${locale}`), `/${otherLocale}`);
+  // Same path under a target locale, swapping the leading locale segment.
+  const localeHref = (target: string) =>
+    pathname.replace(new RegExp(`^/${locale}`), `/${target}`);
 
   return (
     <header className="hud-header">
@@ -79,8 +79,10 @@ export default function HudHeader({ locale }: { locale: string }) {
 
       {/* Locale switcher */}
       <div className="locale-switcher">
-        <span className={`locale-btn${locale === 'en' ? ' active' : ''}`}>EN</span>
-        <Link href={otherLocalePath} className={`locale-btn${locale === 'fr' ? ' active' : ''}`}>
+        <Link href={localeHref('en')} className={`locale-btn${locale === 'en' ? ' active' : ''}`}>
+          EN
+        </Link>
+        <Link href={localeHref('fr')} className={`locale-btn${locale === 'fr' ? ' active' : ''}`}>
           FR
         </Link>
       </div>
