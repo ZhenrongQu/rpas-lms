@@ -1,5 +1,19 @@
 {
   "nav": { "modules": "Modules", "exam": "Examen" },
+  "auth": {
+    "signIn": "Se connecter",
+    "register": "Créer un compte",
+    "signOut": "Se déconnecter",
+    "email": "Courriel",
+    "password": "Mot de passe",
+    "name": "Indicatif (facultatif)",
+    "needAccount": "Besoin d'un compte ? S'inscrire",
+    "haveAccount": "Vous avez un compte ? Se connecter",
+    "guest": "Invité",
+    "invalidCredentials": "Courriel ou mot de passe invalide.",
+    "registerFailed": "Impossible de créer le compte. Le courriel est peut-être déjà utilisé.",
+    "working": "En cours…"
+  },
   "dashboard": {
     "title": "Modules de mission",
     "subtitle": "Transports Canada · Exigences de connaissances TP-15263",

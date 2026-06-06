@@ -3,9 +3,17 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import SignOutButton from '@/components/auth/SignOutButton';
 
-export default function HudHeader({ locale }: { locale: string }) {
+export default function HudHeader({
+  locale,
+  user,
+}: {
+  locale: string;
+  user: { name?: string | null; email?: string | null } | null;
+}) {
   const t = useTranslations('nav');
+  const tAuth = useTranslations('auth');
   const pathname = usePathname();
 
   const isModules = pathname === `/${locale}` || pathname === `/${locale}/`;
@@ -76,6 +84,20 @@ export default function HudHeader({ locale }: { locale: string }) {
           {t('exam')}
         </Link>
       </nav>
+
+      {/* Account */}
+      <div className="account-box">
+        {user ? (
+          <>
+            <span className="account-name">{user.name || user.email}</span>
+            <SignOutButton locale={locale} />
+          </>
+        ) : (
+          <Link href={`/${locale}/signin`} className="locale-btn">
+            {tAuth('signIn')}
+          </Link>
+        )}
+      </div>
 
       {/* Locale switcher */}
       <div className="locale-switcher">

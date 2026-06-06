@@ -1,5 +1,19 @@
 {
   "nav": { "modules": "Modules", "exam": "Exam" },
+  "auth": {
+    "signIn": "Sign In",
+    "register": "Create Account",
+    "signOut": "Sign Out",
+    "email": "Email",
+    "password": "Password",
+    "name": "Call Sign (optional)",
+    "needAccount": "Need an account? Register",
+    "haveAccount": "Have an account? Sign in",
+    "guest": "Guest",
+    "invalidCredentials": "Invalid email or password.",
+    "registerFailed": "Could not create account. The email may already be in use.",
+    "working": "Working…"
+  },
   "dashboard": {
     "title": "Mission Modules",
     "subtitle": "Transport Canada · TP-15263 Knowledge Requirements",

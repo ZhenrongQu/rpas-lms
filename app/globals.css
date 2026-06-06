@@ -639,3 +639,77 @@ html, body {
   color: var(--cyan); letter-spacing: 0.1em; margin-bottom: 10px;
 }
 .cert-card-specs { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); line-height: 1.8; }
+
+/* ---- Auth ---- */
+.auth-view {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 48px 24px;
+}
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px;
+}
+.auth-title {
+  font-family: var(--font-mono);
+  color: var(--cyan);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  margin-bottom: 4px;
+}
+.auth-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+}
+.auth-input {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 4px;
+  padding: 10px 12px;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  outline: none;
+}
+.auth-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.15);
+}
+.auth-error {
+  color: var(--red);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.auth-link {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgba(0, 212, 255, 0.8);
+  text-align: center;
+  text-decoration: none;
+}
+.auth-link:hover { color: var(--cyan); }
+.account-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.account-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(0, 255, 136, 0.85);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
