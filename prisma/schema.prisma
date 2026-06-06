@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  name           String?
+  hashedPassword String
+  createdAt      DateTime      @default(now())
+  examSessions   ExamSession[]
+}
+
+model ExamSession {
+  id          String   @id
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  certLevel   String
+  locale      String
+  questionIds String   // JSON: string[]
+  answers     String   @default("{}") // JSON: Record<string, string[]>
+  startedAt   DateTime
+  expiresAt   DateTime
+  submitted   Boolean  @default(false)
+  result      String?  // JSON: ExamResult
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
