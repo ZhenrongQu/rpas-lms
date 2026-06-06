@@ -23,10 +23,6 @@
     "radiotelephony": "Radiotéléphonie",
     "theory-of-flight": "Théorie du vol"
   },
-  "moduleId": {
-    "air-law": "01", "flight-operations": "02", "human-factors": "03", "meteorology": "04",
-    "navigation": "05", "airframes-systems": "06", "radiotelephony": "07", "theory-of-flight": "08"
-  },
   "certLevel": { "BASIC": "Opérations de base", "ADVANCED": "Opérations avancées" },
   "examSpecs": {
     "BASIC": "35 questions · 90 min · Réussite 65 %",
@@ -54,7 +50,7 @@
     "missionComplete": "Mission accomplie",
     "missionFailed": "Mission échouée",
     "score": "Score",
-    "correct": "correct",
+    "correct": "bonnes réponses",
     "passStatus": "RÉUSSI",
     "failStatus": "ÉCHOUÉ",
     "perSubject": "Résultats par domaine",
