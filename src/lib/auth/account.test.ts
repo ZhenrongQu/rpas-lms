@@ -39,6 +39,11 @@ describe("auth account persistence", () => {
 
     expect(user.accessTier).toBe("FREE");
     expect(user.username).toBe("pilot-one");
+    expect(user.email).toBe("pilot@example.com");
+    expect(user.phone).toBe("+16045551234");
+    expect(user.displayName).toBe("Pilot One");
+    expect(user.emailVerifiedAt?.toISOString()).toBe("2026-06-06T00:00:00.000Z");
+    expect(user.phoneVerifiedAt?.toISOString()).toBe("2026-06-06T00:00:00.000Z");
     expect(user.identities).toHaveLength(1);
     expect(user.identities[0].provider).toBe("email");
   });

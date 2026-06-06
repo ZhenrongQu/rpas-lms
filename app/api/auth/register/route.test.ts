@@ -24,7 +24,7 @@ describe("POST /api/auth/register", () => {
     const user = await prisma.user.findUnique({ where: { email: "a@test.local" } });
     expect(user).not.toBeNull();
     expect(user!.hashedPassword).not.toBe("hunter2pw");
-    expect(user!.name).toBe("Ada");
+    expect(user!.displayName).toBe("Ada");
   });
 
   it("rejects a duplicate email with 409", async () => {
