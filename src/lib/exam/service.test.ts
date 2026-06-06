@@ -137,4 +137,26 @@ describe("ExamService", () => {
     const session = await store.get(sessionId);
     expect(session?.userId).toBeNull();
   });
+
+  it("getReview() is null before submit", async () => {
+    const svc = newService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 42);
+    expect(await svc.getReview(sessionId)).toBeNull();
+  });
+
+  it("getReview() returns one item per question after submit", async () => {
+    const svc = newService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 42);
+    await svc.submit(sessionId);
+    const review = await svc.getReview(sessionId);
+    expect(review).not.toBeNull();
+    expect(review!.length).toBe(35);
+    expect(review![0]).toHaveProperty("correctOptionIds");
+    expect(review![0]).toHaveProperty("explanation");
+  });
+
+  it("getReview() is null for an unknown session", async () => {
+    const svc = newService();
+    expect(await svc.getReview("missing")).toBeNull();
+  });
 });
