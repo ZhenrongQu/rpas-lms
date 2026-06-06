@@ -13,12 +13,13 @@ const MODULE_ICONS: Record<string, string> = {
 
 interface Props {
   moduleId: string;
+  index: number; // 1-based position in the module grid
   progress?: number; // 0..100
 }
 
-export default function ModuleCard({ moduleId, progress = 0 }: Props) {
+export default function ModuleCard({ moduleId, index, progress = 0 }: Props) {
   const t = useTranslations();
-  const idx = String(['air-law','flight-operations','human-factors','meteorology','navigation','airframes-systems','radiotelephony','theory-of-flight'].indexOf(moduleId) + 1).padStart(2, '0');
+  const idx = String(index).padStart(2, '0');
 
   return (
     <div className="mission-card">
