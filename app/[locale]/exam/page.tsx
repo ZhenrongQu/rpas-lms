@@ -25,6 +25,7 @@ export default function ExamLaunchPage() {
       });
       if (!res.ok) throw new Error('Failed to create exam session');
       const { sessionId } = await res.json();
+      if (!sessionId) throw new Error('Failed to create exam session');
       router.push(`/${locale}/exam/${sessionId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
