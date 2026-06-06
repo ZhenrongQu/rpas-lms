@@ -1,0 +1,66 @@
+{
+  "nav": { "modules": "Modules", "exam": "Exam" },
+  "dashboard": {
+    "title": "Mission Modules",
+    "subtitle": "Transport Canada · TP-15263 Knowledge Requirements",
+    "overallProgress": "Overall Progress",
+    "certification": "Advanced Operations",
+    "startExam": "Start Exam",
+    "telemetry": "Telemetry",
+    "missionStatus": "Mission Status",
+    "subjectAreas": "Subject Areas",
+    "complete": "Complete",
+    "inProgress": "In Progress",
+    "locked": "Locked"
+  },
+  "modules": {
+    "air-law": "Air Law & Regs",
+    "flight-operations": "Flight Operations",
+    "human-factors": "Human Factors",
+    "meteorology": "Meteorology",
+    "navigation": "Navigation",
+    "airframes-systems": "Airframes & Systems",
+    "radiotelephony": "Radiotelephony",
+    "theory-of-flight": "Theory of Flight"
+  },
+  "moduleId": {
+    "air-law": "01", "flight-operations": "02", "human-factors": "03", "meteorology": "04",
+    "navigation": "05", "airframes-systems": "06", "radiotelephony": "07", "theory-of-flight": "08"
+  },
+  "certLevel": { "BASIC": "Basic Operations", "ADVANCED": "Advanced Operations" },
+  "examSpecs": {
+    "BASIC": "35 questions · 90 min · Pass 65%",
+    "ADVANCED": "50 questions · 60 min · Pass 80%"
+  },
+  "examLaunch": {
+    "title": "Initiate Mock Examination",
+    "selectLevel": "Select Certification Level",
+    "launch": "Launch Exam",
+    "launching": "Launching…"
+  },
+  "exam": {
+    "timeRemaining": "Time Remaining",
+    "confirmSelection": "Confirm Selection",
+    "skip": "Skip",
+    "flagForReview": "Flag for Review",
+    "submitExam": "Submit Exam",
+    "submitting": "Submitting…",
+    "question": "Q",
+    "of": "of",
+    "answered": "answered",
+    "loading": "Loading questions…"
+  },
+  "results": {
+    "missionComplete": "Mission Complete",
+    "missionFailed": "Mission Failed",
+    "score": "Score",
+    "correct": "correct",
+    "passStatus": "PASS",
+    "failStatus": "FAIL",
+    "perSubject": "Per-Subject Breakdown",
+    "weakAreas": "Weak areas flagged",
+    "reviewAnswers": "Review Answers",
+    "newMission": "New Mission",
+    "notFound": "Result not found. The session may have expired or not been submitted."
+  }
+}

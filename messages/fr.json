@@ -1,0 +1,66 @@
+{
+  "nav": { "modules": "Modules", "exam": "Examen" },
+  "dashboard": {
+    "title": "Modules de mission",
+    "subtitle": "Transports Canada · Exigences de connaissances TP-15263",
+    "overallProgress": "Progression globale",
+    "certification": "Opérations avancées",
+    "startExam": "Démarrer l'examen",
+    "telemetry": "Télémétrie",
+    "missionStatus": "État de la mission",
+    "subjectAreas": "Domaines",
+    "complete": "Terminé",
+    "inProgress": "En cours",
+    "locked": "Verrouillé"
+  },
+  "modules": {
+    "air-law": "Réglementation aérienne",
+    "flight-operations": "Opérations de vol",
+    "human-factors": "Facteurs humains",
+    "meteorology": "Météorologie",
+    "navigation": "Navigation",
+    "airframes-systems": "Cellules et systèmes",
+    "radiotelephony": "Radiotéléphonie",
+    "theory-of-flight": "Théorie du vol"
+  },
+  "moduleId": {
+    "air-law": "01", "flight-operations": "02", "human-factors": "03", "meteorology": "04",
+    "navigation": "05", "airframes-systems": "06", "radiotelephony": "07", "theory-of-flight": "08"
+  },
+  "certLevel": { "BASIC": "Opérations de base", "ADVANCED": "Opérations avancées" },
+  "examSpecs": {
+    "BASIC": "35 questions · 90 min · Réussite 65 %",
+    "ADVANCED": "50 questions · 60 min · Réussite 80 %"
+  },
+  "examLaunch": {
+    "title": "Initier un examen simulé",
+    "selectLevel": "Sélectionner le niveau de certification",
+    "launch": "Lancer l'examen",
+    "launching": "Lancement…"
+  },
+  "exam": {
+    "timeRemaining": "Temps restant",
+    "confirmSelection": "Confirmer la sélection",
+    "skip": "Passer",
+    "flagForReview": "Marquer pour révision",
+    "submitExam": "Soumettre l'examen",
+    "submitting": "Soumission…",
+    "question": "Q",
+    "of": "sur",
+    "answered": "répondu",
+    "loading": "Chargement des questions…"
+  },
+  "results": {
+    "missionComplete": "Mission accomplie",
+    "missionFailed": "Mission échouée",
+    "score": "Score",
+    "correct": "correct",
+    "passStatus": "RÉUSSI",
+    "failStatus": "ÉCHOUÉ",
+    "perSubject": "Résultats par domaine",
+    "weakAreas": "Domaines faibles identifiés",
+    "reviewAnswers": "Revoir les réponses",
+    "newMission": "Nouvelle mission",
+    "notFound": "Résultat introuvable. La session a peut-être expiré ou n'a pas été soumise."
+  }
+}
