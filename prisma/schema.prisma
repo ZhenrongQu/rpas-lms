@@ -8,13 +8,45 @@ datasource db {
 }
 
 model User {
-  id             String        @id @default(cuid())
-  email          String        @unique
-  name           String?
-  hashedPassword String
-  accessTier     String        @default("FREE")
-  createdAt      DateTime      @default(now())
-  examSessions   ExamSession[]
+  id              String         @id @default(cuid())
+  username        String?        @unique
+  email           String?        @unique
+  phone           String?        @unique
+  displayName     String?
+  hashedPassword  String?
+  accessTier      String         @default("FREE")
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  identities      UserIdentity[]
+  examSessions    ExamSession[]
+}
+
+model UserIdentity {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          String
+  providerAccountId String
+  verifiedAt        DateTime?
+  createdAt         DateTime @default(now())
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model VerificationCode {
+  id         String    @id @default(cuid())
+  target     String
+  channel    String
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([target, channel])
 }
 
 model ExamSession {
