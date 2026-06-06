@@ -8,9 +8,9 @@
 **Repo:** `/Users/quzhenrong/rpas-lms` (remote: `github.com/ZhenrongQu/rpas-lms`, private)
 **Branch:** `nextjs-app-shell` (base branch: `main`)
 **Plan:** `docs/superpowers/plans/2026-06-05-nextjs-app-shell.md` (9 tasks, TDD, subagent-driven)
-**Status:** 🚧 **In progress — 6 / 9 tasks done.** 49 tests passing (44 engine + 5 new); `pnpm typecheck` clean; dev server compiles clean.
+**Status:** ✅ **Plan 2 complete — all 9 tasks done.** 49 tests passing (44 engine + 5 new); `pnpm typecheck` clean; `pnpm build` succeeds (10 routes); passed final whole-implementation review (READY TO MERGE).
 
-## Completed tasks (6 / 9)
+## Completed tasks (9 / 9)
 
 | # | Task | Commit(s) | Notes |
 |---|------|-----------|-------|
@@ -20,25 +20,29 @@
 | 4 | Full HUD Header | `17b2d58`, `ca91833` | drone logo + radar + nav tabs + EN/FR switcher; fixup fixed switcher active-state on `/fr`. Also gitignores next-env/tsbuildinfo + commits Next auto-tsconfig |
 | 5 | Dashboard page | `3d0c208`, `6730d9e` | sidebar + 8-card grid + ring + launcher; fixup numbers cards by grid index (MODULE_IDS order ≠ old hardcoded array) |
 | 6 | ExamService additions + TDD | `c0c79bd`, `6ed4a29` | `getExpiresAt`/`getResult`, expiry enforce in `answer()` (`<=`), result storage + idempotent `submit()`, `GET /api/exam/[id]/result`; 49 tests |
+| 7 | Exam launch page | `6fc6650`, `b9a4b14` | cert-level selector → POST /api/exam → redirect; fixup guards missing sessionId |
+| 8 | Exam question interface | `7767659`, `f6ecb7a` | timer + Q-manifest + answer/submit; adds `getSessionMeta`. **Critical fixup:** `globalThis`-cached examService singleton so RSC + route handlers share the in-memory store (was 404ing the exam page); plus fetch error-handling (no infinite loading / stuck submit) |
+| 9 | Results/debrief page | `136d284` | score ring + per-subject breakdown + weak-area highlight |
+| — | Final-review i18n fix | `a4f5d1b` | translate MULTI "Select N" + results module names so FR pages don't leak English |
 
-Each task passed spec-compliance + code-quality review. Review-finding fixups applied controller-side.
+Each task passed spec-compliance + code-quality review; final whole-implementation review confirmed READY TO MERGE (build green, EN/FR catalogs identical 54 keys, security boundary intact — no `isCorrect` reaches the client).
 
-## Remaining tasks (7–9)
+## Key decisions / known gaps (carried to Plan 3)
 
-- **Task 7:** Exam launch page (cert-level selector → POST /api/exam → redirect)
-- **Task 8:** Exam question interface (timer, Q-manifest, answer/submit flow) — adds `getSessionMeta` to ExamService
-- **Task 9:** Results/debrief page (score ring, per-subject breakdown, weak-area highlight)
+- **In-memory store is process-local** behind `SessionStore`; shared across RSC + route handlers via the `globalThis` singleton in `instance.ts`. Sessions are lost on server restart — Prisma swap is Plan 3.
+- **Module progress is all 0% / locked** on the dashboard — real progress tracking needs auth + persistence (Plan 3/4).
+- **"Review Answers"** button links to the dashboard (no per-question review page yet — Plan 3).
+- **Intentional hardcoded-English chrome** (not exam content): HUD "ADVANCED OPS" badge, dashboard launcher meta line, sidebar placeholder telemetry labels ("Mock exams taken"/"Best score", values "—"). Polish later.
+- **Locale is session-locked:** question language is fixed at exam creation; switching UI locale mid-exam keeps question text in the original language (correct for an exam, but the `Lang:` label reflects URL locale).
 
 ## How to resume / verify (Plan 2)
 ```bash
 cd /Users/quzhenrong/rpas-lms
 pnpm install      # if node_modules missing
 pnpm test         # 49 passing
-pnpm dev          # http://localhost:3000 → redirects to /en
+pnpm build        # production build succeeds
+pnpm dev          # http://localhost:3000 → /en ; full flow: dashboard → exam → submit → results
 ```
-
-## Execution constraint (user-set)
-Update this file after every 2–3 completed tasks; **stop and update progress when usage reaches 95%.**
 
 ---
 
