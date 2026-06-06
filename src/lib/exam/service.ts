@@ -87,6 +87,13 @@ export class ExamService {
     return result;
   }
 
+  /** Minimal session metadata for the exam page (timer sizing). */
+  async getSessionMeta(sessionId: string): Promise<{ certLevel: ExamCertLevel; expiresAt: number } | null> {
+    const session = await this.store.get(sessionId);
+    if (!session) return null;
+    return { certLevel: session.certLevel, expiresAt: session.expiresAt };
+  }
+
   /** For server components: expiresAt to initialize the client timer. */
   async getExpiresAt(sessionId: string): Promise<number | null> {
     const session = await this.store.get(sessionId);
