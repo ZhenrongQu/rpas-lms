@@ -44,7 +44,10 @@
     "question": "Q",
     "of": "of",
     "answered": "answered",
-    "loading": "Loading questions…"
+    "loading": "Loading questions…",
+    "loadError": "Could not load the exam. The session may have expired.",
+    "submitFailed": "Submission failed — please try again.",
+    "backToLaunch": "Back to Launch"
   },
   "results": {
     "missionComplete": "Mission Complete",

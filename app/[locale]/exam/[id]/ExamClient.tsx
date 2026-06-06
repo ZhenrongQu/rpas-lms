@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import QManifest from '@/components/exam/QManifest';
 import Timer from '@/components/exam/Timer';
@@ -28,17 +29,32 @@ export default function ExamClient({ sessionId, locale, expiresAt, certLevel }: 
   const [confirmed, setConfirmed] = useState<Record<string, string[]>>({});
   const [flagged, setFlagged] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const submittedRef = useRef(false);
 
   const totalMs = EXAM_SPECS[certLevel].timeLimitMinutes * 60_000;
 
   useEffect(() => {
+    let cancelled = false;
     fetch(`/api/exam/${sessionId}/questions`)
-      .then((r) => r.json())
-      .then((qs: PublicQuestion[]) => {
+      .then(async (r) => {
+        if (!r.ok) throw new Error('failed to load questions');
+        return (await r.json()) as PublicQuestion[];
+      })
+      .then((qs) => {
+        if (cancelled) return;
         setQuestions(qs);
         setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoadError(true);
+        setLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [sessionId]);
 
   useEffect(() => {
@@ -51,9 +67,18 @@ export default function ExamClient({ sessionId, locale, expiresAt, certLevel }: 
     if (submittedRef.current) return;
     submittedRef.current = true;
     setSubmitting(true);
-    await fetch(`/api/exam/${sessionId}/submit`, { method: 'POST' });
-    router.push(`/${locale}/exam/${sessionId}/results`);
-  }, [sessionId, locale, router]);
+    setSubmitError('');
+    try {
+      const res = await fetch(`/api/exam/${sessionId}/submit`, { method: 'POST' });
+      if (!res.ok) throw new Error('submit failed');
+      router.push(`/${locale}/exam/${sessionId}/results`);
+    } catch {
+      // Allow a retry instead of leaving the UI stuck on "Submitting…".
+      submittedRef.current = false;
+      setSubmitting(false);
+      setSubmitError(t('submitFailed'));
+    }
+  }, [sessionId, locale, router, t]);
 
   const confirmAnswer = useCallback(async () => {
     const q = questions[currentIdx];
@@ -98,6 +123,17 @@ export default function ExamClient({ sessionId, locale, expiresAt, certLevel }: 
 
   if (loading) {
     return <div className="exam-loading">{t('loading')}</div>;
+  }
+
+  if (loadError || questions.length === 0) {
+    return (
+      <div className="exam-loading" style={{ flexDirection: 'column', gap: 16 }}>
+        <div style={{ color: 'var(--red)' }}>{t('loadError')}</div>
+        <Link href={`/${locale}/exam`} className="btn-launch">
+          ▶ {t('backToLaunch')}
+        </Link>
+      </div>
+    );
   }
 
   const q = questions[currentIdx];
@@ -170,6 +206,12 @@ export default function ExamClient({ sessionId, locale, expiresAt, certLevel }: 
             {submitting ? t('submitting') : t('submitExam')}
           </button>
         </div>
+
+        {submitError && (
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--red)' }}>
+            {submitError}
+          </div>
+        )}
 
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-3)', marginTop: 'auto' }}>
           Lang: <span style={{ color: 'var(--cyan)' }}>{locale.toUpperCase()}</span>

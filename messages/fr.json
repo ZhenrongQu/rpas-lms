@@ -44,7 +44,10 @@
     "question": "Q",
     "of": "sur",
     "answered": "répondu",
-    "loading": "Chargement des questions…"
+    "loading": "Chargement des questions…",
+    "loadError": "Impossible de charger l'examen. La session a peut-être expiré.",
+    "submitFailed": "Échec de la soumission — veuillez réessayer.",
+    "backToLaunch": "Retour au lancement"
   },
   "results": {
     "missionComplete": "Mission accomplie",
