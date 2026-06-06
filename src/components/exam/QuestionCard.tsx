@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { PublicQuestion } from '@/lib/exam/serialize';
 
 interface Props {
@@ -12,13 +13,14 @@ interface Props {
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 export default function QuestionCard({ question, pendingSelection, isConfirmed, onSelect }: Props) {
+  const t = useTranslations('exam');
   return (
     <div className="hud-panel question-card">
       <div className="hud-panel-glow" />
       <div className="q-stem">{question.stem}</div>
       {question.type === 'MULTI' && (
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--amber)', marginTop: 8 }}>
-          Select {question.selectCount}
+          {t('selectN', { count: question.selectCount })}
         </div>
       )}
       <div className="options">
