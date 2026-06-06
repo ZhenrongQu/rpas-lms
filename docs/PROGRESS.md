@@ -2,6 +2,44 @@
 
 ---
 
+# Plan 3 — Persistence + Auth + Per-Question Review
+
+**Last updated:** 2026-06-06
+**Repo:** `/Users/quzhenrong/rpas-lms` (remote: `github.com/ZhenrongQu/rpas-lms`, private)
+**Branch:** `main` (committing locally; not yet pushed — `ahead of origin/main`)
+**Plan:** `docs/superpowers/plans/2026-06-06-persistence-auth-review.md` (9 tasks, TDD, subagent-driven) — committed `9d8da3c`
+**Status:** 🚧 **In progress — 3 / 9 tasks done.** Persistence layer complete. 56 tests passing; `pnpm typecheck` clean.
+
+## Scope (confirmed with user)
+Full scope: Prisma/**SQLite** persistence + **Auth.js v5 credentials** accounts + post-submission **per-question review** page. Engineering defaults (documented in the plan): questions stay in `content/question-bank.json` (only `User`/`ExamSession` persisted); answers stored as a JSON column; auth is **additive, never gating** (middleware stays pure next-intl); guest-history claiming deferred to Plan 4.
+
+## Completed tasks (3 / 9)
+
+| # | Task | Commit | Notes |
+|---|------|--------|-------|
+| 1 | Prisma + SQLite scaffold | `e8a043c` | client singleton (`src/lib/db.ts`), Vitest test-DB wiring (globalSetup + `test.db`, `fileParallelism:false`), smoke test. **Prisma pinned to 5.22.0** (Node 20.14 < Prisma 7's required 20.19); plan was written for Prisma 5 so no impact. Added `.npmrc` + `pnpm.onlyBuiltDependencies` for pnpm v10 build scripts. |
+| 2 | PrismaSessionStore | `f8a6f31` | domain↔row mapping (JSON columns for questionIds/answers/result; DateTime↔epoch-ms); round-trip + cross-instance persistence tests. Added `userId?` to `ExamSession`. |
+| 3 | Prisma store wired in + `userId` on `createMock` | `278ddd0` | `instance.ts` now uses `PrismaSessionStore` → sessions survive restart. `routes.test.ts` now runs against `prisma/test.db` and passes. 56 tests. |
+
+## Remaining (4–9)
+4. Auth.js v5 credentials config + registration endpoint (TDD)
+5. Auth UI (sign-in, register, header account)
+6. Tag sessions with signed-in user + dashboard "Mission Log" history (TDD)
+7. `buildReview` pure projection (TDD)
+8. `getReview` service + `GET /api/exam/[id]/review` (TDD)
+9. Review page UI + wire "Review Answers" button
+
+## How to resume / verify (Plan 3)
+```bash
+cd /Users/quzhenrong/rpas-lms
+pnpm install          # runs prisma generate via postinstall
+pnpm exec prisma db push   # if prisma/dev.db missing
+pnpm test             # 56 passing
+pnpm typecheck        # clean
+```
+
+---
+
 # Plan 2 — Next.js App Shell + Drone HUD UI
 
 **Last updated:** 2026-06-06
