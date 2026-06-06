@@ -30,12 +30,14 @@ export class ExamService {
     certLevel: ExamCertLevel,
     locale: Locale,
     seed: number = Math.floor(Math.random() * 1e9),
+    userId: string | null = null,
   ): Promise<CreatedExam> {
     const spec = EXAM_SPECS[certLevel];
     const questions = generateExam(certLevel, spec.totalQuestions, mulberry32(seed), this.bank);
     const startedAt = this.now();
     const session: ExamSession = {
       id: randomUUID(),
+      userId,
       certLevel,
       locale,
       questionIds: questions.map((q) => q.id),
