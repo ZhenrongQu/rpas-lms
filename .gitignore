@@ -4,3 +4,7 @@ dist/
 *.log
 .DS_Store
 coverage/
+
+# Next.js generated
+next-env.d.ts
+*.tsbuildinfo

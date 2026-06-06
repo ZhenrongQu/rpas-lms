@@ -61,23 +61,48 @@ export class ExamService {
       .map((q) => toPublicQuestion(q, session.locale));
   }
 
+  /** Returns false if session missing, already submitted, expired, or question not in session. */
   async answer(sessionId: string, questionId: string, selected: string[]): Promise<boolean> {
     const session = await this.store.get(sessionId);
     if (!session || session.submitted) return false;
+    if (session.expiresAt <= this.now()) return false;
     if (!session.questionIds.includes(questionId)) return false;
     session.answers[questionId] = selected;
     await this.store.update(session);
     return true;
   }
 
+  /** Scores the exam server-side, stores the result on the session, returns it. Always submittable (timer expiry auto-submits client-side). */
   async submit(sessionId: string): Promise<ExamResult | null> {
     const session = await this.store.get(sessionId);
     if (!session) return null;
+    if (session.submitted) return session.result ?? null;
     session.submitted = true;
-    await this.store.update(session);
     const questions = session.questionIds
       .map((id) => this.byId(id))
       .filter((q): q is Question => Boolean(q));
-    return scoreExam(questions, session.answers, EXAM_SPECS[session.certLevel].passThreshold);
+    const result = scoreExam(questions, session.answers, EXAM_SPECS[session.certLevel].passThreshold);
+    session.result = result;
+    await this.store.update(session);
+    return result;
+  }
+
+  /** Minimal session metadata for the exam page (timer sizing). */
+  async getSessionMeta(sessionId: string): Promise<{ certLevel: ExamCertLevel; expiresAt: number } | null> {
+    const session = await this.store.get(sessionId);
+    if (!session) return null;
+    return { certLevel: session.certLevel, expiresAt: session.expiresAt };
+  }
+
+  /** For server components: expiresAt to initialize the client timer. */
+  async getExpiresAt(sessionId: string): Promise<number | null> {
+    const session = await this.store.get(sessionId);
+    return session?.expiresAt ?? null;
+  }
+
+  /** For the results page: stored result (null if not submitted yet). */
+  async getResult(sessionId: string): Promise<ExamResult | null> {
+    const session = await this.store.get(sessionId);
+    return session?.result ?? null;
   }
 }

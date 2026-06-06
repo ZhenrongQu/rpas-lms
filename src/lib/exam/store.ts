@@ -1,4 +1,5 @@
 import type { ExamCertLevel, Locale } from "../content/types";
+import type { ExamResult } from "./score";
 
 export interface ExamSession {
   id: string;
@@ -9,6 +10,7 @@ export interface ExamSession {
   expiresAt: number;
   answers: Record<string, string[]>;
   submitted: boolean;
+  result?: ExamResult;
 }
 
 export interface SessionStore {
