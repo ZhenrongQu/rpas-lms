@@ -25,7 +25,11 @@
     "subjectAreas": "Subject Areas",
     "complete": "Complete",
     "inProgress": "In Progress",
-    "locked": "Locked"
+    "locked": "Locked",
+    "history": "Mission Log",
+    "noHistory": "No exams yet. Launch your first mock.",
+    "signInToSave": "Sign in to save your exam history.",
+    "viewResult": "View"
   },
   "modules": {
     "air-law": "Air Law & Regs",

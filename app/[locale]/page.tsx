@@ -4,12 +4,16 @@ import { MODULE_IDS } from '@/lib/content/types';
 import ModuleCard from '@/components/dashboard/ModuleCard';
 import ExamSidebar from '@/components/dashboard/ExamSidebar';
 import ProgressRing from '@/components/dashboard/ProgressRing';
+import { auth } from '../../auth';
+import ExamHistory from '@/components/dashboard/ExamHistory';
 
 type Props = { params: Promise<{ locale: string }> };
 
 export default async function DashboardPage({ params }: Props) {
   const { locale } = await params;
   const t = await getTranslations();
+  const session = await auth();
+  const userId = session?.user?.id ?? null;
 
   return (
     <div className="dashboard-body">
@@ -50,6 +54,15 @@ export default async function DashboardPage({ params }: Props) {
             <ProgressRing pct={0} size={120} label="0%" sublabel="COMPLETE" />
             <div className="overall-label">// {t('dashboard.overallProgress')}<br/>{t('dashboard.certification').toUpperCase()}</div>
           </div>
+
+          {userId ? (
+            <ExamHistory userId={userId} locale={locale} />
+          ) : (
+            <div className="hud-panel history-card">
+              <div className="breakdown-title">// {t('dashboard.history')}</div>
+              <div className="history-empty">{t('dashboard.signInToSave')}</div>
+            </div>
+          )}
         </div>
       </div>
     </div>
