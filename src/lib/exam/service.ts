@@ -5,6 +5,7 @@ import { generateExam } from "./generate";
 import { mulberry32 } from "./rng";
 import { scoreExam, type ExamResult } from "./score";
 import { toPublicQuestion, type PublicQuestion } from "./serialize";
+import { buildReview, type ReviewItem } from "./review";
 import type { SessionStore, ExamSession } from "./store";
 import type { ExamCertLevel, Locale, Question, QuestionBank } from "../content/types";
 
@@ -30,12 +31,14 @@ export class ExamService {
     certLevel: ExamCertLevel,
     locale: Locale,
     seed: number = Math.floor(Math.random() * 1e9),
+    userId: string | null = null,
   ): Promise<CreatedExam> {
     const spec = EXAM_SPECS[certLevel];
     const questions = generateExam(certLevel, spec.totalQuestions, mulberry32(seed), this.bank);
     const startedAt = this.now();
     const session: ExamSession = {
       id: randomUUID(),
+      userId,
       certLevel,
       locale,
       questionIds: questions.map((q) => q.id),
@@ -104,5 +107,15 @@ export class ExamService {
   async getResult(sessionId: string): Promise<ExamResult | null> {
     const session = await this.store.get(sessionId);
     return session?.result ?? null;
+  }
+
+  /** Post-submission review (null if missing or not yet submitted). Server-only. */
+  async getReview(sessionId: string): Promise<ReviewItem[] | null> {
+    const session = await this.store.get(sessionId);
+    if (!session || !session.submitted) return null;
+    const questions = session.questionIds
+      .map((id) => this.byId(id))
+      .filter((q): q is Question => Boolean(q));
+    return buildReview(questions, session.answers, session.locale);
   }
 }

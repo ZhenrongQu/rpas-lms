@@ -3,6 +3,7 @@ import type { ExamResult } from "./score";
 
 export interface ExamSession {
   id: string;
+  userId?: string | null;
   certLevel: ExamCertLevel;
   locale: Locale;
   questionIds: string[];

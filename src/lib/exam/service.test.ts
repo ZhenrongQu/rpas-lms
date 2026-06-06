@@ -121,4 +121,42 @@ describe("ExamService", () => {
     const second = await service.submit(sessionId);
     expect(second).toEqual(first);
   });
+
+  it("createMock stores the userId on the session", async () => {
+    const store = new InMemorySessionStore();
+    const svc = new ExamService(store, () => 1_000, bank);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 42, "user-123");
+    const session = await store.get(sessionId);
+    expect(session?.userId).toBe("user-123");
+  });
+
+  it("createMock defaults userId to null when omitted", async () => {
+    const store = new InMemorySessionStore();
+    const svc = new ExamService(store, () => 1_000, bank);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 42);
+    const session = await store.get(sessionId);
+    expect(session?.userId).toBeNull();
+  });
+
+  it("getReview() is null before submit", async () => {
+    const svc = newService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 42);
+    expect(await svc.getReview(sessionId)).toBeNull();
+  });
+
+  it("getReview() returns one item per question after submit", async () => {
+    const svc = newService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 42);
+    await svc.submit(sessionId);
+    const review = await svc.getReview(sessionId);
+    expect(review).not.toBeNull();
+    expect(review!.length).toBe(35);
+    expect(review![0]).toHaveProperty("correctOptionIds");
+    expect(review![0]).toHaveProperty("explanation");
+  });
+
+  it("getReview() is null for an unknown session", async () => {
+    const svc = newService();
+    expect(await svc.getReview("missing")).toBeNull();
+  });
 });

@@ -8,3 +8,8 @@ coverage/
 # Next.js generated
 next-env.d.ts
 *.tsbuildinfo
+
+# Prisma local databases + secrets
+prisma/*.db
+prisma/*.db-journal
+.env
