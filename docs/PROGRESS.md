@@ -6,9 +6,9 @@
 
 **Last updated:** 2026-06-06
 **Repo:** `/Users/quzhenrong/rpas-lms` (remote: `github.com/ZhenrongQu/rpas-lms`, private)
-**Branch:** `main` (committing locally; not yet pushed — `ahead of origin/main`)
+**Branch:** merged to `main` (feature branch `plan-3-persistence-auth-review` deleted)
 **Plan:** `docs/superpowers/plans/2026-06-06-persistence-auth-review.md` (9 tasks, TDD, subagent-driven) — committed `9d8da3c`
-**Status:** ✅ **Plan 3 complete — 9 / 9 tasks done.** 67 tests passing; `pnpm typecheck` clean; `pnpm build` green. Final whole-implementation review passed (i18n parity 79/79, security boundary intact, persistence proven by cross-instance store test). Committed to `main`, **not yet pushed** (ahead of origin/main).
+**Status:** ✅ **Plan 3 complete & MERGED.** PR #2 merged to `main` 2026-06-06 (merge commit `c551d36`). 67 tests passing; `pnpm typecheck` clean; `pnpm build` green. Final review passed (i18n parity 79/79, security boundary intact). **Live smoke test passed** end-to-end: register→sign-in (session has `id`)→authed exam (userId stamped)→submit→review (404 before / 200 after)→Mission Log→FR flow→**persistence survives a real server restart** (negative control 404).
 
 ## Scope (confirmed with user)
 Full scope: Prisma/**SQLite** persistence + **Auth.js v5 credentials** accounts + post-submission **per-question review** page. Engineering defaults (documented in the plan): questions stay in `content/question-bank.json` (only `User`/`ExamSession` persisted); answers stored as a JSON column; auth is **additive, never gating** (middleware stays pure next-intl); guest-history claiming deferred to Plan 4.
