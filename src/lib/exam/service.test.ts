@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { ExamService } from "./service";
 import { InMemorySessionStore } from "./store";
 import { loadQuestionBank } from "../content/loadBank";
@@ -63,5 +63,53 @@ describe("ExamService", () => {
     const svc = newService();
     expect(await svc.getPublicQuestions("missing")).toBeNull();
     expect(await svc.submit("missing")).toBeNull();
+  });
+
+  it("answer() returns false after session expiresAt", async () => {
+    const store = new InMemorySessionStore();
+    const t0 = Date.now();
+    const nowFn = vi.fn()
+      .mockReturnValueOnce(t0)               // createMock reads now
+      .mockReturnValue(t0 + 200 * 60_000);   // answer reads now — 200 min later (past both 60 & 90 min limits)
+    const service = new ExamService(store, nowFn, loadQuestionBank());
+    const { sessionId } = await service.createMock("BASIC", "EN", 1);
+    const questions = await service.getPublicQuestions(sessionId);
+    const firstId = questions![0].id;
+    const ok = await service.answer(sessionId, firstId, ["a"]);
+    expect(ok).toBe(false);
+  });
+
+  it("answer() accepts submissions before expiresAt", async () => {
+    const store = new InMemorySessionStore();
+    const t0 = Date.now();
+    const nowFn = vi.fn().mockReturnValue(t0); // clock never advances
+    const service = new ExamService(store, nowFn, loadQuestionBank());
+    const { sessionId } = await service.createMock("BASIC", "EN", 1);
+    const questions = await service.getPublicQuestions(sessionId);
+    const firstId = questions![0].id;
+    const ok = await service.answer(sessionId, firstId, ["a"]);
+    expect(ok).toBe(true);
+  });
+
+  it("getExpiresAt() returns the session expiresAt", async () => {
+    const store = new InMemorySessionStore();
+    const service = new ExamService(store, Date.now, loadQuestionBank());
+    const { sessionId, expiresAt } = await service.createMock("BASIC", "EN", 1);
+    const retrieved = await service.getExpiresAt(sessionId);
+    expect(retrieved).toBe(expiresAt);
+  });
+
+  it("getResult() is null before submit, non-null after submit", async () => {
+    const store = new InMemorySessionStore();
+    const service = new ExamService(store, Date.now, loadQuestionBank());
+    const { sessionId } = await service.createMock("BASIC", "EN", 1);
+    const before = await service.getResult(sessionId);
+    expect(before).toBeNull();
+    await service.submit(sessionId);
+    const after = await service.getResult(sessionId);
+    expect(after).not.toBeNull();
+    expect(after).toHaveProperty("total");
+    expect(after).toHaveProperty("passed");
+    expect(after).toHaveProperty("bySubject");
   });
 });
