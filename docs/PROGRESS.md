@@ -8,12 +8,12 @@
 **Repo:** `/Users/quzhenrong/rpas-lms` (remote: `github.com/ZhenrongQu/rpas-lms`, private)
 **Branch:** `main` (committing locally; not yet pushed — `ahead of origin/main`)
 **Plan:** `docs/superpowers/plans/2026-06-06-persistence-auth-review.md` (9 tasks, TDD, subagent-driven) — committed `9d8da3c`
-**Status:** 🚧 **In progress — 6 / 9 tasks done.** Persistence + auth + history complete. 60 tests passing; `pnpm typecheck` clean; `pnpm build` green. Only the review page (tasks 7–9) remains.
+**Status:** ✅ **Plan 3 complete — 9 / 9 tasks done.** 67 tests passing; `pnpm typecheck` clean; `pnpm build` green. Final whole-implementation review passed (i18n parity 79/79, security boundary intact, persistence proven by cross-instance store test). Committed to `main`, **not yet pushed** (ahead of origin/main).
 
 ## Scope (confirmed with user)
 Full scope: Prisma/**SQLite** persistence + **Auth.js v5 credentials** accounts + post-submission **per-question review** page. Engineering defaults (documented in the plan): questions stay in `content/question-bank.json` (only `User`/`ExamSession` persisted); answers stored as a JSON column; auth is **additive, never gating** (middleware stays pure next-intl); guest-history claiming deferred to Plan 4.
 
-## Completed tasks (3 / 9)
+## Completed tasks (9 / 9)
 
 | # | Task | Commit | Notes |
 |---|------|--------|-------|
@@ -23,20 +23,28 @@ Full scope: Prisma/**SQLite** persistence + **Auth.js v5 credentials** accounts 
 | 4 | Auth.js v5 credentials + register endpoint | `8f4eab3` | `next-auth@5.0.0-beta.31` + `bcryptjs@3`; root `auth.ts` (Credentials, JWT, `session.user.id`); `/api/auth/[...nextauth]`; `POST /api/auth/register` (201/409/400). 59 tests. |
 | 5 | Auth UI | `0022b3f` | sign-in + register pages, `SignOutButton`, header account state (session read in layout via `auth()`, passed to client header — no SessionProvider). Build green; `/signin` + `/register` routes. |
 | 6 | Session→user linkage + Mission Log | `c500d49` | `POST /api/exam` stamps `userId` via context-tolerant dynamic `auth()` (guests/tests → null, `routes.test.ts` stays green); `listUserExamHistory()`; dashboard history panel (guest nudge when signed out). 60 tests. |
+| 7 | `buildReview` pure projection | `7806bbd` | localized per-question review items (your selection vs. correct + explanation + reference), reuses `grade.ts`. Server-only. 63 tests. |
+| 8 | `getReview` service + endpoint | `6ee8344` | `ExamService.getReview` (null unless submitted) + `GET /api/exam/[id]/review` (404 before submit, 200 after). Security boundary asserted at service + route. 67 tests. |
+| 9 | Review page UI + wired button | `ec8d5ee` | `/[locale]/exam/[id]/review` server page (✓/✕ per option, your vs. correct answer, explanation, reference, bilingual); results "Review Answers" now links here. Build green. |
 
-## Remaining (7–9) — the per-question review page
-7. `buildReview` pure projection (TDD)
-8. `getReview` service + `GET /api/exam/[id]/review` (TDD)
-9. Review page UI + wire "Review Answers" button
+Each task passed via subagent-driven dev (controller-side review). Final whole-implementation review: 67 tests green, typecheck clean, build green, EN/FR catalogs identical (79 keys), `/questions` still leaks no `isCorrect` (serialize.ts untouched since Plan 1), review gated to post-submission.
+
+## Known gaps (carried to Plan 4)
+- Guest-history claiming not implemented (guest sessions stay `userId=null`; signing in later doesn't retro-attach).
+- No email magic-link / OAuth / password reset — credentials-only, local.
+- Question catalog still in JSON (not the DB `Module`/`Question`/`Option` models); answers stored as a JSON column, not per-row `ExamAnswer`.
+- Dashboard module progress + recency still placeholders (need LMS lesson models).
+- `@types/bcryptjs` is a deprecated stub (bcryptjs 3 ships its own types) — harmless, removable later.
 
 ## How to resume / verify (Plan 3)
 ```bash
 cd /Users/quzhenrong/rpas-lms
 pnpm install          # runs prisma generate via postinstall
 pnpm exec prisma db push   # if prisma/dev.db missing
-pnpm test             # 60 passing
+pnpm test             # 67 passing
 pnpm typecheck        # clean
 pnpm build            # green
+pnpm dev              # sign up at /en/register → take an exam → submit → Review Answers
 ```
 
 ---
