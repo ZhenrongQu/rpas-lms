@@ -65,7 +65,7 @@ export class ExamService {
   async answer(sessionId: string, questionId: string, selected: string[]): Promise<boolean> {
     const session = await this.store.get(sessionId);
     if (!session || session.submitted) return false;
-    if (session.expiresAt < this.now()) return false;
+    if (session.expiresAt <= this.now()) return false;
     if (!session.questionIds.includes(questionId)) return false;
     session.answers[questionId] = selected;
     await this.store.update(session);
@@ -76,6 +76,7 @@ export class ExamService {
   async submit(sessionId: string): Promise<ExamResult | null> {
     const session = await this.store.get(sessionId);
     if (!session) return null;
+    if (session.submitted) return session.result ?? null;
     session.submitted = true;
     const questions = session.questionIds
       .map((id) => this.byId(id))

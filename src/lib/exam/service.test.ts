@@ -112,4 +112,13 @@ describe("ExamService", () => {
     expect(after).toHaveProperty("passed");
     expect(after).toHaveProperty("bySubject");
   });
+
+  it("submit() is idempotent — a second call returns the stored result", async () => {
+    const store = new InMemorySessionStore();
+    const service = new ExamService(store, Date.now, loadQuestionBank());
+    const { sessionId } = await service.createMock("BASIC", "EN", 1);
+    const first = await service.submit(sessionId);
+    const second = await service.submit(sessionId);
+    expect(second).toEqual(first);
+  });
 });
