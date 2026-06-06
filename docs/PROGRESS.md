@@ -8,32 +8,32 @@
 **Repo:** `/Users/quzhenrong/rpas-lms` (remote: `github.com/ZhenrongQu/rpas-lms`, private)
 **Branch:** `nextjs-app-shell` (base branch: `main`)
 **Plan:** `docs/superpowers/plans/2026-06-05-nextjs-app-shell.md` (9 tasks, TDD, subagent-driven)
-**Status:** 🚧 **In progress — 3 / 9 tasks done.** Existing 44 engine tests still green; dev server compiles clean.
+**Status:** 🚧 **In progress — 6 / 9 tasks done.** 49 tests passing (44 engine + 5 new); `pnpm typecheck` clean; dev server compiles clean.
 
-## Completed tasks (3 / 9)
+## Completed tasks (6 / 9)
 
 | # | Task | Commit(s) | Notes |
 |---|------|-----------|-------|
 | 1 | Next.js 15 + Tailwind 3 + next-intl scaffold | `2073a83` | Removed `type:module`; configs added; 44 tests still pass |
 | 2 | i18n routing + EN/FR messages + root/locale layouts | `fda2b63`, `3e1d55d` | `/en` + `/fr` render; fixup dropped dead `moduleId` key, fixed FR `results.correct` |
 | 3 | HUD design tokens CSS + visual structure | `fc9a52c`, `7b64795` | 640-line stylesheet; fixup removed cyclic font-vars, bounded `.results-view`, `bg-scene` pointer-events |
+| 4 | Full HUD Header | `17b2d58`, `ca91833` | drone logo + radar + nav tabs + EN/FR switcher; fixup fixed switcher active-state on `/fr`. Also gitignores next-env/tsbuildinfo + commits Next auto-tsconfig |
+| 5 | Dashboard page | `3d0c208`, `6730d9e` | sidebar + 8-card grid + ring + launcher; fixup numbers cards by grid index (MODULE_IDS order ≠ old hardcoded array) |
+| 6 | ExamService additions + TDD | `c0c79bd`, `6ed4a29` | `getExpiresAt`/`getResult`, expiry enforce in `answer()` (`<=`), result storage + idempotent `submit()`, `GET /api/exam/[id]/result`; 49 tests |
 
-Each task passed spec-compliance + code-quality review. Task 2 & 3 fixups applied controller-side from review findings.
+Each task passed spec-compliance + code-quality review. Review-finding fixups applied controller-side.
 
-## Remaining tasks (4–9)
+## Remaining tasks (7–9)
 
-- **Task 4:** Full HUD Header (drone logo, radar widget, nav tabs, EN/FR switcher)
-- **Task 5:** Dashboard page (module grid, sidebar, progress ring, exam launcher)
-- **Task 6:** ExamService additions + TDD — `getExpiresAt`/`getResult`/`getSessionMeta`, expiry enforcement in `answer()`, result storage in `submit()`, `GET /api/exam/[id]/result` (target: 48 tests)
 - **Task 7:** Exam launch page (cert-level selector → POST /api/exam → redirect)
-- **Task 8:** Exam question interface (timer, Q-manifest, answer/submit flow)
+- **Task 8:** Exam question interface (timer, Q-manifest, answer/submit flow) — adds `getSessionMeta` to ExamService
 - **Task 9:** Results/debrief page (score ring, per-subject breakdown, weak-area highlight)
 
 ## How to resume / verify (Plan 2)
 ```bash
 cd /Users/quzhenrong/rpas-lms
 pnpm install      # if node_modules missing
-pnpm test         # 44 passing now; 48 after Task 6
+pnpm test         # 49 passing
 pnpm dev          # http://localhost:3000 → redirects to /en
 ```
 
