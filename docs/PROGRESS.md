@@ -1,4 +1,48 @@
-# Progress Log — Exam Engine Core (Plan 1)
+# Progress Log
+
+---
+
+# Plan 2 — Next.js App Shell + Drone HUD UI
+
+**Last updated:** 2026-06-05
+**Repo:** `/Users/quzhenrong/rpas-lms` (remote: `github.com/ZhenrongQu/rpas-lms`, private)
+**Branch:** `nextjs-app-shell` (base branch: `main`)
+**Plan:** `docs/superpowers/plans/2026-06-05-nextjs-app-shell.md` (9 tasks, TDD, subagent-driven)
+**Status:** 🚧 **In progress — 3 / 9 tasks done.** Existing 44 engine tests still green; dev server compiles clean.
+
+## Completed tasks (3 / 9)
+
+| # | Task | Commit(s) | Notes |
+|---|------|-----------|-------|
+| 1 | Next.js 15 + Tailwind 3 + next-intl scaffold | `2073a83` | Removed `type:module`; configs added; 44 tests still pass |
+| 2 | i18n routing + EN/FR messages + root/locale layouts | `fda2b63`, `3e1d55d` | `/en` + `/fr` render; fixup dropped dead `moduleId` key, fixed FR `results.correct` |
+| 3 | HUD design tokens CSS + visual structure | `fc9a52c`, `7b64795` | 640-line stylesheet; fixup removed cyclic font-vars, bounded `.results-view`, `bg-scene` pointer-events |
+
+Each task passed spec-compliance + code-quality review. Task 2 & 3 fixups applied controller-side from review findings.
+
+## Remaining tasks (4–9)
+
+- **Task 4:** Full HUD Header (drone logo, radar widget, nav tabs, EN/FR switcher)
+- **Task 5:** Dashboard page (module grid, sidebar, progress ring, exam launcher)
+- **Task 6:** ExamService additions + TDD — `getExpiresAt`/`getResult`/`getSessionMeta`, expiry enforcement in `answer()`, result storage in `submit()`, `GET /api/exam/[id]/result` (target: 48 tests)
+- **Task 7:** Exam launch page (cert-level selector → POST /api/exam → redirect)
+- **Task 8:** Exam question interface (timer, Q-manifest, answer/submit flow)
+- **Task 9:** Results/debrief page (score ring, per-subject breakdown, weak-area highlight)
+
+## How to resume / verify (Plan 2)
+```bash
+cd /Users/quzhenrong/rpas-lms
+pnpm install      # if node_modules missing
+pnpm test         # 44 passing now; 48 after Task 6
+pnpm dev          # http://localhost:3000 → redirects to /en
+```
+
+## Execution constraint (user-set)
+Update this file after every 2–3 completed tasks; **stop and update progress when usage reaches 95%.**
+
+---
+
+# Plan 1 — Exam Engine Core (complete)
 
 **Last updated:** 2026-06-05
 **Repo:** `/Users/quzhenrong/rpas-lms` (local only, **no remote** — never pushed)
