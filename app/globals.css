@@ -22,9 +22,7 @@
   --text-1:        #e4f2ff;
   --text-2:        #7ab0c8;
   --text-3:        #3e6478;
-  --font-display:  var(--font-display, 'Orbitron', monospace);
-  --font-ui:       var(--font-ui, 'Rajdhani', sans-serif);
-  --font-mono:     var(--font-mono, 'Share Tech Mono', monospace);
+  /* --font-display / --font-ui / --font-mono are provided on <html> by next/font (app/layout.tsx). */
 }
 
 /* ═══════════════════════════════
@@ -47,6 +45,7 @@ html, body {
 ═══════════════════════════════ */
 .bg-scene {
   position: fixed; inset: 0; z-index: 0; overflow: hidden;
+  pointer-events: none;
 }
 
 .bg-scene::before {
@@ -538,6 +537,7 @@ html, body {
 ═══════════════════════════════ */
 .results-view {
   display: flex; flex-direction: column;
+  height: 100%;
   padding: 32px 40px; overflow-y: auto;
   gap: 24px; align-items: center;
 }
