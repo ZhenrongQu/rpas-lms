@@ -34,12 +34,14 @@
   },
   "include": [
     "app",
+    "auth.ts",
     "content",
     "messages",
     "middleware.ts",
     "next.config.ts",
     "src",
     "tailwind.config.ts",
+    "types",
     ".next/types/**/*.ts"
   ],
   "exclude": [
