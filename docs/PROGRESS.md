@@ -4,11 +4,11 @@
 
 # Plan 2 — Next.js App Shell + Drone HUD UI
 
-**Last updated:** 2026-06-05
+**Last updated:** 2026-06-06
 **Repo:** `/Users/quzhenrong/rpas-lms` (remote: `github.com/ZhenrongQu/rpas-lms`, private)
-**Branch:** `nextjs-app-shell` (base branch: `main`)
+**Branch:** merged to `main` (feature branch `nextjs-app-shell` deleted)
 **Plan:** `docs/superpowers/plans/2026-06-05-nextjs-app-shell.md` (9 tasks, TDD, subagent-driven)
-**Status:** ✅ **Plan 2 complete — all 9 tasks done.** 49 tests passing (44 engine + 5 new); `pnpm typecheck` clean; `pnpm build` succeeds (10 routes); passed final whole-implementation review (READY TO MERGE).
+**Status:** ✅ **Plan 2 complete & MERGED.** PR #1 merged to `main` 2026-06-06 (merge commit `9ced925`). 49 tests passing (44 engine + 5 new); `pnpm typecheck` clean; `pnpm build` succeeds (10 routes). Next: Plan 3 (Prisma persistence + auth + per-question review).
 
 ## Completed tasks (9 / 9)
 
