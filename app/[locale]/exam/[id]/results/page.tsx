@@ -66,7 +66,7 @@ export default async function ResultsPage({ params }: Props) {
         <Link href={`/${locale}/exam`} className="btn-retry">
           ▶ {t('results.newMission')}
         </Link>
-        <Link href={`/${locale}`} className="btn-review">
+        <Link href={`/${locale}/exam/${id}/review`} className="btn-review">
           ↩ {t('results.reviewAnswers')}
         </Link>
       </div>

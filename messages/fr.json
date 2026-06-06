@@ -80,5 +80,16 @@
     "reviewAnswers": "Revoir les réponses",
     "newMission": "Nouvelle mission",
     "notFound": "Résultat introuvable. La session a peut-être expiré ou n'a pas été soumise."
+  },
+  "review": {
+    "title": "Révision des réponses",
+    "yourAnswer": "Votre réponse",
+    "correctAnswer": "Bonne réponse",
+    "explanation": "Explication",
+    "reference": "Référence",
+    "correct": "CORRECT",
+    "incorrect": "INCORRECT",
+    "notAnswered": "(sans réponse)",
+    "backToResults": "Retour aux résultats"
   }
 }

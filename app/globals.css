@@ -740,3 +740,69 @@ html, body {
 .history-score.fail { color: var(--red); }
 .history-link { color: rgba(0, 212, 255, 0.85); text-decoration: none; }
 .history-link:hover { color: var(--cyan); }
+
+/* ---- Answer review ---- */
+.review-view {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px;
+  max-width: 880px;
+  margin: 0 auto;
+}
+.review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.review-title {
+  font-family: var(--font-display);
+  color: var(--cyan);
+  font-size: 18px;
+  letter-spacing: 0.1em;
+}
+.review-list { display: flex; flex-direction: column; gap: 14px; }
+.review-card { padding: 18px; border-left: 3px solid rgba(255, 255, 255, 0.1); }
+.review-card.ok { border-left-color: var(--green); }
+.review-card.bad { border-left-color: var(--red); }
+.review-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  margin-bottom: 10px;
+}
+.review-index { color: var(--cyan); }
+.review-module { color: rgba(255, 255, 255, 0.6); flex: 1; }
+.review-flag { font-weight: 700; letter-spacing: 0.08em; }
+.review-flag.ok { color: var(--green); }
+.review-flag.bad { color: var(--red); }
+.review-stem {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  color: #fff;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.review-options { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.review-options .opt {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+  display: flex;
+  gap: 8px;
+}
+.review-options .opt.correct { color: var(--green); }
+.review-options .opt.chosen-wrong { color: var(--red); text-decoration: line-through; }
+.opt-mark { width: 14px; display: inline-block; }
+.review-meta, .review-explanation, .review-reference {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.review-meta-label { color: rgba(0, 212, 255, 0.7); }
+.review-meta .ok { color: var(--green); }
+.review-meta .bad { color: var(--red); }

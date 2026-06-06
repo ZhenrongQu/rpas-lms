@@ -80,5 +80,16 @@
     "reviewAnswers": "Review Answers",
     "newMission": "New Mission",
     "notFound": "Result not found. The session may have expired or not been submitted."
+  },
+  "review": {
+    "title": "Answer Review",
+    "yourAnswer": "Your answer",
+    "correctAnswer": "Correct answer",
+    "explanation": "Explanation",
+    "reference": "Reference",
+    "correct": "CORRECT",
+    "incorrect": "INCORRECT",
+    "notAnswered": "(not answered)",
+    "backToResults": "Back to Results"
   }
 }
