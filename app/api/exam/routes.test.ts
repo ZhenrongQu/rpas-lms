@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, it, expect } from "vitest";
+import { prisma } from "../../../src/lib/db";
 import { POST as createExam } from "./route";
 import { GET as getQuestions } from "./[id]/questions/route";
 import { POST as postAnswer } from "./[id]/answer/route";
@@ -10,17 +11,59 @@ async function json(res: Response) {
 }
 
 describe("exam API route handlers", () => {
-  it("POST /api/exam creates a Basic session", async () => {
+  beforeEach(async () => {
+    await prisma.examSession.deleteMany();
+    await prisma.user.deleteMany();
+    await prisma.user.create({
+      data: { id: "u1", email: "u1@test.local", hashedPassword: "x", accessTier: "FREE" },
+    });
+  });
+
+  it("401 when a guest tries to create an exam", async () => {
     const res = await createExam(
       new Request("http://test/api/exam", {
         method: "POST",
         body: JSON.stringify({ certLevel: "BASIC", locale: "EN", seed: 42 }),
       }),
     );
+    expect(res.status).toBe(401);
+  });
+
+  it("POST /api/exam creates a Basic session", async () => {
+    const res = await createExam(
+      new Request("http://test/api/exam", {
+        method: "POST",
+        headers: { "x-test-user-id": "u1", "x-test-access-tier": "FREE" },
+        body: JSON.stringify({ certLevel: "BASIC", locale: "EN", seed: 42 }),
+      }),
+    );
     const { status, body } = await json(res);
     expect(status).toBe(201);
-    expect(body.total).toBe(35);
+    expect(body.total).toBeGreaterThan(0);
+    expect(body.total).toBeLessThan(35);
     expect(typeof body.sessionId).toBe("string");
+  });
+
+  it("403 when a free user tries to create an Advanced exam", async () => {
+    const res = await createExam(
+      new Request("http://test/api/exam", {
+        method: "POST",
+        headers: { "x-test-user-id": "u1", "x-test-access-tier": "FREE" },
+        body: JSON.stringify({ certLevel: "ADVANCED", locale: "EN", seed: 42 }),
+      }),
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("accepts Chinese locale when creating an exam", async () => {
+    const res = await createExam(
+      new Request("http://test/api/exam", {
+        method: "POST",
+        headers: { "x-test-user-id": "u1", "x-test-access-tier": "FREE" },
+        body: JSON.stringify({ certLevel: "BASIC", locale: "ZH", seed: 42 }),
+      }),
+    );
+    expect(res.status).toBe(201);
   });
 
   it("400 on invalid create payload", async () => {
@@ -37,6 +80,7 @@ describe("exam API route handlers", () => {
     const createRes = await createExam(
       new Request("http://test/api/exam", {
         method: "POST",
+        headers: { "x-test-user-id": "u1", "x-test-access-tier": "FREE" },
         body: JSON.stringify({ certLevel: "BASIC", locale: "EN", seed: 7 }),
       }),
     );
@@ -46,7 +90,8 @@ describe("exam API route handlers", () => {
       params: Promise.resolve({ id: sessionId }),
     });
     const questions = (await qRes.json()) as { id: string }[];
-    expect(questions.length).toBe(35);
+    expect(questions.length).toBeGreaterThan(0);
+    expect(questions.length).toBeLessThan(35);
     expect(JSON.stringify(questions)).not.toContain("isCorrect");
 
     const ansRes = await postAnswer(
@@ -61,9 +106,15 @@ describe("exam API route handlers", () => {
     const subRes = await postSubmit(new Request("http://test", { method: "POST" }), {
       params: Promise.resolve({ id: sessionId }),
     });
-    const result = (await subRes.json()) as { total: number; passed: boolean };
-    expect(result.total).toBe(35);
-    expect(typeof result.passed).toBe("boolean");
+    const submitted = (await subRes.json()) as {
+      result: { total: number; passed: boolean };
+      incorrectReview: { explanation: string; isCorrect: boolean }[];
+    };
+    expect(submitted.result.total).toBeGreaterThan(0);
+    expect(typeof submitted.result.passed).toBe("boolean");
+    expect(submitted.incorrectReview.length).toBeGreaterThan(0);
+    expect(submitted.incorrectReview.every((item) => item.isCorrect === false)).toBe(true);
+    expect(submitted.incorrectReview[0].explanation).toBeTruthy();
   });
 
   it("404 when questions requested for an unknown session", async () => {
@@ -77,6 +128,7 @@ describe("exam API route handlers", () => {
     const createRes = await createExam(
       new Request("http://test/api/exam", {
         method: "POST",
+        headers: { "x-test-user-id": "u1", "x-test-access-tier": "FREE" },
         body: JSON.stringify({ certLevel: "BASIC", locale: "EN", seed: 11 }),
       }),
     );
@@ -96,6 +148,7 @@ describe("exam API route handlers", () => {
     });
     expect(after.status).toBe(200);
     const items = (await after.json()) as unknown[];
-    expect(items.length).toBe(35);
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.length).toBeLessThan(35);
   });
 });

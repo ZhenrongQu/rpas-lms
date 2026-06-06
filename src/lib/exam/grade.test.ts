@@ -9,13 +9,13 @@ const single: Question = {
   type: "SINGLE",
   selectCount: 1,
   difficulty: 1,
-  stem: { EN: "?", FR: "?" },
+  stem: { EN: "?", ZH: "?" },
   options: [
-    { id: "a", label: { EN: "A", FR: "A" }, isCorrect: false },
-    { id: "b", label: { EN: "B", FR: "B" }, isCorrect: true },
+    { id: "a", label: { EN: "A", ZH: "A" }, isCorrect: false },
+    { id: "b", label: { EN: "B", ZH: "B" }, isCorrect: true },
   ],
-  explanation: { EN: "", FR: "" } as never, // not used by grader
-  reference: { EN: "", FR: "" } as never,
+  explanation: { EN: "", ZH: "" } as never, // not used by grader
+  reference: { EN: "", ZH: "" } as never,
   tags: [],
 };
 
@@ -25,9 +25,9 @@ const multi: Question = {
   type: "MULTI",
   selectCount: 2,
   options: [
-    { id: "a", label: { EN: "A", FR: "A" }, isCorrect: true },
-    { id: "b", label: { EN: "B", FR: "B" }, isCorrect: true },
-    { id: "c", label: { EN: "C", FR: "C" }, isCorrect: false },
+    { id: "a", label: { EN: "A", ZH: "A" }, isCorrect: true },
+    { id: "b", label: { EN: "B", ZH: "B" }, isCorrect: true },
+    { id: "c", label: { EN: "C", ZH: "C" }, isCorrect: false },
   ],
 };
 

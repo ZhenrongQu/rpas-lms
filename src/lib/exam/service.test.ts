@@ -19,6 +19,28 @@ describe("ExamService", () => {
     expect(typeof created.sessionId).toBe("string");
   });
 
+  it("creates a Chinese Basic mock", async () => {
+    const svc = newService();
+    const created = await svc.createMock("BASIC", "ZH", 42);
+    const questions = await svc.getPublicQuestions(created.sessionId);
+    expect(questions).not.toBeNull();
+    expect(questions![0].stem).toBeTruthy();
+  });
+
+  it("free users receive only the selected Basic question subset", async () => {
+    const store = new InMemorySessionStore();
+    const svc = new ExamService(store, () => 1_000, bank);
+    const created = await svc.createMock("BASIC", "EN", 42, "user-123", "FREE");
+    const session = await store.get(created.sessionId);
+
+    expect(created.total).toBeLessThan(35);
+    expect(session?.questionIds.length).toBe(created.total);
+    expect(session?.questionIds.every((id) => {
+      const q = bank.questions.find((item) => item.id === id);
+      return q?.moduleId === "air-law" || q?.moduleId === "human-factors";
+    })).toBe(true);
+  });
+
   it("serves public questions without leaking isCorrect", async () => {
     const svc = newService();
     const { sessionId } = await svc.createMock("BASIC", "EN", 42);
@@ -153,6 +175,22 @@ describe("ExamService", () => {
     expect(review!.length).toBe(35);
     expect(review![0]).toHaveProperty("correctOptionIds");
     expect(review![0]).toHaveProperty("explanation");
+  });
+
+  it("submitWithIncorrectReview() returns only incorrect questions with explanations", async () => {
+    const svc = newService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 42);
+    const questions = await svc.getPublicQuestions(sessionId);
+    const first = questions![0];
+    await svc.answer(sessionId, first.id, ["not-a-real-option"]);
+
+    const submitted = await svc.submitWithIncorrectReview(sessionId);
+
+    expect(submitted).not.toBeNull();
+    expect(submitted!.result.total).toBe(35);
+    expect(submitted!.incorrectReview.length).toBeGreaterThan(0);
+    expect(submitted!.incorrectReview.every((item) => item.isCorrect === false)).toBe(true);
+    expect(submitted!.incorrectReview[0].explanation).toBeTruthy();
   });
 
   it("getReview() is null for an unknown session", async () => {

@@ -8,13 +8,13 @@ const validSingle = {
   type: "SINGLE",
   selectCount: 1,
   difficulty: 1,
-  stem: { EN: "Q?", FR: "Q?" },
+  stem: { EN: "Q?", ZH: "Q?" },
   options: [
-    { id: "a", label: { EN: "A", FR: "A" }, isCorrect: true },
-    { id: "b", label: { EN: "B", FR: "B" }, isCorrect: false },
+    { id: "a", label: { EN: "A", ZH: "A" }, isCorrect: true },
+    { id: "b", label: { EN: "B", ZH: "B" }, isCorrect: false },
   ],
-  explanation: { EN: "e", FR: "e" },
-  reference: { EN: "r", FR: "r" },
+  explanation: { EN: "e", ZH: "e" },
+  reference: { EN: "r", ZH: "r" },
   tags: ["x"],
 };
 
@@ -27,8 +27,8 @@ describe("QuestionSchema", () => {
     const bad = {
       ...validSingle,
       options: [
-        { id: "a", label: { EN: "A", FR: "A" }, isCorrect: true },
-        { id: "b", label: { EN: "B", FR: "B" }, isCorrect: true },
+        { id: "a", label: { EN: "A", ZH: "A" }, isCorrect: true },
+        { id: "b", label: { EN: "B", ZH: "B" }, isCorrect: true },
       ],
     };
     expect(QuestionSchema.safeParse(bad).success).toBe(false);
@@ -40,16 +40,16 @@ describe("QuestionSchema", () => {
       type: "MULTI",
       selectCount: 3,
       options: [
-        { id: "a", label: { EN: "A", FR: "A" }, isCorrect: true },
-        { id: "b", label: { EN: "B", FR: "B" }, isCorrect: true },
-        { id: "c", label: { EN: "C", FR: "C" }, isCorrect: false },
+        { id: "a", label: { EN: "A", ZH: "A" }, isCorrect: true },
+        { id: "b", label: { EN: "B", ZH: "B" }, isCorrect: true },
+        { id: "c", label: { EN: "C", ZH: "C" }, isCorrect: false },
       ],
     };
     expect(QuestionSchema.safeParse(bad).success).toBe(false);
   });
 
-  it("rejects a missing FR locale", () => {
-    const bad = { ...validSingle, stem: { EN: "only en", FR: "" } };
+  it("rejects a missing ZH locale", () => {
+    const bad = { ...validSingle, stem: { EN: "only en", ZH: "" } };
     expect(QuestionSchema.safeParse(bad).success).toBe(false);
   });
 
@@ -57,8 +57,8 @@ describe("QuestionSchema", () => {
     const bad = {
       ...validSingle,
       options: [
-        { id: "a", label: { EN: "A", FR: "A" }, isCorrect: true },
-        { id: "a", label: { EN: "B", FR: "B" }, isCorrect: false },
+        { id: "a", label: { EN: "A", ZH: "A" }, isCorrect: true },
+        { id: "a", label: { EN: "B", ZH: "B" }, isCorrect: false },
       ],
     };
     expect(QuestionSchema.safeParse(bad).success).toBe(false);

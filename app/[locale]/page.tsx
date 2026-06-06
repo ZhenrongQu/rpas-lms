@@ -29,6 +29,7 @@ export default async function DashboardPage({ params }: Props) {
 
         {/* Module grid */}
         <div className="modules-grid">
+          <ModuleCard moduleId="intro" index={0} progress={100} href={`/${locale}/intro`} />
           {MODULE_IDS.map((id, i) => (
             <ModuleCard key={id} moduleId={id} index={i + 1} progress={0} />
           ))}

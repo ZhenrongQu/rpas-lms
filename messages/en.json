@@ -32,6 +32,7 @@
     "viewResult": "View"
   },
   "modules": {
+    "intro": "Intro",
     "air-law": "Air Law & Regs",
     "flight-operations": "Flight Operations",
     "human-factors": "Human Factors",
@@ -40,6 +41,16 @@
     "airframes-systems": "Airframes & Systems",
     "radiotelephony": "Radiotelephony",
     "theory-of-flight": "Theory of Flight"
+  },
+  "intro": {
+    "title": "RPAS Academy Introduction",
+    "companyTitle": "Company",
+    "companyBody": "We provide Canadian RPAS pilot study and mock-exam tools for Basic and Advanced certification prep.",
+    "serviceTitle": "Services",
+    "serviceBody": "The platform includes course modules, question-bank practice, mock exams, result history, and post-submission answer explanations.",
+    "courseTitle": "Courses",
+    "courseBody": "Courses are organized around TP-15263 knowledge areas: air law, flight operations, human factors, meteorology, navigation, airframes and systems, radiotelephony, and theory of flight.",
+    "cta": "Register to unlock free Basic content"
   },
   "certLevel": { "BASIC": "Basic Operations", "ADVANCED": "Advanced Operations" },
   "examSpecs": {
@@ -50,11 +61,14 @@
     "title": "Initiate Mock Examination",
     "selectLevel": "Select Certification Level",
     "launch": "Launch Exam",
-    "launching": "Launching…"
+    "launching": "Launching…",
+    "authRequired": "Please sign in first. Guests can access intro content only.",
+    "upgradeRequired": "This content requires purchasing the full question bank."
   },
   "exam": {
     "timeRemaining": "Time Remaining",
     "confirmSelection": "Confirm Selection",
+    "updateSelection": "Update Selection",
     "skip": "Skip",
     "flagForReview": "Flag for Review",
     "submitExam": "Submit Exam",
@@ -66,6 +80,7 @@
     "loading": "Loading questions…",
     "loadError": "Could not load the exam. The session may have expired.",
     "submitFailed": "Submission failed — please try again.",
+    "answerSaveFailed": "Could not save your answer — please try again.",
     "backToLaunch": "Back to Launch"
   },
   "results": {
@@ -79,7 +94,9 @@
     "weakAreas": "Weak areas flagged",
     "reviewAnswers": "Review Answers",
     "newMission": "New Mission",
-    "notFound": "Result not found. The session may have expired or not been submitted."
+    "notFound": "Result not found. The session may have expired or not been submitted.",
+    "incorrectReview": "Incorrect Answer Review",
+    "noIncorrect": "No incorrect answers."
   },
   "review": {
     "title": "Answer Review",

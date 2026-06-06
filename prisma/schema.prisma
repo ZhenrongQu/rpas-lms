@@ -12,6 +12,7 @@ model User {
   email          String        @unique
   name           String?
   hashedPassword String
+  accessTier     String        @default("FREE")
   createdAt      DateTime      @default(now())
   examSessions   ExamSession[]
 }

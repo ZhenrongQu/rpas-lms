@@ -1,4 +1,4 @@
-export type Locale = "EN" | "FR";
+export type Locale = "EN" | "ZH";
 export type CertLevel = "BASIC" | "ADVANCED" | "BOTH";
 export type ExamCertLevel = "BASIC" | "ADVANCED";
 export type QuestionType = "SINGLE" | "MULTI";
@@ -17,7 +17,7 @@ export type ModuleId = (typeof MODULE_IDS)[number];
 
 export interface Localized {
   EN: string;
-  FR: string;
+  ZH: string;
 }
 
 export interface QuestionOption {

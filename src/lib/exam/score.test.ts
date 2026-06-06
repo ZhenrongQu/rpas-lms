@@ -10,13 +10,13 @@ function q(id: string, moduleId: Question["moduleId"], correctId: string): Quest
     type: "SINGLE",
     selectCount: 1,
     difficulty: 1,
-    stem: { EN: "?", FR: "?" },
+    stem: { EN: "?", ZH: "?" },
     options: [
-      { id: "a", label: { EN: "A", FR: "A" }, isCorrect: correctId === "a" },
-      { id: "b", label: { EN: "B", FR: "B" }, isCorrect: correctId === "b" },
+      { id: "a", label: { EN: "A", ZH: "A" }, isCorrect: correctId === "a" },
+      { id: "b", label: { EN: "B", ZH: "B" }, isCorrect: correctId === "b" },
     ],
-    explanation: { EN: "x", FR: "x" },
-    reference: { EN: "x", FR: "x" },
+    explanation: { EN: "x", ZH: "x" },
+    reference: { EN: "x", ZH: "x" },
     tags: [],
   };
 }

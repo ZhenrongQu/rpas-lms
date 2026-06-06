@@ -33,19 +33,19 @@ By cert level: 42 `BOTH`, 6 `ADVANCED`, 2 `BASIC`. (`BOTH` questions appear in b
   "type": "SINGLE",              // SINGLE | MULTI
   "selectCount": 1,              // SINGLE=1; MULTI=N (>=2)
   "difficulty": 1,               // 1..3
-  "stem":        { "EN": "...", "FR": "..." },
-  "options": [ { "id": "a", "label": { "EN": "...", "FR": "..." }, "isCorrect": true }, ... ],
-  "explanation": { "EN": "...", "FR": "..." },
-  "reference":   { "EN": "CAR 901.xx / RPAS 101 p.NN", "FR": "RAC 901.xx / RPAS 101 p.NN" },
+  "stem":        { "EN": "...", "ZH": "..." },
+  "options": [ { "id": "a", "label": { "EN": "...", "ZH": "..." }, "isCorrect": true }, ... ],
+  "explanation": { "EN": "...", "ZH": "..." },
+  "reference":   { "EN": "CAR 901.xx / RPAS 101 p.NN", "ZH": "CAR 901.xx / RPAS 101 p.NN" },
   "tags": ["registration", "weight"]
 }
 ```
 
 ## Authoring rules
-1. **Fully bilingual** — every `EN` and `FR` field present and non-empty.
+1. **Fully bilingual** — every `EN` and `ZH` field present and non-empty.
 2. **Correct-count integrity** — `SINGLE`: exactly one `isCorrect`, `selectCount: 1`. `MULTI`: exactly `selectCount` correct options, `selectCount >= 2`.
 3. **Cite a source** in `reference` (CAR number, Standard 921/922, RPAS 101 page, or TP-15263 area).
-4. **French terms** must match `content/glossary.json` (e.g. *aérodrome*, *passant*, *zone de contrôle*, *dérive*, *avis aux navigants aériens*).
+4. **Chinese terms** should be consistent across the bank. The current `ZH` fields may use English fallback text until a full human translation pass is completed.
 5. **TC-style distractors** — plausible, non-trick; avoid "all of the above". Watch unit traps (400 ft AGL vs 400 ft ASL).
 6. **Tag** every question for analytics and targeted practice.
 7. **`id` is immutable** once shipped (exam sessions reference it); never renumber.

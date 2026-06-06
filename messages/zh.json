@@ -1,0 +1,112 @@
+{
+  "nav": { "modules": "课程模块", "exam": "模拟考试" },
+  "auth": {
+    "signIn": "登录",
+    "register": "创建账号",
+    "signOut": "退出",
+    "email": "邮箱",
+    "password": "密码",
+    "name": "姓名（可选）",
+    "needAccount": "还没有账号？注册",
+    "haveAccount": "已有账号？登录",
+    "guest": "访客",
+    "invalidCredentials": "邮箱或密码不正确。",
+    "registerFailed": "无法创建账号，邮箱可能已被使用。",
+    "working": "处理中…"
+  },
+  "dashboard": {
+    "title": "课程模块",
+    "subtitle": "加拿大交通部 · TP-15263 知识要求",
+    "overallProgress": "总体进度",
+    "certification": "高级操作",
+    "startExam": "开始考试",
+    "telemetry": "学习数据",
+    "missionStatus": "学习状态",
+    "subjectAreas": "科目领域",
+    "complete": "已完成",
+    "inProgress": "进行中",
+    "locked": "未解锁",
+    "history": "考试记录",
+    "noHistory": "还没有考试记录。开始一次模拟考试吧。",
+    "signInToSave": "登录后可保存考试历史。",
+    "viewResult": "查看"
+  },
+  "modules": {
+    "intro": "平台介绍",
+    "air-law": "航空法规",
+    "flight-operations": "飞行操作",
+    "human-factors": "人为因素",
+    "meteorology": "气象",
+    "navigation": "导航",
+    "airframes-systems": "机体与系统",
+    "radiotelephony": "无线电通话",
+    "theory-of-flight": "飞行原理"
+  },
+  "intro": {
+    "title": "RPAS Academy 介绍",
+    "companyTitle": "公司介绍",
+    "companyBody": "我们提供面向加拿大 RPAS 飞行员的学习与模拟考试工具，帮助学员系统理解 Basic 与 Advanced 认证知识。",
+    "serviceTitle": "服务介绍",
+    "serviceBody": "平台包含课程模块、题库练习、模拟考试、成绩记录和提交后的错题解析。",
+    "courseTitle": "课程介绍",
+    "courseBody": "课程围绕 TP-15263 的知识领域组织，包括航空法规、飞行操作、人为因素、气象、导航、机体系统、无线电通话和飞行原理。",
+    "cta": "注册后解锁 Basic 免费内容"
+  },
+  "certLevel": { "BASIC": "基础操作", "ADVANCED": "高级操作" },
+  "examSpecs": {
+    "BASIC": "免费账号：部分 Basic 题库 · 90 分钟 · 65% 通过",
+    "ADVANCED": "付费解锁：完整题库 · 60 分钟 · 80% 通过"
+  },
+  "examLaunch": {
+    "title": "启动模拟考试",
+    "selectLevel": "选择认证等级",
+    "launch": "开始考试",
+    "launching": "正在启动…",
+    "authRequired": "请先登录。访客只能访问平台介绍内容。",
+    "upgradeRequired": "该内容需要购买完整题库后访问。"
+  },
+  "exam": {
+    "timeRemaining": "剩余时间",
+    "confirmSelection": "确认选择",
+    "updateSelection": "更新选择",
+    "skip": "跳过",
+    "flagForReview": "标记复查",
+    "submitExam": "提交考试",
+    "submitting": "正在提交…",
+    "question": "题目",
+    "of": "/",
+    "answered": "已答",
+    "selectN": "请选择 {count} 项",
+    "loading": "正在加载题目…",
+    "loadError": "无法加载考试，session 可能已过期。",
+    "submitFailed": "提交失败，请重试。",
+    "answerSaveFailed": "答案保存失败，请重试。",
+    "backToLaunch": "返回考试启动页"
+  },
+  "results": {
+    "missionComplete": "考试通过",
+    "missionFailed": "考试未通过",
+    "score": "分数",
+    "correct": "答对",
+    "passStatus": "通过",
+    "failStatus": "未通过",
+    "perSubject": "按科目拆分",
+    "weakAreas": "薄弱科目",
+    "reviewAnswers": "查看完整解析",
+    "newMission": "新考试",
+    "notFound": "未找到成绩。该 session 可能已过期或尚未提交。",
+    "incorrectReview": "错题解析",
+    "noIncorrect": "没有错题。"
+  },
+  "review": {
+    "title": "答案解析",
+    "yourAnswer": "你的答案",
+    "correctAnswer": "正确答案",
+    "explanation": "解释",
+    "reference": "参考来源",
+    "correct": "正确",
+    "incorrect": "错误",
+    "notAnswered": "（未作答）",
+    "backToResults": "返回成绩页"
+  }
+}

@@ -31,6 +31,7 @@ export default function ExamClient({ sessionId, locale, expiresAt, certLevel }: 
   const [submitting, setSubmitting] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [answerError, setAnswerError] = useState('');
   const submittedRef = useRef(false);
 
   const totalMs = EXAM_SPECS[certLevel].timeLimitMinutes * 60_000;
@@ -84,11 +85,16 @@ export default function ExamClient({ sessionId, locale, expiresAt, certLevel }: 
     const q = questions[currentIdx];
     if (!q || pendingSelection.length === 0) return;
 
-    await fetch(`/api/exam/${sessionId}/answer`, {
+    setAnswerError('');
+    const res = await fetch(`/api/exam/${sessionId}/answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ questionId: q.id, selectedOptionIds: pendingSelection }),
     });
+    if (!res.ok) {
+      setAnswerError(t('answerSaveFailed'));
+      return;
+    }
 
     const newConfirmed = { ...confirmed, [q.id]: pendingSelection };
     setConfirmed(newConfirmed);
@@ -96,7 +102,7 @@ export default function ExamClient({ sessionId, locale, expiresAt, certLevel }: 
     const nextUnanswered = questions.findIndex((qn, i) => i > currentIdx && !newConfirmed[qn.id]);
     if (nextUnanswered !== -1) setCurrentIdx(nextUnanswered);
     else if (currentIdx < questions.length - 1) setCurrentIdx(currentIdx + 1);
-  }, [questions, currentIdx, pendingSelection, confirmed, sessionId]);
+  }, [questions, currentIdx, pendingSelection, confirmed, sessionId, t]);
 
   const selectOption = useCallback((optionId: string) => {
     const q = questions[currentIdx];
@@ -140,6 +146,10 @@ export default function ExamClient({ sessionId, locale, expiresAt, certLevel }: 
   if (!q) return null;
 
   const isConfirmed = Boolean(confirmed[q.id]);
+  const confirmedSelection = confirmed[q.id] ?? [];
+  const selectionChanged =
+    pendingSelection.length !== confirmedSelection.length ||
+    pendingSelection.some((id) => !confirmedSelection.includes(id));
   const isFlagged = flagged.has(q.id);
   const answeredCount = Object.keys(confirmed).length;
 
@@ -177,9 +187,9 @@ export default function ExamClient({ sessionId, locale, expiresAt, certLevel }: 
           <button
             className="btn-confirm"
             onClick={confirmAnswer}
-            disabled={pendingSelection.length === 0 || isConfirmed}
+            disabled={pendingSelection.length === 0 || (isConfirmed && !selectionChanged)}
           >
-            {t('confirmSelection')}
+            {isConfirmed ? t('updateSelection') : t('confirmSelection')}
           </button>
 
           <button
@@ -210,6 +220,12 @@ export default function ExamClient({ sessionId, locale, expiresAt, certLevel }: 
         {submitError && (
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--red)' }}>
             {submitError}
+          </div>
+        )}
+
+        {answerError && (
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--red)' }}>
+            {answerError}
           </div>
         )}
 

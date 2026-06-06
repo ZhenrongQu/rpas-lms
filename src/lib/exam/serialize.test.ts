@@ -9,20 +9,20 @@ const q: Question = {
   type: "SINGLE",
   selectCount: 1,
   difficulty: 1,
-  stem: { EN: "English stem", FR: "Énoncé français" },
+  stem: { EN: "English stem", ZH: "Chinese stem" },
   options: [
-    { id: "a", label: { EN: "Opt A", FR: "Option A" }, isCorrect: true },
-    { id: "b", label: { EN: "Opt B", FR: "Option B" }, isCorrect: false },
+    { id: "a", label: { EN: "Opt A", ZH: "Option A" }, isCorrect: true },
+    { id: "b", label: { EN: "Opt B", ZH: "Option B" }, isCorrect: false },
   ],
-  explanation: { EN: "expl", FR: "expl" },
-  reference: { EN: "ref", FR: "ref" },
+  explanation: { EN: "expl", ZH: "expl" },
+  reference: { EN: "ref", ZH: "ref" },
   tags: ["x"],
 };
 
 describe("toPublicQuestion", () => {
   it("returns localized stem and options for the requested locale", () => {
-    const pub = toPublicQuestion(q, "FR");
-    expect(pub.stem).toBe("Énoncé français");
+    const pub = toPublicQuestion(q, "ZH");
+    expect(pub.stem).toBe("Chinese stem");
     expect(pub.options[0].label).toBe("Option A");
     expect(pub.selectCount).toBe(1);
   });

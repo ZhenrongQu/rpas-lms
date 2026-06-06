@@ -9,13 +9,13 @@ const q: Question = {
   type: "SINGLE",
   selectCount: 1,
   difficulty: 1,
-  stem: { EN: "EN stem", FR: "FR stem" },
+  stem: { EN: "EN stem", ZH: "ZH stem" },
   options: [
-    { id: "a", label: { EN: "EN A", FR: "FR A" }, isCorrect: false },
-    { id: "b", label: { EN: "EN B", FR: "FR B" }, isCorrect: true },
+    { id: "a", label: { EN: "EN A", ZH: "ZH A" }, isCorrect: false },
+    { id: "b", label: { EN: "EN B", ZH: "ZH B" }, isCorrect: true },
   ],
-  explanation: { EN: "EN expl", FR: "FR expl" },
-  reference: { EN: "CAR 901", FR: "RAC 901" },
+  explanation: { EN: "EN expl", ZH: "ZH expl" },
+  reference: { EN: "CAR 901", ZH: "RAC 901" },
   tags: [],
 };
 
@@ -34,10 +34,10 @@ describe("buildReview", () => {
     expect(item.reference).toBe("CAR 901");
   });
 
-  it("marks a correct answer and projects FR strings", () => {
-    const [item] = buildReview([q], { "air-law-0001": ["b"] }, "FR");
+  it("marks a correct answer and projects ZH strings", () => {
+    const [item] = buildReview([q], { "air-law-0001": ["b"] }, "ZH");
     expect(item.isCorrect).toBe(true);
-    expect(item.stem).toBe("FR stem");
+    expect(item.stem).toBe("ZH stem");
     expect(item.reference).toBe("RAC 901");
   });
 

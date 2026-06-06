@@ -23,6 +23,8 @@ export default function ExamLaunchPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ certLevel: selected, locale: locale.toUpperCase() }),
       });
+      if (res.status === 401) throw new Error(t('examLaunch.authRequired'));
+      if (res.status === 403) throw new Error(t('examLaunch.upgradeRequired'));
       if (!res.ok) throw new Error('Failed to create exam session');
       const { sessionId } = await res.json();
       if (!sessionId) throw new Error('Failed to create exam session');

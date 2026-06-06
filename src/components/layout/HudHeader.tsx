@@ -104,8 +104,8 @@ export default function HudHeader({
         <Link href={localeHref('en')} className={`locale-btn${locale === 'en' ? ' active' : ''}`}>
           EN
         </Link>
-        <Link href={localeHref('fr')} className={`locale-btn${locale === 'fr' ? ' active' : ''}`}>
-          FR
+        <Link href={localeHref('zh')} className={`locale-btn${locale === 'zh' ? ' active' : ''}`}>
+          ZH
         </Link>
       </div>
     </header>

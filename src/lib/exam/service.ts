@@ -6,6 +6,7 @@ import { mulberry32 } from "./rng";
 import { scoreExam, type ExamResult } from "./score";
 import { toPublicQuestion, type PublicQuestion } from "./serialize";
 import { buildReview, type ReviewItem } from "./review";
+import { questionsForAccess, type AccessTier } from "./access";
 import type { SessionStore, ExamSession } from "./store";
 import type { ExamCertLevel, Locale, Question, QuestionBank } from "../content/types";
 
@@ -32,9 +33,14 @@ export class ExamService {
     locale: Locale,
     seed: number = Math.floor(Math.random() * 1e9),
     userId: string | null = null,
+    accessTier: AccessTier = "PAID",
   ): Promise<CreatedExam> {
     const spec = EXAM_SPECS[certLevel];
-    const questions = generateExam(certLevel, spec.totalQuestions, mulberry32(seed), this.bank);
+    const scopedBank: QuestionBank = {
+      ...this.bank,
+      questions: questionsForAccess(this.bank.questions, accessTier, certLevel),
+    };
+    const questions = generateExam(certLevel, spec.totalQuestions, mulberry32(seed), scopedBank);
     const startedAt = this.now();
     const session: ExamSession = {
       id: randomUUID(),
@@ -88,6 +94,15 @@ export class ExamService {
     session.result = result;
     await this.store.update(session);
     return result;
+  }
+
+  async submitWithIncorrectReview(
+    sessionId: string,
+  ): Promise<{ result: ExamResult; incorrectReview: ReviewItem[] } | null> {
+    const result = await this.submit(sessionId);
+    if (!result) return null;
+    const review = await this.getReview(sessionId);
+    return { result, incorrectReview: (review ?? []).filter((item) => !item.isCorrect) };
   }
 
   /** Minimal session metadata for the exam page (timer sizing). */

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { MODULE_IDS } from "./types";
 
-const Localized = z.object({ EN: z.string().min(1), FR: z.string().min(1) });
+const Localized = z.object({ EN: z.string().min(1), ZH: z.string().min(1) });
 
 const Option = z.object({
   id: z.string().min(1),

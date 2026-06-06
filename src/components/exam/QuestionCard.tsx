@@ -30,7 +30,7 @@ export default function QuestionCard({ question, pendingSelection, isConfirmed, 
             <div
               key={opt.id}
               className={`option${sel ? ' selected' : ''}${isConfirmed ? ' answered' : ''}`}
-              onClick={() => !isConfirmed && onSelect(opt.id)}
+              onClick={() => onSelect(opt.id)}
             >
               <div className="option-letter">{LETTERS[i] ?? opt.id.toUpperCase()}</div>
               <div className="option-text">{opt.label}</div>
