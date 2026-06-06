@@ -11,9 +11,11 @@ function req(body: unknown) {
 
 describe("POST /api/auth/register", () => {
   beforeEach(async () => {
+    await prisma.userIdentity.deleteMany();
     await prisma.user.deleteMany();
   });
   afterAll(async () => {
+    await prisma.userIdentity.deleteMany();
     await prisma.user.deleteMany();
     await prisma.$disconnect();
   });
@@ -25,6 +27,11 @@ describe("POST /api/auth/register", () => {
     expect(user).not.toBeNull();
     expect(user!.hashedPassword).not.toBe("hunter2pw");
     expect(user!.displayName).toBe("Ada");
+    const identities = await prisma.userIdentity.findMany({ where: { userId: user!.id } });
+    expect(identities).toHaveLength(1);
+    expect(identities[0].provider).toBe("email");
+    expect(identities[0].providerAccountId).toBe("a@test.local");
+    expect(identities[0].verifiedAt).toBeNull();
   });
 
   it("rejects a duplicate email with 409", async () => {

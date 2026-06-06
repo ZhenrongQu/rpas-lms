@@ -12,7 +12,7 @@ model User {
   username        String?        @unique
   email           String?        @unique
   phone           String?        @unique
-  displayName     String?
+  displayName     String?        @map("name")
   hashedPassword  String?
   accessTier      String         @default("FREE")
   emailVerifiedAt DateTime?
