@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 600" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">
+  <defs>
+    <marker id="dn" markerWidth="10" markerHeight="10" refX="5" refY="8" orient="auto"><path d="M1,1 L5,8 L9,1" fill="none" stroke="#7fd6ef" stroke-width="2"/></marker>
+  </defs>
+  <rect x="1" y="1" width="618" height="598" rx="14" fill="#0a1626" stroke="#00d4ff" stroke-opacity="0.25"/>
+  <text x="24" y="34" fill="#00d4ff" font-size="16" font-weight="700" letter-spacing="0.5">LOST LINK / FLY-AWAY — IMMEDIATE ACTIONS · 失联 / 失控应急</text>
+  <line x1="24" y1="44" x2="596" y2="44" stroke="#00d4ff" stroke-opacity="0.18"/>
+
+  <!-- step 1 -->
+  <rect x="60" y="64" width="500" height="78" rx="9" fill="#06101e" stroke="#00d4ff" stroke-opacity="0.55"/>
+  <circle cx="92" cy="103" r="16" fill="#00d4ff"/><text x="92" y="108" text-anchor="middle" fill="#06101e" font-size="16" font-weight="700">1</text>
+  <text x="122" y="93" fill="#ffffff" font-size="14" font-weight="700">TROUBLESHOOT · 排查</text>
+  <text x="122" y="114" fill="#cfe9f5" font-size="12.5">Reorient antenna · check link / cable · move away from interference (WiFi, towers).</text>
+  <text x="122" y="132" fill="#00ff88" font-size="12">If link regained → resume or land safely. 链路恢复→继续或降落。</text>
+  <line x1="310" y1="142" x2="310" y2="168" stroke="#7fd6ef" stroke-width="2" marker-end="url(#dn)"/>
+
+  <!-- step 2 -->
+  <rect x="60" y="172" width="500" height="92" rx="9" fill="#06101e" stroke="#00d4ff" stroke-opacity="0.55"/>
+  <circle cx="92" cy="218" r="16" fill="#00d4ff"/><text x="92" y="223" text-anchor="middle" fill="#06101e" font-size="16" font-weight="700">2</text>
+  <text x="122" y="200" fill="#ffffff" font-size="14" font-weight="700">LET THE RPA RUN ITS PRESET LOST-LINK ACTION · 预设动作</text>
+  <text x="122" y="223" fill="#cfe9f5" font-size="12.5">Open area → RTH climbs to a safe altitude and returns.</text>
+  <text x="122" y="243" fill="#ffaa00" font-size="12.5">Under obstacles (bridge / canopy / indoors) → set HOVER, NOT RTH</text>
+  <text x="122" y="259" fill="#9fb6c9" font-size="11.5">(RTH may climb into the obstacle). Know your settings before you fly.</text>
+  <line x1="310" y1="264" x2="310" y2="290" stroke="#7fd6ef" stroke-width="2" marker-end="url(#dn)"/>
+
+  <!-- step 3 -->
+  <rect x="60" y="294" width="500" height="84" rx="9" fill="#06101e" stroke="#ffaa00" stroke-opacity="0.6"/>
+  <circle cx="92" cy="336" r="16" fill="#ffaa00"/><text x="92" y="341" text-anchor="middle" fill="#06101e" font-size="16" font-weight="700">3</text>
+  <text x="122" y="320" fill="#ffffff" font-size="14" font-weight="700">MONITOR + ALERT · 监控并通报</text>
+  <text x="122" y="342" fill="#cfe9f5" font-size="12.5">Watch aircraft and airspace. Alert the airspace authority (NAV CANADA ACC)</text>
+  <text x="122" y="360" fill="#cfe9f5" font-size="12.5">of any deviation. Note position, heading, altitude and battery remaining.</text>
+  <line x1="310" y1="378" x2="310" y2="404" stroke="#7fd6ef" stroke-width="2" marker-end="url(#dn)"/>
+
+  <!-- step 4 -->
+  <rect x="60" y="408" width="500" height="84" rx="9" fill="#1c0a12" stroke="#ff3860" stroke-opacity="0.7"/>
+  <circle cx="92" cy="450" r="16" fill="#ff3860"/><text x="92" y="455" text-anchor="middle" fill="#0a1626" font-size="16" font-weight="700">4</text>
+  <text x="122" y="434" fill="#ff6b87" font-size="14" font-weight="700">STILL UNCONTROLLABLE / FLY-AWAY → FLIGHT TERMINATION · 飞行终止</text>
+  <text x="122" y="456" fill="#cfe9f5" font-size="12.5">Cut motors / deploy parachute / force-land away from people, if the danger</text>
+  <text x="122" y="474" fill="#cfe9f5" font-size="12.5">to people and aircraft warrants it. Then report (TC / TSB) as required.</text>
+
+  <text x="60" y="524" fill="#9fb6c9" font-size="11.5">Practise these steps before you need them — under workload there is little time to think.</text>
+  <text x="60" y="544" fill="#9fb6c9" font-size="11.5">事前演练这些步骤；真正发生时几乎没有思考时间。</text>
+</svg>

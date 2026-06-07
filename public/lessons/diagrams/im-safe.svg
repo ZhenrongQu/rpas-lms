@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 420" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">
+  <rect x="1" y="1" width="558" height="418" rx="14" fill="#0a1626" stroke="#00d4ff" stroke-opacity="0.25"/>
+  <text x="24" y="34" fill="#00d4ff" font-size="17" font-weight="700" letter-spacing="1">IM SAFE — PRE-FLIGHT SELF-CHECK · 飞行前自检</text>
+  <line x1="24" y1="44" x2="536" y2="44" stroke="#00d4ff" stroke-opacity="0.18"/>
+
+  <g font-size="13">
+    <!-- I -->
+    <rect x="28" y="62" width="40" height="40" rx="7" fill="#06101e" stroke="#00d4ff"/><text x="48" y="89" text-anchor="middle" fill="#00d4ff" font-size="20" font-weight="700">I</text>
+    <text x="84" y="80" fill="#ffffff" font-weight="700">Illness 疾病</text>
+    <text x="84" y="98" fill="#9fb6c9">Any symptoms that could impair you?</text>
+    <!-- M -->
+    <rect x="28" y="116" width="40" height="40" rx="7" fill="#06101e" stroke="#00d4ff"/><text x="48" y="143" text-anchor="middle" fill="#00d4ff" font-size="20" font-weight="700">M</text>
+    <text x="84" y="134" fill="#ffffff" font-weight="700">Medication 药物</text>
+    <text x="84" y="152" fill="#9fb6c9">Prescription / OTC drugs with side-effects?</text>
+    <!-- S -->
+    <rect x="28" y="170" width="40" height="40" rx="7" fill="#06101e" stroke="#00d4ff"/><text x="48" y="197" text-anchor="middle" fill="#00d4ff" font-size="20" font-weight="700">S</text>
+    <text x="84" y="188" fill="#ffffff" font-weight="700">Stress 压力</text>
+    <text x="84" y="206" fill="#9fb6c9">Work, family, money or schedule pressure?</text>
+    <!-- A -->
+    <rect x="28" y="224" width="40" height="40" rx="7" fill="#06101e" stroke="#ffaa00"/><text x="48" y="251" text-anchor="middle" fill="#ffaa00" font-size="20" font-weight="700">A</text>
+    <text x="84" y="242" fill="#ffffff" font-weight="700">Alcohol 酒精</text>
+    <text x="84" y="260" fill="#ffaa00">None within 12 h · cannabis within 28 days = no-fly</text>
+    <!-- F -->
+    <rect x="28" y="278" width="40" height="40" rx="7" fill="#06101e" stroke="#00d4ff"/><text x="48" y="305" text-anchor="middle" fill="#00d4ff" font-size="20" font-weight="700">F</text>
+    <text x="84" y="296" fill="#ffffff" font-weight="700">Fatigue 疲劳</text>
+    <text x="84" y="314" fill="#9fb6c9">Rested in the last 24 h and feeling alert?</text>
+    <!-- E -->
+    <rect x="28" y="332" width="40" height="40" rx="7" fill="#06101e" stroke="#00d4ff"/><text x="48" y="359" text-anchor="middle" fill="#00d4ff" font-size="20" font-weight="700">E</text>
+    <text x="84" y="350" fill="#ffffff" font-weight="700">Eating / Emotion 饮食 / 情绪</text>
+    <text x="84" y="368" fill="#9fb6c9">Fed, hydrated and emotionally fit to fly?</text>
+  </g>
+  <text x="500" y="404" text-anchor="end" fill="#9fb6c9" font-size="11">You are the PIC — check yourself, not just the aircraft.</text>
+</svg>
