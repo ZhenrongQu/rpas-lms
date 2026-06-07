@@ -136,4 +136,31 @@ describe("auth account service", () => {
     });
     expect(identity?.userId).toBe(emailUser.id);
   });
+
+  it("creates separate OAuth identities for google and apple", async () => {
+    const google = await findOrCreateOAuthUser({
+      provider: "google",
+      providerAccountId: "google-1",
+      email: "pilot@example.com",
+      emailVerified: true,
+      displayName: "Pilot",
+      now: () => new Date("2026-06-06T00:00:00.000Z"),
+    });
+
+    const apple = await findOrCreateOAuthUser({
+      provider: "apple",
+      providerAccountId: "apple-1",
+      email: "pilot@example.com",
+      emailVerified: true,
+      displayName: "Pilot",
+      now: () => new Date("2026-06-06T00:01:00.000Z"),
+    });
+
+    expect(apple.id).toBe(google.id);
+    const identities = await prisma.userIdentity.findMany({
+      where: { userId: google.id },
+      orderBy: { provider: "asc" },
+    });
+    expect(identities.map((identity) => identity.provider)).toEqual(["apple", "google"]);
+  });
 });
