@@ -1,7 +1,8 @@
 # Design — Basic & Advanced RPAS Lesson Content (bilingual MDX)
 
-> Status: **draft for review** · Date: 2026-06-07
+> Status: **approved; blueprint finalized after TP‑15263 research** · Date: 2026-06-07
 > Companion to (not a replacement for) `docs/superpowers/plans/2026-06-06-lms-lessons.md` (Plan 4).
+> Knowledge map: `docs/superpowers/research/2026-06-07-tp-15263-knowledge-map.md`.
 
 ## 1. Goal
 
@@ -11,7 +12,8 @@ grounded in **RPAS 101** and **TP‑15263 (Knowledge Requirements, TP 15263)**:
 - **Basic Operations** course — foundational knowledge for the Basic operating
   environment. **Free** to registered users.
 - **Advanced Operations** course — the higher‑risk *delta* (controlled airspace,
-  operations near/over people, aviation communications, safety assurance). **Paid.**
+  operations near/over people, aviation communications, safety assurance, advanced
+  meteorology). **Paid.**
 
 Each level is **concise** ("精简") but covers all **8 knowledge areas / modules**,
 emphasizing the things that matter most for safety and the exam: **operating
@@ -76,38 +78,35 @@ access: FREE                                 # FREE | PAID  ← NEW field
 (`basic/` → FREE, `advanced/` → PAID) but written explicitly in every file so
 gating is self‑documenting.
 
-## 6. Lesson blueprint
+## 6. Lesson blueprint (finalized against TP‑15263)
 
-### Basic Operations (`basic/`, all `access: FREE`, `certLevel: BASIC`) — 8 lessons
+The 8 TP‑15263 sections **are** the 8 modules. Split below follows the official
+Basic‑vs‑Advanced boundary (see research note).
+
+### Basic Operations (`basic/`, `access: FREE`, `certLevel: BASIC`) — 8 lessons
 
 | # | `moduleId/slug` | Key points (limits · safety · numbers) |
 |---|---|---|
-| 1 | `air-law/registration-and-certificate` | RPA 250 g–25 kg → register + mark before first flight; Basic vs Advanced pilot certificate; sub‑250 g & CAR 900.06; documents required on‑site + recency (24 mo). |
-| 2 | `air-law/operating-limits` | **≤400 ft (122 m) AGL**; **VLOS**; **≥30 m from bystanders, never over them**; **3 NM from airports / 1 NM from heliports**; **not in controlled airspace**; day/night (position lights); 3 NM military; SFOC triggers. *(core "限制" lesson + diagram)* |
-| 3 | `air-law/privacy-and-law` | Privacy/PIPEDA; trespass; Criminal Code; enforcement & fines ($5k/$25k); incident/accident reporting — TC (CAR 901.49) & TSB. |
-| 4 | `flight-operations/site-survey-and-sop` | SOPs (normal + emergency); remote + on‑site site survey; choosing where to fly; pre‑flight checks. |
-| 5 | `flight-operations/emergencies` | Lost link · fly‑away · flight termination · RTH gotchas · battery failure · loss of VLOS; the fundamental emergency steps. *(safety + decision‑flow diagram)* |
-| 6 | `meteorology/weather-to-fly` | Wind & gusts; temperature/pressure effects; icing (no de‑ice → don't fly); fog; **thunderstorms within 15 NM = no‑go**; weather resources. |
-| 7 | `human-factors/fitness-and-decisions` | **IM SAFE**; alcohol (12 h) · cannabis (28 d) · fatigue; hazardous attitudes; CRM; decision‑making. *(IM SAFE card diagram)* |
-| 8 | `airframes-systems/systems-and-batteries` | Components (flight controller, ESC, IMU, GNSS, compass, barometer); LiPo safety + cold‑weather; maintenance & pre‑flight inspection. |
+| 1 | `air-law/getting-started` | What needs a pilot cert & registration (RPA 250 g–25 kg → register + mark before first flight); Basic vs Advanced certificate; CARs Part IX structure; docs required on‑site + recency (24 mo); privacy/trespass/Criminal Code; enforcement & fines ($5k/$25k); incident reporting — TC (CAR 901.49) & TSB. |
+| 2 | `air-law/operating-limits` | Basic ops limits (Part IX Subpart 1 Div IV): **≤400 ft·122 m AGL**; **VLOS**; **≥30 m from bystanders, never over them**; **3 NM airports / 1 NM heliports**; **not in controlled airspace**; day/night (position lights); 3 NM military; SFOC triggers. *(core "限制" lesson + diagram)* |
+| 3 | `airframes-systems/systems-and-batteries` | Components (flight controller/ESC, IMU, GNSS, compass, barometer/altimeter); data links & interference; **LiPo battery hazards + cold weather + transport**; autopilot & flight‑termination; maintenance & logs; pre‑flight inspection. |
+| 4 | `human-factors/fitness-and-decisions` | **IM SAFE**; alcohol (12 h) · cannabis (28 d) · fatigue; hazardous attitudes; CRM/communication; decision‑making, SA, automation complacency. *(IM SAFE card diagram)* |
+| 5 | `meteorology/weather-basics` | Atmosphere & pressure; altimetry; wind & gusts; turbulence; clouds; fog/surface layers; **icing (no de‑ice → don't fly)**; METAR/AWOS & weather services; brief **thunderstorm avoidance (~15 NM)**. |
+| 6 | `navigation/charts-and-flight-planning` | Definitions (lat/long, track/heading, variation, drift); **AGL vs ASL · NM/SM**; VNC/VTA charts & CFS; 24‑hr/UTC time; compass variation/calibration; flight planning (NOTAMs, W&B, docs, wind); basic **radio theory** (bands, interference, RF assessment). |
+| 7 | `flight-operations/site-survey-and-emergencies` | PIC responsibilities; **site survey** (remote + on‑site); SOPs (normal + emergency); crew brief; **emergencies — lost link · fly‑away · flight termination · RTH gotchas · battery failure · loss of VLOS**; occupational safety. *(emergency decision‑flow diagram)* |
+| 8 | `theory-of-flight/how-rpas-fly` | Lift (Bernoulli/Newton); four forces; aerofoil, AoA, stall; stability; multirotor vs fixed‑wing vs helicopter dynamics; props/rotors; load factor. |
 
-*(Coverage note: this gives `air-law` 3 lessons and folds **Navigation**,
-**Theory of Flight**, and **Radiotelephony** basics into lessons 2/6/8 rather than
-standalone lessons — radio in particular is largely an Advanced requirement. This
-keeps Basic "精简" while still touching all 8 areas. The exact split is **provisional
-pending the TP‑15263 research (§9)**, which will confirm which areas are actually
-tested at Basic; easy to promote any of them to a standalone lesson if you prefer.)*
-
-### Advanced Operations (`advanced/`, all `access: PAID`, `certLevel: ADVANCED`) — 4 lessons (delta; Basic = prerequisite)
+### Advanced Operations (`advanced/`, `access: PAID`, `certLevel: ADVANCED`) — 5 lessons (delta; Basic = prerequisite)
 
 | # | `moduleId/slug` | Key points |
 |---|---|---|
-| 1 | `air-law/advanced-environments-and-safety-assurance` | Advanced operating environments: **controlled airspace**; within **3 NM airport / 1 NM heliport**; **near people 5–30 m** & **over people <5 m** with an approved RPAS; **Safety Assurance / Standard 922**; SFOC scope. *(near/over‑people zones diagram)* |
-| 2 | `navigation/airspace-and-authorization` | **Airspace classes A–G**; control zones (3000 ft AAE); Class F (CYA/CYR/CYD); **NAV CANADA / NAV Drone authorization** workflow; transponders; sharing airspace / give way. *(airspace‑ladder diagram)* |
-| 3 | `radiotelephony/aviation-communications` | VHF; **ROC‑A**; MF/ATF areas; ATC services; blind‑broadcast script; **126.7 / 123.2 / 121.5**; phonetic alphabet; ACC emergency contacts. |
-| 4 | `flight-operations/advanced-ops-and-flight-review` | Higher‑risk site survey & ops near people; risk mitigation; the **Flight Review** (practical assessment) overview; staying current. |
+| 1 | `air-law/advanced-operating-environments` | Advanced environments (Div V): **controlled airspace**; within **3 NM airport / 1 NM heliport**; **near people 5–30 m** & **over people <5 m** with an approved RPAS; **Safety Assurance / Standard 922**; SFOC scope. *(near/over‑people zones diagram)* |
+| 2 | `navigation/airspace-and-authorization` | **Airspace classes A–G**; control zones (3000 ft AAE); Class F (CYA/CYR/CYD); **NAV CANADA / NAV Drone authorization** workflow; **GNSS/DGPS** depth & signal loss; **ATC transponder**; sharing airspace / give way. *(airspace‑ladder diagram)* |
+| 3 | `radiotelephony/aviation-communications` | **ROC‑A** (knowledge essential for Advanced); VHF; MF/ATF; ATC services; blind‑broadcast script; **126.7 / 123.2 / 121.5**; phonetic alphabet; ACC emergency contacts. |
+| 4 | `meteorology/advanced-weather` | Advanced‑only met: **moisture & lapse rate**; **stability/instability**; **fronts & frontal weather**; **thunderstorm development & hazards** (microbursts, wind shear); **TAF** interpretation. |
+| 5 | `flight-operations/advanced-ops` | **EVLOS** & **sheltered operations**; higher‑risk site survey & ops near people; the **Flight Review** (practical assessment) overview; staying current. |
 
-Total: **12 lessons × 2 languages = 24 MDX files.**
+Total: **13 lessons × 2 languages = 26 MDX files** + **5 SVG diagrams**.
 
 ## 7. Per‑lesson authoring template
 
@@ -118,7 +117,7 @@ Total: **12 lessons × 2 languages = 24 MDX files.**
   same module (e.g. `air-law-0001`, `meteorology-0001`, …). Validated by a script
   (Plan 4 Task 10 already defines this check) — never invent ids.
 - `## Key takeaways` — 3–5 bullets.
-- A `Sources` line citing **RPAS 101 p.NN / CAR 901.xx / Standard 921‑922 / TP‑15263 area**,
+- A `Sources` line citing **RPAS 101 p.NN / CAR 901.xx / Standard 921‑922 / TP‑15263 §N**,
   matching the question bank's `reference` convention.
 - EN and ZH say the **same things**; ZH keeps key regulatory terms + numbers with the
   English in brackets on first use, e.g. 受控空域（controlled airspace）, 400 英尺 AGL.
@@ -132,22 +131,21 @@ asset serves both locales.
 | File | Used in | Shows |
 |---|---|---|
 | `basic-operating-limits.svg` | basic/air-law/operating-limits | 400 ft·122 m ceiling, 30 m bystander ring, 3 NM airport / 1 NM heliport, VLOS cone |
-| `emergency-decision-flow.svg` | basic/flight-operations/emergencies | lost link → troubleshoot → hover / RTH / flight‑termination |
+| `emergency-decision-flow.svg` | basic/flight-operations/site-survey-and-emergencies | lost link → troubleshoot → hover / RTH / flight‑termination |
 | `im-safe.svg` | basic/human-factors/fitness-and-decisions | I‑M‑S‑A‑F‑E checklist card |
 | `airspace-classes.svg` | advanced/navigation/airspace-and-authorization | A–G ladder w/ 18,000 / 12,500 / 3000 ft AAE / G<400 ft |
-| `people-distance-zones.svg` | advanced/air-law/advanced-environments-and-safety-assurance | >30 m basic, 5–30 m & <5 m advanced (approved RPAS + Std 922) |
+| `people-distance-zones.svg` | advanced/air-law/advanced-operating-environments | >30 m basic, 5–30 m & <5 m advanced (approved RPAS + Std 922) |
 
 Generation: the dark‑themed SVG diagram skill (matches the app's HUD palette;
 text‑based + version‑friendly).
 
 ## 9. Sourcing & research
 
-- Primary: **RPAS 101** (provided PDF) — page‑cited.
-- Authoritative knowledge map: before authoring, run **/deep-research** on
-  TP‑15263 (the `#toc5` knowledge‑requirements section) to (a) confirm the official
-  knowledge areas map to the 8 modules, (b) lock the **Basic‑vs‑Advanced** knowledge
-  boundary, (c) catch any required item not in RPAS 101. Persist the research note and
-  cite TP‑15263 areas in lesson `Sources`.
+- Primary: **RPAS 101** (provided PDF) — page‑cited; the tie‑breaker on specifics.
+- Authoritative knowledge map: **DONE** — see
+  `docs/superpowers/research/2026-06-07-tp-15263-knowledge-map.md`. Confirmed the 8
+  sections map to the 8 modules and locked the Basic‑vs‑Advanced boundary (incl. the
+  ROC‑A reconciliation: full radiotelephony → Advanced).
 - Per the bank README: do **not** reproduce actual TC exam questions — original study
   content only.
 
