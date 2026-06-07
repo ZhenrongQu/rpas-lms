@@ -12,7 +12,19 @@
     "guest": "Guest",
     "invalidCredentials": "Invalid email or password.",
     "registerFailed": "Could not create account. The email may already be in use.",
-    "working": "Working…"
+    "working": "Working…",
+    "continueGoogle": "Continue with Google",
+    "continueApple": "Continue with Apple",
+    "emailCode": "Email code",
+    "phoneCode": "Phone code",
+    "username": "Username",
+    "phone": "Phone",
+    "sendCode": "Send code",
+    "verifyCode": "Verify code",
+    "code": "6-digit code",
+    "codeSent": "Verification code sent.",
+    "usernameUnavailable": "Username is unavailable.",
+    "verificationFailed": "Invalid or expired code."
   },
   "dashboard": {
     "title": "Mission Modules",

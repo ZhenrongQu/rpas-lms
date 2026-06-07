@@ -12,7 +12,19 @@
     "guest": "访客",
     "invalidCredentials": "邮箱或密码不正确。",
     "registerFailed": "无法创建账号，邮箱可能已被使用。",
-    "working": "处理中…"
+    "working": "处理中…",
+    "continueGoogle": "使用 Google 继续",
+    "continueApple": "使用 Apple 继续",
+    "emailCode": "邮箱验证码",
+    "phoneCode": "手机验证码",
+    "username": "用户名",
+    "phone": "手机号",
+    "sendCode": "发送验证码",
+    "verifyCode": "验证",
+    "code": "6 位验证码",
+    "codeSent": "验证码已发送。",
+    "usernameUnavailable": "用户名不可用。",
+    "verificationFailed": "验证码无效或已过期。"
   },
   "dashboard": {
     "title": "课程模块",

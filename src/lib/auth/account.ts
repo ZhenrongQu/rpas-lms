@@ -115,6 +115,32 @@ export async function createUsernameUser({
   });
 }
 
+export async function assignUsernameToUser({
+  userId,
+  username,
+  now = () => new Date(),
+}: {
+  userId: string;
+  username: string;
+  now?: () => Date;
+}) {
+  const normalizedUsername = assertUsername(username);
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      username: normalizedUsername,
+      identities: {
+        create: {
+          provider: "username",
+          providerAccountId: normalizedUsername,
+          verifiedAt: now(),
+        },
+      },
+    },
+  });
+}
+
 export async function findOrCreateOAuthUser({
   provider,
   providerAccountId,
