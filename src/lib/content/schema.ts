@@ -16,7 +16,7 @@ export const QuestionSchema = z
     certLevel: z.enum(["BASIC", "ADVANCED", "BOTH"]),
     type: z.enum(["SINGLE", "MULTI"]),
     selectCount: z.number().int().min(1),
-    difficulty: z.number().int().min(1).max(3),
+    difficulty: z.number().int().min(0).max(3),
     stem: Localized,
     options: z.array(Option).min(2),
     explanation: Localized,

@@ -13,9 +13,8 @@ export function questionsForAccess(
   tier: AccessTier,
   certLevel: ExamCertLevel,
 ): Question[] {
-  if (tier === "PAID") return questions;
-  if (tier === "FREE" && certLevel === "BASIC") {
-    return questions.filter((q) => q.moduleId === "air-law" || q.moduleId === "human-factors");
-  }
+  const eligible = questions.filter((q) => q.certLevel === certLevel || q.certLevel === "BOTH");
+  if (tier === "PAID") return eligible;
+  if (tier === "FREE" && certLevel === "BASIC") return eligible.filter((q) => q.difficulty === 0);
   return [];
 }

@@ -23,6 +23,11 @@ describe("QuestionSchema", () => {
     expect(QuestionSchema.safeParse(validSingle).success).toBe(true);
   });
 
+  it("accepts difficulty 0 for free questions", () => {
+    const freeQuestion = { ...validSingle, difficulty: 0 };
+    expect(QuestionSchema.safeParse(freeQuestion).success).toBe(true);
+  });
+
   it("rejects SINGLE with two correct options", () => {
     const bad = {
       ...validSingle,

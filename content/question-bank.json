@@ -7,7 +7,7 @@
       "certLevel": "BOTH",
       "type": "SINGLE",
       "selectCount": 1,
-      "difficulty": 1,
+      "difficulty": 0,
       "stem": {
         "EN": "At what weight does an RPA require the pilot to hold an RPA Pilot Certificate?",
         "ZH": "At what weight does an RPA require the pilot to hold an RPA Pilot Certificate?"
@@ -66,7 +66,7 @@
       "certLevel": "BASIC",
       "type": "SINGLE",
       "selectCount": 1,
-      "difficulty": 1,
+      "difficulty": 0,
       "stem": {
         "EN": "When operating under a Basic Operations certificate, what is the minimum horizontal distance you must keep from bystanders?",
         "ZH": "When operating under a Basic Operations certificate, what is the minimum horizontal distance you must keep from bystanders?"
@@ -184,7 +184,7 @@
       "certLevel": "BOTH",
       "type": "SINGLE",
       "selectCount": 1,
-      "difficulty": 1,
+      "difficulty": 0,
       "stem": {
         "EN": "Which statement about RPA registration is correct?",
         "ZH": "Which statement about RPA registration is correct?"
@@ -242,7 +242,7 @@
       "certLevel": "BOTH",
       "type": "SINGLE",
       "selectCount": 1,
-      "difficulty": 2,
+      "difficulty": 0,
       "stem": {
         "EN": "Without an SFOC, how close to a military aerodrome may an RPA be operated?",
         "ZH": "Without an SFOC, how close to a military aerodrome may an RPA be operated?"
@@ -1016,7 +1016,7 @@
       "certLevel": "BOTH",
       "type": "SINGLE",
       "selectCount": 1,
-      "difficulty": 1,
+      "difficulty": 0,
       "stem": {
         "EN": "A pilot who pushes on despite risks to demonstrate skill or impress others is displaying which hazardous attitude?",
         "ZH": "A pilot who pushes on despite risks to demonstrate skill or impress others is displaying which hazardous attitude?"
@@ -1653,7 +1653,7 @@
       "certLevel": "BOTH",
       "type": "SINGLE",
       "selectCount": 1,
-      "difficulty": 1,
+      "difficulty": 0,
       "stem": {
         "EN": "How does fog form?",
         "ZH": "How does fog form?"
@@ -1711,7 +1711,7 @@
       "certLevel": "BOTH",
       "type": "SINGLE",
       "selectCount": 1,
-      "difficulty": 2,
+      "difficulty": 0,
       "stem": {
         "EN": "In aviation, 'variation' refers to what?",
         "ZH": "In aviation, 'variation' refers to what?"

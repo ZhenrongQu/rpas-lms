@@ -27,7 +27,7 @@ describe("ExamService", () => {
     expect(questions![0].stem).toBeTruthy();
   });
 
-  it("free users receive only the selected Basic question subset", async () => {
+  it("free users receive only difficulty 0 Basic questions", async () => {
     const store = new InMemorySessionStore();
     const svc = new ExamService(store, () => 1_000, bank);
     const created = await svc.createMock("BASIC", "EN", 42, "user-123", "FREE");
@@ -37,7 +37,7 @@ describe("ExamService", () => {
     expect(session?.questionIds.length).toBe(created.total);
     expect(session?.questionIds.every((id) => {
       const q = bank.questions.find((item) => item.id === id);
-      return q?.moduleId === "air-law" || q?.moduleId === "human-factors";
+      return q?.difficulty === 0;
     })).toBe(true);
   });
 

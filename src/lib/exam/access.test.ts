@@ -14,12 +14,12 @@ describe("exam access policy", () => {
     expect(canCreateExam("PAID", "ADVANCED")).toBe(true);
   });
 
-  it("limits free Basic exams to a selected subset of the question bank", () => {
+  it("limits free users to difficulty 0 questions", () => {
     const free = questionsForAccess(bank.questions, "FREE", "BASIC");
     const paid = questionsForAccess(bank.questions, "PAID", "BASIC");
 
     expect(free.length).toBeGreaterThan(0);
     expect(free.length).toBeLessThan(paid.length);
-    expect(free.every((q) => q.moduleId === "air-law" || q.moduleId === "human-factors")).toBe(true);
+    expect(free.every((q) => q.difficulty === 0)).toBe(true);
   });
 });
