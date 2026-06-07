@@ -8,6 +8,12 @@ export function canCreateExam(tier: AccessTier, certLevel: ExamCertLevel): boole
   return false;
 }
 
+/** Lesson read access: FREE lessons are open to all; PAID lessons need a paid tier. */
+export function canViewLesson(tier: AccessTier, access: "FREE" | "PAID"): boolean {
+  if (access === "FREE") return true;
+  return tier === "PAID";
+}
+
 export function questionsForAccess(
   questions: Question[],
   tier: AccessTier,

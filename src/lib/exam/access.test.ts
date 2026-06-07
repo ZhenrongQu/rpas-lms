@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canCreateExam, questionsForAccess } from "./access";
+import { canCreateExam, canViewLesson, questionsForAccess } from "./access";
 import { loadQuestionBank } from "../content/loadBank";
 
 const bank = loadQuestionBank();
@@ -12,6 +12,15 @@ describe("exam access policy", () => {
     expect(canCreateExam("FREE", "ADVANCED")).toBe(false);
     expect(canCreateExam("PAID", "BASIC")).toBe(true);
     expect(canCreateExam("PAID", "ADVANCED")).toBe(true);
+  });
+
+  it("opens FREE lessons to everyone but restricts PAID lessons to paid users", () => {
+    expect(canViewLesson("GUEST", "FREE")).toBe(true);
+    expect(canViewLesson("FREE", "FREE")).toBe(true);
+    expect(canViewLesson("PAID", "FREE")).toBe(true);
+    expect(canViewLesson("GUEST", "PAID")).toBe(false);
+    expect(canViewLesson("FREE", "PAID")).toBe(false);
+    expect(canViewLesson("PAID", "PAID")).toBe(true);
   });
 
   it("limits free users to difficulty 0 questions", () => {
