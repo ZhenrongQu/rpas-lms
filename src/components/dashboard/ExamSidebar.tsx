@@ -1,8 +1,24 @@
 import { getTranslations } from 'next-intl/server';
 import { MODULE_IDS } from '@/lib/content/types';
+import { getModuleLessonCount, getCourseLessonCount } from '@/lib/lessons/catalog';
+import { listCompletedLessonIds } from '@/lib/lessons/progress';
+import { auth } from '../../../auth';
 
 export default async function ExamSidebar() {
   const t = await getTranslations();
+  const session = await auth();
+  const userId = session?.user?.id ?? null;
+  const completed = new Set(userId ? await listCompletedLessonIds(userId) : []);
+
+  const basicTotal = getCourseLessonCount('basic');
+  const basicDone = [...completed].filter((l) => l.startsWith('basic/')).length;
+  const overall = basicTotal === 0 ? 0 : Math.round((basicDone / basicTotal) * 100);
+  const pctFor = (id: string) => {
+    const tot = getModuleLessonCount('basic', id);
+    if (tot === 0) return null;
+    const done = [...completed].filter((l) => l.startsWith(`basic/${id}/`)).length;
+    return Math.round((done / tot) * 100);
+  };
 
   return (
     <aside className="sidebar">
@@ -11,21 +27,26 @@ export default async function ExamSidebar() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div className="tele-row">
             <span className="tele-label">{t('dashboard.overallProgress')}</span>
-            <span className="tele-value">0%</span>
+            <span className="tele-value">{overall}%</span>
           </div>
-          <div className="tele-bar"><div className="tele-bar-fill" style={{ width: '0%' }} /></div>
+          <div className="tele-bar"><div className="tele-bar-fill" style={{ width: `${overall}%` }} /></div>
         </div>
       </div>
 
       <div className="module-list">
         <div className="section-label" style={{ marginBottom: 8 }}>{t('dashboard.subjectAreas')}</div>
-        {MODULE_IDS.map((id) => (
-          <div key={id} className="module-item">
-            <div className="module-icon locked">○</div>
-            <div className="module-name">{t(`modules.${id}`)}</div>
-            <div className="module-prog">0%</div>
-          </div>
-        ))}
+        {MODULE_IDS.map((id) => {
+          const pct = pctFor(id);
+          return (
+            <div key={id} className="module-item">
+              <div className={`module-icon${pct === null ? ' locked' : ''}`}>
+                {pct === null ? '○' : pct === 100 ? '✓' : '◔'}
+              </div>
+              <div className="module-name">{t(`modules.${id}`)}</div>
+              <div className="module-prog">{pct === null ? '—' : `${pct}%`}</div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="telemetry">
