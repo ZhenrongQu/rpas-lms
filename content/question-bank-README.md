@@ -32,7 +32,7 @@ By cert level: 42 `BOTH`, 6 `ADVANCED`, 2 `BASIC`. (`BOTH` questions appear in b
   "certLevel": "BOTH",           // BASIC | ADVANCED | BOTH
   "type": "SINGLE",              // SINGLE | MULTI
   "selectCount": 1,              // SINGLE=1; MULTI=N (>=2)
-  "difficulty": 1,               // 1..3
+  "difficulty": 1,               // 0..3; 0 marks a free question
   "stem":        { "EN": "...", "ZH": "..." },
   "options": [ { "id": "a", "label": { "EN": "...", "ZH": "..." }, "isCorrect": true }, ... ],
   "explanation": { "EN": "...", "ZH": "..." },
@@ -49,6 +49,7 @@ By cert level: 42 `BOTH`, 6 `ADVANCED`, 2 `BASIC`. (`BOTH` questions appear in b
 5. **TC-style distractors** — plausible, non-trick; avoid "all of the above". Watch unit traps (400 ft AGL vs 400 ft ASL).
 6. **Tag** every question for analytics and targeted practice.
 7. **`id` is immutable** once shipped (exam sessions reference it); never renumber.
+8. **Access tier marker** — `difficulty: 0` marks a free question. `difficulty: 1..3` marks paid questions by increasing difficulty.
 
 ## Workflow
 ```

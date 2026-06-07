@@ -10,7 +10,7 @@ RPAS LMS 是一个基于 Next.js 的加拿大 RPAS / 无人机飞行员执照学
 - **React + TypeScript**：负责 UI 和应用逻辑。
 - **next-intl**：负责基于路由的 EN/ZH 国际化。
 - **Prisma + SQLite**：负责本地数据持久化。
-- **Auth.js / NextAuth v5 credentials provider**：负责邮箱密码登录。
+- **Auth.js / NextAuth v5**：负责 Google、Apple、验证码和邮箱密码登录。
 - **Zod**：负责题库和 API 请求体校验。
 - **Vitest**：负责单元测试和 route handler 测试。
 - **Tailwind CSS + 自定义 CSS**：负责无人机 HUD 风格界面。
@@ -46,21 +46,28 @@ pnpm db:push
 ```env
 DATABASE_URL="file:./dev.db"
 AUTH_SECRET="generate-with: openssl rand -base64 32"
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+APPLE_CLIENT_ID=""
+APPLE_CLIENT_SECRET=""
 ```
 
-`DATABASE_URL` 指向 Prisma 使用的 SQLite 数据库。`AUTH_SECRET` 是 Auth.js 用来签名 session/JWT 数据的密钥。
+`DATABASE_URL` 指向 Prisma 使用的 SQLite 数据库。`AUTH_SECRET` 是 Auth.js 用来签名 session/JWT 数据的密钥。Google 和 Apple 的变量用于 OAuth 登录；本地未配置时仍可使用邮箱/手机验证码和邮箱密码流程。
 
 ## 当前用户流程
 
 1. 学员访问 `/en` 或 `/zh`。
 2. Guest 用户可以访问 `/[locale]/intro`，查看公司介绍、服务介绍和课程介绍。
-3. 注册/登录后的免费用户可以启动 Basic 模拟考试，但只使用选中的免费题库子集。
-4. 完整题库和 Advanced 模拟考试预留给 `PAID` 用户。
-5. 客户端只拿到公开题目信息，不包含正确答案。
-6. 客户端按题提交所选 option id。
-7. 提交考试后，服务端评分并保存结果，同时返回错题解析。
-8. 成绩页展示分数、通过/失败状态、按科目拆分的结果和所有错题解释。
-9. 已登录用户可以在 Mission Log 中看到已提交的考试记录。
+3. 用户可以通过 Google、Apple、邮箱验证码、手机验证码或用户名注册/登录；用户名必须先验证邮箱或手机号。
+4. 注册用户默认是 `FREE`，可以启动 Basic 模拟考试，但只使用 `difficulty: 0` 的免费题目。
+5. 完整题库和 Advanced 模拟考试预留给 `PAID` 用户。
+6. 客户端只拿到公开题目信息，不包含正确答案。
+7. 客户端按题提交所选 option id。
+8. 提交考试后，服务端评分并保存结果，同时返回错题解析。
+9. 成绩页展示分数、通过/失败状态、按科目拆分的结果和所有错题解释。
+10. 已登录用户可以在 Mission Log 中看到已提交的考试记录。
+
+Registered users are `FREE` by default. Free users can access free lessons and questions marked `difficulty: 0`; paid users can access the full question bank. Username registration is allowed only after verifying an email or phone number.
 
 ## 项目结构
 
@@ -121,6 +128,10 @@ Next.js App Router 页面目录。
 
 - `app/api/auth/[...nextauth]/route.ts` 暴露 Auth.js handlers。
 - `app/api/auth/register/route.ts` 创建邮箱密码用户。
+- `app/api/auth/code/request/route.ts` 请求邮箱/手机 6 位验证码。
+- `app/api/auth/code/verify/route.ts` 校验验证码并创建或复用免费用户。
+- `app/api/auth/register/username/route.ts` 通过已验证联系方式或当前登录 session 绑定用户名。
+- `app/api/auth/username/check/route.ts` 检查用户名是否可用。
 - `app/api/exam/route.ts` 创建模拟考试 session。
 - `app/api/exam/[id]/questions/route.ts` 返回某个 session 的公开题目。
 - `app/api/exam/[id]/answer/route.ts` 保存用户选择的 option ids。
@@ -167,9 +178,13 @@ Next.js App Router 页面目录。
 
 ### `src/lib/auth/`
 
-密码相关工具。
+认证与账号服务。
 
 - `password.ts` 使用 `bcryptjs` 哈希和校验密码。
+- `types.ts` 定义认证 provider、验证码 channel 和访问等级类型。
+- `verificationCode.ts` 生成、哈希、校验、消费邮箱/手机 6 位验证码，并限制失败次数。
+- `delivery.ts` 封装验证码发送接口；开发/测试环境会输出到控制台，后续可替换为真实邮件或短信服务。
+- `account.ts` 创建/复用邮箱、手机号、用户名和 OAuth 用户，并维护 `UserIdentity`。
 
 ### `src/lib/db.ts`
 
@@ -204,11 +219,11 @@ UI 翻译文案。
 
 数据库 schema 和本地 SQLite 文件。
 
-- `schema.prisma` 定义 `User` 和 `ExamSession`。
+- `schema.prisma` 定义 `User`、`UserIdentity`、`VerificationCode` 和 `ExamSession`。
 - `dev.db` 是本地开发 SQLite 数据库。
 - `test.db` 是 Vitest 使用的 SQLite 测试数据库。
 
-当前 schema 持久化用户和考试 session。题目内容仍然来自 JSON 文件，而不是数据库表。
+当前 schema 持久化用户、登录身份、验证码和考试 session。题目内容仍然来自 JSON 文件，而不是数据库表。
 
 ### `docs/`
 
@@ -229,7 +244,20 @@ UI 翻译文案。
 
 ### Guest Session
 
-Guest 用户不登录只能访问免费介绍模块，不能启动考试。考试 session 现在要求登录后创建。免费注册用户默认是 `FREE` 访问等级，可以使用 Basic 的部分免费题库；完整题库和 Advanced 考试预留给 `PAID` 访问等级。
+Guest 用户不登录只能访问免费介绍模块，不能启动考试。考试 session 现在要求登录后创建。免费注册用户默认是 `FREE` 访问等级，可以使用 Basic 中标记为 `difficulty: 0` 的免费题目；完整题库和 Advanced 考试预留给 `PAID` 访问等级。
+
+### 注册和登录
+
+支持的注册/登录方式包括：
+
+- Google OAuth
+- Apple OAuth
+- 邮箱 6 位验证码
+- 手机 6 位验证码
+- 用户名注册，其中用户名必须绑定一个已验证邮箱或手机号
+- 旧版邮箱密码登录仍保留，用于兼容已有本地账号
+
+验证码目前通过 `delivery.ts` 抽象发送。开发和测试环境不会连接真实短信/邮件供应商，只会生成本地可验证的验证码记录；生产接入供应商时应替换该发送层。
 
 ### 服务端评分边界
 
