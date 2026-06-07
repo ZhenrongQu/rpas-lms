@@ -1,0 +1,63 @@
+---
+title: "RPAS Systems & Battery Safety"
+order: 1
+estMinutes: 7
+certLevel: BASIC
+access: FREE
+---
+
+You don't need to be an engineer, but you must understand the parts that keep your
+aircraft flying — and the battery that powers them, which is the single biggest
+safety hazard you carry.
+
+## The core systems
+
+- **Flight controller** — the "brains"; turns your inputs + sensor data into motor
+  commands via the **ESCs** (electronic speed controllers).
+- **IMU** (inertial measurement unit) — senses orientation/movement. **Leave the
+  aircraft still on a flat surface while it powers up** so the IMU initialises correctly.
+- **GNSS / GPS** — needs **at least 4 satellites** (most makers suggest **7+** before
+  launch); fewer at northern latitudes.
+- **Magnetometer (compass)** — tells the aircraft which way it points. **Calibrate away
+  from metal:** ~2 m from rebar, ~15 m from vehicles, ~55 m from high-tension powerlines.
+- **Barometer** — measures altitude; height shown is **relative to your take-off point**.
+
+## Battery safety (LiPo)
+
+Lithium-polymer cells pack a lot of energy and **fail dangerously** if abused.
+
+- **Never charge unattended** or near flammable materials.
+- Keep cells **above 15 °C before flight**; cold cuts flight time sharply and can drop
+  voltage suddenly. **Don't charge a cold battery** (below ~10 °C).
+- Let a hot pack **cool before charging**; keep packs out of direct sun.
+- **A swollen or impact-damaged battery is scrap** — isolate it and dispose of it
+  properly; never fly or charge it.
+
+<Caution>
+A LiPo fire is fast and intense. If a pack is dropped, swells, or gets hot, **stop** —
+do not fly it. Carry a way to contain a battery fire.
+</Caution>
+
+<Tip>
+In the cold, keep spare packs warm inside your jacket and warm/cool them **slowly** to
+avoid shock-heating. Track charge on **every** battery — aircraft, controller and tablet.
+</Tip>
+
+## Maintenance & logs
+
+Follow the manufacturer's maintenance program; inspect props and airframe for cracks,
+chips or fraying before each flight. Keep **flight logs (12 months)** and
+**maintenance logs (24 months)**.
+
+### Check your understanding
+
+<Checkpoint questionId="airframes-systems-0006" />
+
+## Key takeaways
+
+- Let the **IMU initialise still**; calibrate the **compass away from metal**.
+- GNSS wants **4 satellites minimum, ~7+ before launch**.
+- **Cold, swollen, or unattended-charging** batteries are the main hazards.
+- Inspect before every flight; keep flight (12 mo) and maintenance (24 mo) logs.
+
+*Sources: RPAS 101 pp.66–74 · CAR 901.78 (operating manual) · TP‑15263 §2 (Airframes & Systems).*

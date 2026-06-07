@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">
+  <rect x="1" y="1" width="638" height="478" rx="14" fill="#0a1626" stroke="#00d4ff" stroke-opacity="0.25"/>
+  <text x="24" y="34" fill="#00d4ff" font-size="17" font-weight="700" letter-spacing="1">CANADIAN AIRSPACE CLASSES · 加拿大空域等级</text>
+  <text x="616" y="34" text-anchor="end" fill="#9fb6c9" font-size="11">schematic, not to scale</text>
+  <line x1="24" y1="44" x2="616" y2="44" stroke="#00d4ff" stroke-opacity="0.18"/>
+
+  <!-- axis -->
+  <line x1="132" y1="62" x2="132" y2="404" stroke="#2a3b52" stroke-width="2"/>
+  <g font-size="11" fill="#9fb6c9" text-anchor="end">
+    <text x="124" y="106">18,000 ft</text>
+    <text x="124" y="150">12,500 ft</text>
+    <text x="124" y="252">3,000 ft AAE</text>
+    <text x="124" y="360">400 ft AGL</text>
+    <text x="124" y="402">SFC</text>
+  </g>
+
+  <!-- bands -->
+  <!-- A -->
+  <rect x="148" y="64" width="468" height="40" rx="5" fill="#10202f" stroke="#3a4d63"/>
+  <text x="162" y="89" fill="#9fb6c9" font-size="12.5"><tspan font-weight="700" fill="#cfe9f5">CLASS A</tspan> · 18,000 ft+ · IFR only — not for drones</text>
+  <!-- B -->
+  <rect x="148" y="108" width="468" height="38" rx="5" fill="#10202f" stroke="#3a4d63"/>
+  <text x="162" y="132" fill="#9fb6c9" font-size="12.5"><tspan font-weight="700" fill="#cfe9f5">CLASS B</tspan> · 12,500–18,000 ft — high level</text>
+  <!-- C/D/E -->
+  <rect x="148" y="150" width="468" height="96" rx="5" fill="#241a06" stroke="#ffaa00" stroke-opacity="0.7"/>
+  <text x="162" y="172" fill="#ffaa00" font-size="13" font-weight="700">CLASS C / D / E — CONTROLLED airspace</text>
+  <text x="162" y="192" fill="#cfe9f5" font-size="12">Around airports, surface up to ~3,000 ft AAE.</text>
+  <text x="162" y="212" fill="#ffaa00" font-size="12">Drones: Advanced certificate + safety-assured RPAS (Std 922)</text>
+  <text x="162" y="230" fill="#ffaa00" font-size="12">+ NAV CANADA authorization (NAV Drone) required.</text>
+  <!-- G -->
+  <rect x="148" y="250" width="468" height="154" rx="5" fill="#06140f" stroke="#1f4a3a"/>
+  <text x="162" y="272" fill="#cfe9f5" font-size="13" font-weight="700">CLASS G — UNCONTROLLED</text>
+  <text x="162" y="291" fill="#9fb6c9" font-size="12">Most low-level airspace. Basic and Advanced allowed,</text>
+  <text x="162" y="308" fill="#9fb6c9" font-size="12">no airspace authorization needed (still keep clear of aerodromes).</text>
+  <!-- 400ft line -->
+  <line x1="148" y1="356" x2="616" y2="356" stroke="#00ff88" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <rect x="148" y="358" width="468" height="46" rx="5" fill="#06160f" stroke="#00ff88" stroke-opacity="0.5"/>
+  <text x="172" y="386" fill="#00ff88" font-size="12.5" font-weight="700">DRONE BAND · ≤ 400 ft (122 m) AGL</text>
+  <!-- mini drone -->
+  <g transform="translate(560,381)" stroke="#00ff88" stroke-width="1.6">
+    <line x1="-12" y1="-5" x2="12" y2="5"/><line x1="-12" y1="5" x2="12" y2="-5"/>
+    <circle cx="-12" cy="-5" r="3" fill="none"/><circle cx="12" cy="-5" r="3" fill="none"/>
+    <circle cx="-12" cy="5" r="3" fill="none"/><circle cx="12" cy="5" r="3" fill="none"/>
+  </g>
+  <!-- ground -->
+  <rect x="132" y="404" width="484" height="6" fill="#0e1f33"/>
+
+  <!-- class F note -->
+  <text x="24" y="438" fill="#7fd6ef" font-size="12" font-weight="700">CLASS F — special use:</text>
+  <text x="190" y="438" fill="#9fb6c9" font-size="12">Advisory (CYA) · Restricted (CYR) · Danger (CYD). Permission from the controlling agency,</text>
+  <text x="190" y="456" fill="#9fb6c9" font-size="12">not NAV CANADA. CYR/CYD may bar entry even for sub-250 g drones.</text>
+</svg>

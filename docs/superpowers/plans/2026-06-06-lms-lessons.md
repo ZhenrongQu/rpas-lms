@@ -1,5 +1,14 @@
 # Plan 4 — LMS Lessons (MDX) + Progress + Checkpoint Gating
 
+> **Update (2026-06-07):** Bilingual lesson **content** for the Basic & Advanced courses
+> is now authored (see `content/lessons/README.md` and
+> `docs/superpowers/specs/2026-06-07-basic-advanced-lesson-content-design.md`). When
+> implementing this plan, apply that spec's §10 patches: locale **`fr`→`zh`** (the app
+> is en/zh, not en/fr), add a **`{course}` path segment** so `lessonId` =
+> `{course}/{moduleId}/{slug}`, and add an **`access: FREE|PAID`** frontmatter field +
+> a `canViewLesson(tier, access)` gate (mirroring `canCreateExam`). The authored content
+> already follows that structure.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add the "Learn" half of the platform — bilingual MDX lessons with a course sidebar (per-lesson completion checkmarks + % bar), inline checkpoint questions that gate progress ("answer correctly to continue"), per-user lesson-progress persistence, and real module progress on the dashboard — proven end-to-end with one fully-authored module (Air Law); the other 7 are scaffolded "coming soon".
