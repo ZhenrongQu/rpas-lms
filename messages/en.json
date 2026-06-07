@@ -1,5 +1,5 @@
 {
-  "nav": { "modules": "Modules", "exam": "Exam" },
+  "nav": { "modules": "Modules", "exam": "Exam", "learn": "Learn" },
   "auth": {
     "signIn": "Sign In",
     "register": "Create Account",
@@ -120,5 +120,34 @@
     "incorrect": "INCORRECT",
     "notAnswered": "(not answered)",
     "backToResults": "Back to Results"
+  },
+  "learn": {
+    "title": "Study Center",
+    "subtitle": "Two courses · build from Basic to Advanced",
+    "basicCourse": "Basic Operations",
+    "advancedCourse": "Advanced Operations",
+    "basicTagline": "Foundational knowledge for the Basic operating environment.",
+    "advancedTagline": "The higher-risk delta: controlled airspace, ops near people, comms.",
+    "free": "FREE",
+    "paid": "PAID",
+    "modules": "modules",
+    "lessons": "lessons",
+    "completeLabel": "complete",
+    "comingSoon": "Lessons for this module are coming soon.",
+    "backToModule": "Back to module",
+    "complete": "Mark Complete",
+    "completeNext": "Complete & Next",
+    "answerToContinue": "Answer the checkpoint to continue",
+    "lockedTitle": "Advanced lesson — paid access",
+    "lockedBody": "This lesson is part of the paid Advanced Operations course. Upgrade your account to unlock it."
+  },
+  "checkpoint": {
+    "title": "Apply Your Knowledge",
+    "loading": "Loading…",
+    "check": "Check Answer",
+    "correct": "Correct",
+    "incorrect": "Not quite",
+    "tryAgain": "Review the lesson and try again.",
+    "selectN": "Select {count}"
   }
 }

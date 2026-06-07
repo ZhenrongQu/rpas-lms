@@ -17,6 +17,7 @@ export default function HudHeader({
   const pathname = usePathname();
 
   const isModules = pathname === `/${locale}` || pathname === `/${locale}/`;
+  const isLearn = pathname.startsWith(`/${locale}/learn`);
   const isExam = pathname.startsWith(`/${locale}/exam`);
 
   // Same path under a target locale, swapping the leading locale segment.
@@ -79,6 +80,9 @@ export default function HudHeader({
       <nav className="nav-tabs">
         <Link href={`/${locale}`} className={`nav-tab${isModules ? ' active' : ''}`}>
           {t('modules')}
+        </Link>
+        <Link href={`/${locale}/learn`} className={`nav-tab${isLearn ? ' active' : ''}`}>
+          {t('learn')}
         </Link>
         <Link href={`/${locale}/exam`} className={`nav-tab${isExam ? ' active' : ''}`}>
           {t('exam')}

@@ -1,5 +1,5 @@
 {
-  "nav": { "modules": "课程模块", "exam": "模拟考试" },
+  "nav": { "modules": "课程模块", "exam": "模拟考试", "learn": "学习" },
   "auth": {
     "signIn": "登录",
     "register": "创建账号",
@@ -120,5 +120,34 @@
     "incorrect": "错误",
     "notAnswered": "（未作答）",
     "backToResults": "返回成绩页"
+  },
+  "learn": {
+    "title": "学习中心",
+    "subtitle": "两门课程 · 从 Basic 进阶到 Advanced",
+    "basicCourse": "基础运行 (Basic)",
+    "advancedCourse": "进阶运行 (Advanced)",
+    "basicTagline": "Basic 运行环境的基础知识。",
+    "advancedTagline": "更高风险的增量：受控空域、近人运行、航空通信。",
+    "free": "免费",
+    "paid": "付费",
+    "modules": "模块",
+    "lessons": "课",
+    "completeLabel": "已完成",
+    "comingSoon": "该模块的课程即将上线。",
+    "backToModule": "返回模块",
+    "complete": "标记完成",
+    "completeNext": "完成并继续",
+    "answerToContinue": "答对检查点后继续",
+    "lockedTitle": "进阶课程 — 付费内容",
+    "lockedBody": "本课属于付费的进阶运行 (Advanced) 课程。升级账户即可解锁。"
+  },
+  "checkpoint": {
+    "title": "应用你的知识",
+    "loading": "加载中…",
+    "check": "检查答案",
+    "correct": "正确",
+    "incorrect": "还差一点",
+    "tryAgain": "复习本课后再试一次。",
+    "selectN": "选择 {count} 项"
   }
 }
