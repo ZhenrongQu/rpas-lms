@@ -20,24 +20,17 @@ describe("POST /api/auth/register", () => {
     await prisma.$disconnect();
   });
 
-  it("creates a user with a hashed (not plaintext) password", async () => {
+  it("does not allow legacy password self-registration", async () => {
     const res = await register(req({ email: "a@test.local", password: "hunter2pw", name: "Ada" }));
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(410);
     const user = await prisma.user.findUnique({ where: { email: "a@test.local" } });
-    expect(user).not.toBeNull();
-    expect(user!.hashedPassword).not.toBe("hunter2pw");
-    expect(user!.displayName).toBe("Ada");
-    const identities = await prisma.userIdentity.findMany({ where: { userId: user!.id } });
-    expect(identities).toHaveLength(1);
-    expect(identities[0].provider).toBe("email");
-    expect(identities[0].providerAccountId).toBe("a@test.local");
-    expect(identities[0].verifiedAt).toBeNull();
+    expect(user).toBeNull();
   });
 
-  it("rejects a duplicate email with 409", async () => {
-    await register(req({ email: "dup@test.local", password: "hunter2pw" }));
+  it("does not leak whether an email is registered", async () => {
+    await prisma.user.create({ data: { email: "dup@test.local", accessTier: "FREE" } });
     const res = await register(req({ email: "dup@test.local", password: "anotherpw" }));
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(410);
   });
 
   it("rejects an invalid body with 400", async () => {

@@ -112,6 +112,11 @@ export class ExamService {
     return { certLevel: session.certLevel, expiresAt: session.expiresAt };
   }
 
+  async getSessionUserId(sessionId: string): Promise<string | null | undefined> {
+    const session = await this.store.get(sessionId);
+    return session ? session.userId ?? null : undefined;
+  }
+
   /** For server components: expiresAt to initialize the client timer. */
   async getExpiresAt(sessionId: string): Promise<number | null> {
     const session = await this.store.get(sessionId);

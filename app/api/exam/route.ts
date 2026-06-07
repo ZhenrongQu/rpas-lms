@@ -1,38 +1,13 @@
 import { z } from "zod";
 import { examService } from "../../../src/lib/exam/instance";
-import { canCreateExam, type AccessTier } from "../../../src/lib/exam/access";
+import { canCreateExam } from "../../../src/lib/exam/access";
+import { currentAccount } from "./sessionAuth";
 
 const CreateBody = z.object({
   certLevel: z.enum(["BASIC", "ADVANCED"]),
   locale: z.enum(["EN", "ZH"]),
   seed: z.number().int().optional(),
 });
-
-// Resolve the signed-in user id without breaking when there is no request
-// context (unit tests) or the user is a guest. Auth is additive, never gating.
-async function currentAccount(req: Request): Promise<{ userId: string | null; accessTier: AccessTier }> {
-  if (process.env.NODE_ENV === "test") {
-    const userId = req.headers.get("x-test-user-id");
-    const tier = req.headers.get("x-test-access-tier");
-    if (userId) {
-      return {
-        userId,
-        accessTier: tier === "PAID" ? "PAID" : "FREE",
-      };
-    }
-  }
-
-  try {
-    const { auth } = await import("../../../auth");
-    const session = await auth();
-    return {
-      userId: session?.user?.id ?? null,
-      accessTier: session?.user?.accessTier === "PAID" ? "PAID" : session?.user?.id ? "FREE" : "GUEST",
-    };
-  } catch {
-    return { userId: null, accessTier: "GUEST" };
-  }
-}
 
 export async function POST(req: Request): Promise<Response> {
   let raw: unknown;

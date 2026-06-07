@@ -18,7 +18,7 @@ Current implemented scope:
 - Guest-only intro module.
 - Free registered access for selected Basic content.
 - Paid-tier placeholder for full question-bank and Advanced access.
-- Auth.js based registration/login using Google, Apple, email code, phone code, username, and legacy email/password.
+- Auth.js based registration/login using Google, Apple, email code, phone code, username, and verified legacy email/password login.
 - Server-side grading, persisted exam sessions, result history, and post-submission review.
 
 Planned LMS scope:
@@ -41,7 +41,7 @@ Registered users are `FREE` by default. Payment is intentionally not implemented
 
 1. Guest opens `/en` or `/zh`.
 2. Guest can open the intro module for company, service, and course introduction.
-3. User registers or signs in with Google, Apple, email code, phone code, username, or legacy email/password.
+3. User registers or signs in with Google, Apple, email code, phone code, username, or verified legacy email/password.
 4. `FREE` user starts a Basic mock exam using only free questions.
 5. Client receives public question data only: no correct-answer flags, explanations, or references.
 6. User answers questions. Confirmed answers can still be changed before submit.
@@ -194,7 +194,7 @@ API routes:
 | `POST` | `/api/auth/code/verify` | Verify a code and create/reuse a free user. |
 | `POST` | `/api/auth/register/username` | Register or assign a username after verified contact/session. |
 | `GET` | `/api/auth/username/check` | Check username availability. |
-| `POST` | `/api/auth/register` | Legacy email/password registration. |
+| `POST` | `/api/auth/register` | Disabled legacy email/password self-registration endpoint. |
 | `*` | `/api/auth/[...nextauth]` | Auth.js handlers. |
 
 ## 9. Exam Access Rules

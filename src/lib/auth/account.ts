@@ -164,7 +164,7 @@ export async function findOrCreateOAuthUser({
 
   const normalizedEmail = email ? normalizeTarget("email", email) : null;
   const verifiedAt = now();
-  const existingUser = normalizedEmail
+  const existingUser = normalizedEmail && emailVerified
     ? await prisma.user.findUnique({ where: { email: normalizedEmail } })
     : null;
 
@@ -190,7 +190,7 @@ export async function findOrCreateOAuthUser({
 
   return prisma.user.create({
     data: {
-      email: normalizedEmail ?? undefined,
+      email: emailVerified ? normalizedEmail ?? undefined : undefined,
       displayName: displayName ?? undefined,
       emailVerifiedAt: emailVerified && normalizedEmail ? verifiedAt : undefined,
       accessTier: "FREE",

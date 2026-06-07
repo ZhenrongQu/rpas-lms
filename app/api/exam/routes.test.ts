@@ -86,7 +86,7 @@ describe("exam API route handlers", () => {
     );
     const { sessionId } = (await createRes.json()) as { sessionId: string };
 
-    const qRes = await getQuestions(new Request("http://test"), {
+    const qRes = await getQuestions(new Request("http://test", { headers: { "x-test-user-id": "u1" } }), {
       params: Promise.resolve({ id: sessionId }),
     });
     const questions = (await qRes.json()) as { id: string }[];
@@ -97,13 +97,14 @@ describe("exam API route handlers", () => {
     const ansRes = await postAnswer(
       new Request("http://test", {
         method: "POST",
+        headers: { "x-test-user-id": "u1" },
         body: JSON.stringify({ questionId: questions[0].id, selectedOptionIds: ["a"] }),
       }),
       { params: Promise.resolve({ id: sessionId }) },
     );
     expect(ansRes.status).toBe(200);
 
-    const subRes = await postSubmit(new Request("http://test", { method: "POST" }), {
+    const subRes = await postSubmit(new Request("http://test", { method: "POST", headers: { "x-test-user-id": "u1" } }), {
       params: Promise.resolve({ id: sessionId }),
     });
     const submitted = (await subRes.json()) as {
@@ -118,10 +119,27 @@ describe("exam API route handlers", () => {
   });
 
   it("404 when questions requested for an unknown session", async () => {
-    const res = await getQuestions(new Request("http://test"), {
+    const res = await getQuestions(new Request("http://test", { headers: { "x-test-user-id": "u1" } }), {
       params: Promise.resolve({ id: "missing" }),
     });
     expect(res.status).toBe(404);
+  });
+
+  it("403 when a different user accesses an existing session", async () => {
+    const createRes = await createExam(
+      new Request("http://test/api/exam", {
+        method: "POST",
+        headers: { "x-test-user-id": "u1", "x-test-access-tier": "FREE" },
+        body: JSON.stringify({ certLevel: "BASIC", locale: "EN", seed: 19 }),
+      }),
+    );
+    const { sessionId } = (await createRes.json()) as { sessionId: string };
+
+    const res = await getQuestions(new Request("http://test", { headers: { "x-test-user-id": "u2" } }), {
+      params: Promise.resolve({ id: sessionId }),
+    });
+
+    expect(res.status).toBe(403);
   });
 
   it("review is 404 before submit and 200 after submit", async () => {
@@ -134,16 +152,16 @@ describe("exam API route handlers", () => {
     );
     const { sessionId } = (await createRes.json()) as { sessionId: string };
 
-    const before = await getReview(new Request("http://test"), {
+    const before = await getReview(new Request("http://test", { headers: { "x-test-user-id": "u1" } }), {
       params: Promise.resolve({ id: sessionId }),
     });
     expect(before.status).toBe(404);
 
-    await postSubmit(new Request("http://test", { method: "POST" }), {
+    await postSubmit(new Request("http://test", { method: "POST", headers: { "x-test-user-id": "u1" } }), {
       params: Promise.resolve({ id: sessionId }),
     });
 
-    const after = await getReview(new Request("http://test"), {
+    const after = await getReview(new Request("http://test", { headers: { "x-test-user-id": "u1" } }), {
       params: Promise.resolve({ id: sessionId }),
     });
     expect(after.status).toBe(200);

@@ -137,6 +137,34 @@ describe("auth account service", () => {
     expect(identity?.userId).toBe(emailUser.id);
   });
 
+  it("does not link OAuth identity to an existing user when provider email is unverified", async () => {
+    const emailUser = await createOrLoginVerifiedContactUser({
+      channel: "email",
+      target: "pilot@example.com",
+      now: () => new Date("2026-06-06T00:00:00.000Z"),
+    });
+
+    const oauthUser = await findOrCreateOAuthUser({
+      provider: "google",
+      providerAccountId: "google-unverified",
+      email: "pilot@example.com",
+      emailVerified: false,
+      displayName: "Pilot",
+      now: () => new Date("2026-06-06T00:01:00.000Z"),
+    });
+
+    expect(oauthUser.id).not.toBe(emailUser.id);
+    const identity = await prisma.userIdentity.findUnique({
+      where: {
+        provider_providerAccountId: {
+          provider: "google",
+          providerAccountId: "google-unverified",
+        },
+      },
+    });
+    expect(identity?.userId).toBe(oauthUser.id);
+  });
+
   it("creates separate OAuth identities for google and apple", async () => {
     const google = await findOrCreateOAuthUser({
       provider: "google",
