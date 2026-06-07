@@ -1,5 +1,11 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "../db";
+import {
+  createOrLoginVerifiedContactUser,
+  createUsernameUser,
+  findOrCreateOAuthUser,
+  isUsernameAvailable,
+} from "./account";
 
 describe("auth account persistence", () => {
   beforeEach(async () => {
@@ -46,5 +52,88 @@ describe("auth account persistence", () => {
     expect(user.phoneVerifiedAt?.toISOString()).toBe("2026-06-06T00:00:00.000Z");
     expect(user.identities).toHaveLength(1);
     expect(user.identities[0].provider).toBe("email");
+  });
+});
+
+describe("auth account service", () => {
+  beforeEach(async () => {
+    await prisma.verificationCode.deleteMany();
+    await prisma.userIdentity.deleteMany();
+    await prisma.examSession.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  it("creates a free email user and email identity", async () => {
+    const user = await createOrLoginVerifiedContactUser({
+      channel: "email",
+      target: "pilot@example.com",
+      now: () => new Date("2026-06-06T00:00:00.000Z"),
+    });
+
+    expect(user.accessTier).toBe("FREE");
+    expect(user.email).toBe("pilot@example.com");
+    expect(user.emailVerifiedAt).not.toBeNull();
+
+    const identity = await prisma.userIdentity.findUnique({
+      where: {
+        provider_providerAccountId: {
+          provider: "email",
+          providerAccountId: "pilot@example.com",
+        },
+      },
+    });
+    expect(identity?.userId).toBe(user.id);
+  });
+
+  it("creates a username user only with a verified contact", async () => {
+    const user = await createUsernameUser({
+      username: "pilotone",
+      channel: "sms",
+      target: "+16045551234",
+      now: () => new Date("2026-06-06T00:00:00.000Z"),
+    });
+
+    expect(user.username).toBe("pilotone");
+    expect(user.phone).toBe("+16045551234");
+    expect(user.phoneVerifiedAt).not.toBeNull();
+  });
+
+  it("reports username availability", async () => {
+    expect(await isUsernameAvailable("pilotone")).toBe(true);
+    await createUsernameUser({
+      username: "pilotone",
+      channel: "email",
+      target: "pilot@example.com",
+      now: () => new Date("2026-06-06T00:00:00.000Z"),
+    });
+    expect(await isUsernameAvailable("pilotone")).toBe(false);
+  });
+
+  it("links OAuth identity to an existing verified email user", async () => {
+    const emailUser = await createOrLoginVerifiedContactUser({
+      channel: "email",
+      target: "pilot@example.com",
+      now: () => new Date("2026-06-06T00:00:00.000Z"),
+    });
+
+    const oauthUser = await findOrCreateOAuthUser({
+      provider: "google",
+      providerAccountId: "google-123",
+      email: "pilot@example.com",
+      emailVerified: true,
+      displayName: "Pilot",
+      now: () => new Date("2026-06-06T00:01:00.000Z"),
+    });
+
+    expect(oauthUser.id).toBe(emailUser.id);
+    const identity = await prisma.userIdentity.findUnique({
+      where: {
+        provider_providerAccountId: {
+          provider: "google",
+          providerAccountId: "google-123",
+        },
+      },
+    });
+    expect(identity?.userId).toBe(emailUser.id);
   });
 });
