@@ -68,7 +68,7 @@ export default function RegisterPage() {
     }
 
     setBusy(false);
-    router.push(`/${locale}`);
+    router.push(`/${locale}/dashboard`);
     router.refresh();
   }
 
@@ -76,10 +76,10 @@ export default function RegisterPage() {
     <div className="auth-view">
       <div className="hud-panel auth-card">
         <div className="auth-title">// {t('register')}</div>
-        <button type="button" className="btn-launch" onClick={() => signIn('google', { callbackUrl: `/${locale}` })}>
+        <button type="button" className="btn-launch" onClick={() => signIn('google', { callbackUrl: `/${locale}/dashboard` })}>
           {t('continueGoogle')}
         </button>
-        <button type="button" className="btn-launch" onClick={() => signIn('apple', { callbackUrl: `/${locale}` })}>
+        <button type="button" className="btn-launch" onClick={() => signIn('apple', { callbackUrl: `/${locale}/dashboard` })}>
           {t('continueApple')}
         </button>
         <label className="auth-label">{t('emailCode')}

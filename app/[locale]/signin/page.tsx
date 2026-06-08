@@ -49,7 +49,7 @@ export default function SignInPage() {
       setError(t('verificationFailed'));
       return;
     }
-    router.push(`/${locale}`);
+    router.push(`/${locale}/dashboard`);
     router.refresh();
   }
 
@@ -63,7 +63,7 @@ export default function SignInPage() {
       setError(t('invalidCredentials'));
       return;
     }
-    router.push(`/${locale}`);
+    router.push(`/${locale}/dashboard`);
     router.refresh();
   }
 
@@ -71,10 +71,10 @@ export default function SignInPage() {
     <div className="auth-view">
       <div className="hud-panel auth-card">
         <div className="auth-title">// {t('signIn')}</div>
-        <button type="button" className="btn-launch" onClick={() => signIn('google', { callbackUrl: `/${locale}` })}>
+        <button type="button" className="btn-launch" onClick={() => signIn('google', { callbackUrl: `/${locale}/dashboard` })}>
           {t('continueGoogle')}
         </button>
-        <button type="button" className="btn-launch" onClick={() => signIn('apple', { callbackUrl: `/${locale}` })}>
+        <button type="button" className="btn-launch" onClick={() => signIn('apple', { callbackUrl: `/${locale}/dashboard` })}>
           {t('continueApple')}
         </button>
 
