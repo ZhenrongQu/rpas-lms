@@ -16,7 +16,8 @@ export default function HudHeader({
   const tAuth = useTranslations('auth');
   const pathname = usePathname();
 
-  const isModules = pathname === `/${locale}` || pathname === `/${locale}/`;
+  const isHome = pathname === `/${locale}` || pathname === `/${locale}/`;
+  const isModules = pathname.startsWith(`/${locale}/dashboard`);
   const isLearn = pathname.startsWith(`/${locale}/learn`);
   const isExam = pathname.startsWith(`/${locale}/exam`);
 
@@ -27,7 +28,7 @@ export default function HudHeader({
   return (
     <header className="hud-header">
       {/* Logo */}
-      <div className="logo-mark">
+      <Link href={`/${locale}`} className="logo-mark">
         <svg width="36" height="36" viewBox="0 0 40 40" fill="none" style={{ filter: 'drop-shadow(0 0 8px #00d4ff)' }}>
           <line x1="20" y1="20" x2="8"  y2="8"  stroke="#00d4ff" strokeWidth="1.5"/>
           <line x1="20" y1="20" x2="32" y2="8"  stroke="#00d4ff" strokeWidth="1.5"/>
@@ -44,7 +45,7 @@ export default function HudHeader({
           <div className="logo-text">RPAS ACADEMY</div>
           <div className="logo-sub">Transport Canada · TP-15263</div>
         </div>
-      </div>
+      </Link>
 
       <div className="header-divider" />
 
@@ -78,7 +79,10 @@ export default function HudHeader({
 
       {/* Nav tabs */}
       <nav className="nav-tabs">
-        <Link href={`/${locale}`} className={`nav-tab${isModules ? ' active' : ''}`}>
+        <Link href={`/${locale}`} className={`nav-tab${isHome ? ' active' : ''}`}>
+          {t('home')}
+        </Link>
+        <Link href={`/${locale}/dashboard`} className={`nav-tab${isModules ? ' active' : ''}`}>
           {t('modules')}
         </Link>
         <Link href={`/${locale}/learn`} className={`nav-tab${isLearn ? ' active' : ''}`}>
