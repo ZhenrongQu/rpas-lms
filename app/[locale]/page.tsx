@@ -33,7 +33,7 @@ export default async function DashboardPage({ params }: Props) {
 
   return (
     <div className="dashboard-body">
-      <ExamSidebar />
+      <ExamSidebar locale={locale} />
 
       <div className="dashboard-content">
         {/* Header */}

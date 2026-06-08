@@ -281,6 +281,7 @@ html, body {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 10px; border: 1px solid transparent;
   border-radius: 2px; cursor: pointer; transition: all 0.2s;
+  text-decoration: none;
 }
 .module-item:hover { background: rgba(0,212,255,0.04); border-color: var(--border); }
 .module-item.active { background: var(--cyan-glow); border-color: var(--border-glow); }
@@ -808,7 +809,7 @@ html, body {
 .review-meta .bad { color: var(--red); }
 
 /* ---- Learn / lessons ---- */
-.learn-layout { display: flex; gap: 20px; align-items: flex-start; padding: 20px 24px; }
+.learn-layout { display: flex; gap: 20px; align-items: stretch; padding: 20px 24px; height: 100%; }
 .learn-sidebar { min-width: 240px; }
 .lesson-item { display: flex; align-items: center; gap: 8px; padding: 8px 6px; border-radius: 4px;
   text-decoration: none; color: rgba(255,255,255,0.7); font-family: var(--font-ui); font-size: 13px; }
@@ -816,7 +817,9 @@ html, body {
 .lesson-item.active { background: rgba(0,212,255,0.12); color: #fff; }
 .lesson-check { width: 16px; color: rgba(255,255,255,0.4); }
 .lesson-check.done { color: var(--green); }
-.lesson-main { flex: 1; max-width: 760px; }
+.lesson-main { flex: 1; max-width: 760px; overflow-y: auto; min-height: 0; }
+.lesson-main::-webkit-scrollbar { width: 3px; }
+.lesson-main::-webkit-scrollbar-thumb { background: var(--cyan-dim); border-radius: 2px; }
 .lesson-h1 { font-family: var(--font-display); color: #fff; font-size: 24px; margin-bottom: 18px; }
 .lesson-prose { font-family: var(--font-ui); color: rgba(255,255,255,0.85); line-height: 1.7; font-size: 15px; }
 .lesson-prose h2 { font-family: var(--font-display); color: var(--cyan); font-size: 17px; margin: 24px 0 8px; }

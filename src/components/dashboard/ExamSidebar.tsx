@@ -1,10 +1,11 @@
+import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { MODULE_IDS } from '@/lib/content/types';
 import { getModuleLessonCount, getCourseLessonCount } from '@/lib/lessons/catalog';
 import { listCompletedLessonIds } from '@/lib/lessons/progress';
 import { auth } from '../../../auth';
 
-export default async function ExamSidebar() {
+export default async function ExamSidebar({ locale }: { locale: string }) {
   const t = await getTranslations();
   const session = await auth();
   const userId = session?.user?.id ?? null;
@@ -37,14 +38,21 @@ export default async function ExamSidebar() {
         <div className="section-label" style={{ marginBottom: 8 }}>{t('dashboard.subjectAreas')}</div>
         {MODULE_IDS.map((id) => {
           const pct = pctFor(id);
-          return (
-            <div key={id} className="module-item">
+          const row = (
+            <>
               <div className={`module-icon${pct === null ? ' locked' : ''}`}>
                 {pct === null ? '○' : pct === 100 ? '✓' : '◔'}
               </div>
               <div className="module-name">{t(`modules.${id}`)}</div>
               <div className="module-prog">{pct === null ? '—' : `${pct}%`}</div>
-            </div>
+            </>
+          );
+          return pct === null ? (
+            <div key={id} className="module-item">{row}</div>
+          ) : (
+            <Link key={id} href={`/${locale}/learn/basic/${id}`} className="module-item">
+              {row}
+            </Link>
           );
         })}
       </div>
