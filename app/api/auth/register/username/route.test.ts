@@ -1,11 +1,9 @@
-import bcrypt from "bcryptjs";
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "../../../../../src/lib/db";
-import { POST as requestCode } from "../../code/request/route";
 import { GET as checkUsername } from "../../username/check/route";
 import { POST as registerUsername } from "./route";
 
-describe("username registration routes", () => {
+describe("username auth routes", () => {
   beforeEach(async () => {
     await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
@@ -27,35 +25,15 @@ describe("username registration routes", () => {
     expect(await taken.json()).toEqual({ available: false });
   });
 
-  it("creates a username user after email code verification", async () => {
-    await requestCode(
-      new Request("http://test/api/auth/code/request", {
-        method: "POST",
-        body: JSON.stringify({ channel: "email", target: "pilot@example.com" }),
-      }),
-    );
-    const row = await prisma.verificationCode.findFirstOrThrow();
-    await prisma.verificationCode.update({
-      where: { id: row.id },
-      data: { codeHash: await bcrypt.hash("123456", 10) },
-    });
-
+  it("does not allow standalone username registration", async () => {
     const res = await registerUsername(
       new Request("http://test/api/auth/register/username", {
         method: "POST",
-        body: JSON.stringify({
-          username: "pilotone",
-          channel: "email",
-          target: "pilot@example.com",
-          code: "123456",
-        }),
+        body: JSON.stringify({ username: "pilotone" }),
       }),
     );
 
-    expect(res.status).toBe(201);
-    const body = await res.json();
-    expect(body.user.username).toBe("pilotone");
-    expect(body.user.email).toBe("pilot@example.com");
-    expect(body.user.accessTier).toBe("FREE");
+    expect(res.status).toBe(410);
+    expect(await res.json()).toEqual({ error: "username registration disabled" });
   });
 });

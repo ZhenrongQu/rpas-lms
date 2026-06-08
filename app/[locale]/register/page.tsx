@@ -6,68 +6,67 @@ import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useTranslations, useLocale } from 'next-intl';
 
-type Mode = 'email' | 'phone' | 'username';
-
 export default function RegisterPage() {
   const t = useTranslations('auth');
   const locale = useLocale();
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>('email');
-  const [target, setTarget] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
   const [username, setUsername] = useState('');
   const [code, setCode] = useState('');
-  const [codeSent, setCodeSent] = useState(false);
+  const [verificationRequested, setVerificationRequested] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const channel = mode === 'phone' ? 'sms' : target.includes('@') ? 'email' : 'sms';
+  function optional(value: string): string | undefined {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }
 
-  async function sendCode() {
+  async function register(e: React.FormEvent) {
+    e.preventDefault();
     setBusy(true);
     setError(null);
-    const res = await fetch('/api/auth/code/request', {
+    const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channel, target }),
+      body: JSON.stringify({
+        email,
+        password,
+        phone: optional(phone),
+        username: optional(username),
+      }),
     });
     setBusy(false);
     if (!res.ok) {
       setError(t('registerFailed'));
       return;
     }
-    setCodeSent(true);
+    setVerificationRequested(true);
   }
 
-  async function verify() {
+  async function verifyEmail(e: React.FormEvent) {
+    e.preventDefault();
     setBusy(true);
     setError(null);
-    const signInResult = await signIn('code', {
-      channel,
-      target,
-      code,
-      redirect: false,
+    const res = await fetch('/api/auth/register/verify-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code }),
     });
-
-    if (signInResult?.error) {
+    if (!res.ok) {
       setBusy(false);
       setError(t('verificationFailed'));
       return;
     }
 
-    if (mode === 'username') {
-      const res = await fetch('/api/auth/register/username', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
-      });
-      if (!res.ok) {
-        setBusy(false);
-        setError(t('usernameUnavailable'));
-        return;
-      }
-    }
-
+    const signInResult = await signIn('credentials', { email, password, redirect: false });
     setBusy(false);
+    if (signInResult?.error) {
+      setError(t('invalidCredentials'));
+      return;
+    }
     router.push(`/${locale}/dashboard`);
     router.refresh();
   }
@@ -82,40 +81,41 @@ export default function RegisterPage() {
         <button type="button" className="btn-launch" onClick={() => signIn('apple', { callbackUrl: `/${locale}/dashboard` })}>
           {t('continueApple')}
         </button>
-        <label className="auth-label">{t('emailCode')}
-          <input type="radio" checked={mode === 'email'} onChange={() => setMode('email')} />
-        </label>
-        <label className="auth-label">{t('phoneCode')}
-          <input type="radio" checked={mode === 'phone'} onChange={() => setMode('phone')} />
-        </label>
-        <label className="auth-label">{t('username')}
-          <input type="radio" checked={mode === 'username'} onChange={() => setMode('username')} />
-        </label>
-        {mode === 'username' && (
+
+        <form onSubmit={verificationRequested ? verifyEmail : register}>
+          <label className="auth-label">{t('email')}
+            <input className="auth-input" type="email" value={email} required disabled={verificationRequested}
+              onChange={(e) => setEmail(e.target.value)} />
+          </label>
+          <label className="auth-label">{t('password')}
+            <input className="auth-input" type="password" value={password} required disabled={verificationRequested}
+              onChange={(e) => setPassword(e.target.value)} />
+          </label>
+          <label className="auth-label">{t('phone')}
+            <input className="auth-input" type="tel" value={phone} disabled={verificationRequested}
+              onChange={(e) => setPhone(e.target.value)} />
+          </label>
           <label className="auth-label">{t('username')}
-            <input className="auth-input" type="text" value={username} required
+            <input className="auth-input" type="text" value={username} disabled={verificationRequested}
               onChange={(e) => setUsername(e.target.value)} />
           </label>
-        )}
-        <label className="auth-label">{mode === 'phone' ? t('phone') : t('email')}
-          <input className="auth-input" type={mode === 'phone' ? 'tel' : 'text'} value={target} required
-            onChange={(e) => {
-              setTarget(e.target.value);
-              setCodeSent(false);
-            }} />
-        </label>
-        <button className="btn-launch" type="button" disabled={busy || !target} onClick={sendCode}>
-          {busy ? t('working') : t('sendCode')}
-        </button>
-        {codeSent && <div className="auth-link">{t('codeSent')}</div>}
-        <label className="auth-label">{t('code')}
-          <input className="auth-input" type="text" inputMode="numeric" value={code} required
-            onChange={(e) => setCode(e.target.value)} />
-        </label>
-        {error && <div className="auth-error">{error}</div>}
-        <button className="btn-launch" type="button" disabled={busy || !codeSent || !code} onClick={verify}>
-          {busy ? t('working') : t('verifyCode')}
-        </button>
+
+          {verificationRequested && (
+            <>
+              <div className="auth-link">{t('emailVerificationRequired')}</div>
+              <label className="auth-label">{t('code')}
+                <input className="auth-input" type="text" inputMode="numeric" value={code} required
+                  onChange={(e) => setCode(e.target.value)} />
+              </label>
+            </>
+          )}
+
+          {error && <div className="auth-error">{error}</div>}
+          <button className="btn-launch" type="submit" disabled={busy || !email || !password || (verificationRequested && !code)}>
+            {busy ? t('working') : verificationRequested ? t('verifyEmail') : t('register')}
+          </button>
+        </form>
+
         <Link href={`/${locale}/signin`} className="auth-link">{t('haveAccount')}</Link>
       </div>
     </div>

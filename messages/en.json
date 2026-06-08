@@ -134,7 +134,14 @@
     "code": "6-digit code",
     "codeSent": "Verification code sent.",
     "usernameUnavailable": "Username is unavailable.",
-    "verificationFailed": "Invalid or expired code."
+    "verificationFailed": "Invalid or expired code.",
+    "emailVerificationRequired": "Check your email for the verification code.",
+    "verifyEmail": "Verify email",
+    "identifierType": "Login with",
+    "loginWithEmail": "Email",
+    "loginWithPhone": "Phone",
+    "loginWithUsername": "Username",
+    "emailVerified": "Email verified. Signing you in..."
   },
   "dashboard": {
     "title": "Mission Modules",

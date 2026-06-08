@@ -11,30 +11,58 @@ function req(body: unknown) {
 
 describe("POST /api/auth/register", () => {
   beforeEach(async () => {
+    await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
     await prisma.user.deleteMany();
   });
+
   afterAll(async () => {
+    await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
     await prisma.user.deleteMany();
     await prisma.$disconnect();
   });
 
-  it("does not allow legacy password self-registration", async () => {
-    const res = await register(req({ email: "a@test.local", password: "hunter2pw", name: "Ada" }));
-    expect(res.status).toBe(410);
-    const user = await prisma.user.findUnique({ where: { email: "a@test.local" } });
-    expect(user).toBeNull();
+  it("creates a pending password account and sends an email verification code", async () => {
+    const res = await register(req({
+      email: "Pilot@Example.COM",
+      password: "correct-password",
+      username: "PilotOne",
+      phone: "(604) 555-1234",
+    }));
+
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ ok: true, emailVerificationRequired: true });
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: "pilot@example.com" } });
+    expect(user.username).toBe("pilotone");
+    expect(user.phone).toBe("+16045551234");
+    expect(user.emailVerifiedAt).toBeNull();
+    expect(user.hashedPassword).toBeTruthy();
+
+    const code = await prisma.verificationCode.findFirstOrThrow({
+      where: { channel: "email", target: "pilot@example.com" },
+    });
+    expect(code.codeHash).toBeTruthy();
   });
 
-  it("does not leak whether an email is registered", async () => {
-    await prisma.user.create({ data: { email: "dup@test.local", accessTier: "FREE" } });
-    const res = await register(req({ email: "dup@test.local", password: "anotherpw" }));
-    expect(res.status).toBe(410);
-  });
-
-  it("rejects an invalid body with 400", async () => {
-    const res = await register(req({ email: "not-an-email", password: "x" }));
+  it("rejects invalid bodies", async () => {
+    const res = await register(req({ email: "bad", password: "short" }));
     expect(res.status).toBe(400);
+  });
+
+  it("rejects a verified duplicate email", async () => {
+    await prisma.user.create({
+      data: {
+        email: "dup@example.com",
+        hashedPassword: "hash",
+        emailVerifiedAt: new Date("2026-06-08T00:00:00.000Z"),
+        accessTier: "FREE",
+      },
+    });
+
+    const res = await register(req({ email: "dup@example.com", password: "correct-password" }));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "email_already_registered" });
   });
 });
