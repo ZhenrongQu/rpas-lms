@@ -57,11 +57,12 @@ flight-operations/advanced-ops.
 
 ## Integration status
 
-This content is **not yet wired into the app.** It targets the lessons feature in
-`docs/superpowers/plans/2026-06-06-lms-lessons.md` (Plan 4), which still needs the
-patches in the design spec §10 (locale `fr`→`zh`, the `{course}` path segment, and the
-`access` frontmatter + `canViewLesson` gating). Until then these files validate but do
-not render.
+This content is **wired into the app** by the lessons feature
+(`docs/superpowers/plans/2026-06-06-lms-lessons.md`, Plan 4) with the design spec §10
+patches applied: locale `fr`→`zh`, the `{course}` path segment, and the `access`
+frontmatter + `canViewLesson` gating. Lessons render at
+`/{locale}/learn/{course}/{moduleId}/{slug}` (catalog loader: `src/lib/lessons/`,
+pages: `app/[locale]/learn/`). Basic is open to all; Advanced requires a paid tier.
 
 ## Validate
 

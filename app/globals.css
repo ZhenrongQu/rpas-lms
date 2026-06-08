@@ -806,3 +806,70 @@ html, body {
 .review-meta-label { color: rgba(0, 212, 255, 0.7); }
 .review-meta .ok { color: var(--green); }
 .review-meta .bad { color: var(--red); }
+
+/* ---- Learn / lessons ---- */
+.learn-layout { display: flex; gap: 20px; align-items: flex-start; padding: 20px 24px; }
+.learn-sidebar { min-width: 240px; }
+.lesson-item { display: flex; align-items: center; gap: 8px; padding: 8px 6px; border-radius: 4px;
+  text-decoration: none; color: rgba(255,255,255,0.7); font-family: var(--font-ui); font-size: 13px; }
+.lesson-item:hover { background: rgba(0,212,255,0.06); }
+.lesson-item.active { background: rgba(0,212,255,0.12); color: #fff; }
+.lesson-check { width: 16px; color: rgba(255,255,255,0.4); }
+.lesson-check.done { color: var(--green); }
+.lesson-main { flex: 1; max-width: 760px; }
+.lesson-h1 { font-family: var(--font-display); color: #fff; font-size: 24px; margin-bottom: 18px; }
+.lesson-prose { font-family: var(--font-ui); color: rgba(255,255,255,0.85); line-height: 1.7; font-size: 15px; }
+.lesson-prose h2 { font-family: var(--font-display); color: var(--cyan); font-size: 17px; margin: 24px 0 8px; }
+.lesson-prose h3 { color: #fff; font-size: 15px; margin: 18px 0 6px; letter-spacing: 0.04em; }
+.lesson-prose ul { padding-left: 20px; }
+.lesson-prose strong { color: #fff; }
+.lesson-prose img { max-width: 100%; height: auto; margin: 16px 0; border-radius: 6px; }
+.lesson-prose em { color: rgba(255,255,255,0.55); font-size: 13px; }
+.callout { display: flex; gap: 10px; padding: 12px 14px; border-radius: 6px; margin: 14px 0;
+  border-left: 3px solid; font-size: 14px; }
+.callout-icon { font-family: var(--font-mono); font-weight: 700; }
+.callout-tip { background: rgba(0,255,136,0.06); border-color: var(--green); }
+.callout-caution { background: rgba(255,56,96,0.06); border-color: var(--red); }
+.callout-note { background: rgba(0,212,255,0.06); border-color: var(--cyan); }
+.lesson-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; }
+.module-card-link { text-decoration: none; }
+.module-landing { padding: 24px; max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.coming-soon { padding: 28px; font-family: var(--font-mono); color: rgba(255,255,255,0.5); }
+.lesson-index { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.lesson-index-row { display: flex; justify-content: space-between; align-items: center; padding: 16px;
+  text-decoration: none; color: #fff; font-family: var(--font-ui); }
+.lesson-index-title { font-weight: 500; }
+.lesson-index-min { color: var(--cyan); font-family: var(--font-mono); font-size: 12px; }
+/* learn hub course cards */
+.course-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 8px; }
+.course-card { display: flex; flex-direction: column; gap: 8px; padding: 22px; text-decoration: none; color: #fff; }
+.course-badge { align-self: flex-start; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em;
+  padding: 3px 8px; border-radius: 3px; }
+.course-badge.free { color: var(--green); border: 1px solid var(--green); }
+.course-badge.paid { color: var(--amber); border: 1px solid var(--amber); }
+.course-name { font-family: var(--font-display); font-size: 20px; }
+.course-tagline { color: rgba(255,255,255,0.7); font-family: var(--font-ui); font-size: 13px; line-height: 1.5; }
+.course-meta { color: var(--cyan); font-family: var(--font-mono); font-size: 12px; margin-top: 4px; }
+/* locked gate */
+.locked-gate { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 28px; text-align: center; }
+.locked-icon { font-size: 32px; }
+.locked-title { font-family: var(--font-display); color: var(--amber); font-size: 18px; }
+.locked-body { color: rgba(255,255,255,0.7); font-family: var(--font-ui); font-size: 14px; max-width: 420px; }
+/* checkpoint */
+.checkpoint { border: 1px solid rgba(0,212,255,0.25); border-radius: 8px; padding: 16px; margin: 20px 0;
+  background: rgba(0,0,0,0.25); }
+.checkpoint.ok { border-color: var(--green); }
+.checkpoint.bad { border-color: var(--red); }
+.checkpoint-tag { font-family: var(--font-mono); color: var(--cyan); font-size: 11px; letter-spacing: 0.1em; }
+.checkpoint-stem { font-family: var(--font-ui); color: #fff; font-size: 15px; margin: 8px 0 12px; }
+.checkpoint-hint { font-family: var(--font-mono); font-size: 11px; color: var(--amber); margin-bottom: 8px; }
+.checkpoint-options { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cp-opt { width: 100%; text-align: left; padding: 10px 12px; border-radius: 4px; cursor: pointer;
+  background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); color: rgba(255,255,255,0.85);
+  font-family: var(--font-ui); font-size: 14px; }
+.cp-opt.selected { border-color: var(--cyan); background: rgba(0,212,255,0.12); }
+.cp-check { margin-top: 12px; }
+.checkpoint-feedback { margin-top: 12px; font-family: var(--font-mono); font-size: 13px; }
+.checkpoint-feedback.ok { color: var(--green); }
+.checkpoint-feedback.bad { color: var(--red); }
+.checkpoint-feedback p { color: rgba(255,255,255,0.8); margin-top: 6px; line-height: 1.5; }

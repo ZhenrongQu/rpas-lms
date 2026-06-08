@@ -21,6 +21,18 @@ model User {
   updatedAt       DateTime       @updatedAt
   identities      UserIdentity[]
   examSessions    ExamSession[]
+  lessonProgress  LessonProgress[]
+}
+
+model LessonProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  lessonId    String
+  completedAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
 }
 
 model UserIdentity {
