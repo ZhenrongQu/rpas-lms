@@ -1,5 +1,115 @@
 {
-  "nav": { "modules": "Modules", "exam": "Exam", "learn": "Learn" },
+  "nav": { "home": "Home", "modules": "Modules", "exam": "Exam", "learn": "Learn" },
+  "home": {
+    "hero": {
+      "kicker": "Transport Canada · TP-15263",
+      "name": "RPAS ACADEMY",
+      "slogan": "Fly legal. Fly certified.",
+      "lede": "Canada's focused study platform for RPAS pilots — clear lessons, a practice question bank, and realistic mock exams for both Basic and Advanced certification.",
+      "ctaPrimary": "Start free with Basic",
+      "ctaSecondary": "Compare the tracks",
+      "imageAlt": "Brand hero image",
+      "imageNote": "Drop your brand hero image here",
+      "stats": [
+        { "value": "8", "label": "Knowledge areas" },
+        { "value": "13", "label": "Guided lessons" },
+        { "value": "2", "label": "Certification tracks" }
+      ]
+    },
+    "flow": {
+      "kicker": "The flight path",
+      "title": "From first lesson to licensed pilot",
+      "steps": [
+        { "no": "01", "title": "Study", "body": "Work through bite-sized lessons mapped to every TP-15263 knowledge area." },
+        { "no": "02", "title": "Practice", "body": "Drill the question bank with explanations for every answer." },
+        { "no": "03", "title": "Mock exam", "body": "Sit a timed, exam-accurate mock and review your weak areas." },
+        { "no": "04", "title": "Get certified", "body": "Walk into the official Transport Canada exam ready to pass." }
+      ]
+    },
+    "tracks": {
+      "kicker": "Services",
+      "title": "Two tracks, one flight path",
+      "subtitle": "Start with Basic for free, then add the Advanced delta when you're ready to fly in higher-risk environments.",
+      "learnTitle": "What you'll cover",
+      "examTitle": "Mock exam",
+      "basic": {
+        "badge": "FREE",
+        "name": "Basic Operations",
+        "for": "New pilots flying in lower-risk, uncontrolled airspace, away from bystanders.",
+        "points": [
+          "Air law & regulations",
+          "Airframes, systems & batteries",
+          "Human factors & decision-making",
+          "Meteorology & flight planning"
+        ],
+        "exam": "35 questions · 90 min · Pass 65%",
+        "cta": "Start learning"
+      },
+      "advanced": {
+        "badge": "PAID",
+        "name": "Advanced Operations",
+        "for": "Certified pilots stepping up to controlled airspace and operations near people.",
+        "points": [
+          "Controlled airspace & authorizations",
+          "Operations near and over people",
+          "Aviation communications",
+          "Advanced weather & site planning"
+        ],
+        "exam": "50 questions · 60 min · Pass 80%",
+        "cta": "Explore Advanced"
+      }
+    },
+    "privileges": {
+      "kicker": "After you certify",
+      "title": "What your certificate lets you fly",
+      "subtitle": "How operating privileges compare once you hold each certificate. Always confirm against the current rules before every flight.",
+      "colFeature": "Operation",
+      "colBasic": "Basic",
+      "colAdvanced": "Advanced",
+      "rows": [
+        { "feature": "Fly in uncontrolled airspace", "basic": "yes", "advanced": "yes" },
+        { "feature": "Fly in controlled airspace", "basic": "no", "advanced": "With NAV CANADA authorization" },
+        { "feature": "Distance from bystanders", "basic": "Stay 30 m or more", "advanced": "Closer than 30 m allowed" },
+        { "feature": "Fly over bystanders", "basic": "no", "advanced": "With a compliant drone" },
+        { "feature": "Fly near airports & heliports", "basic": "no", "advanced": "With authorization" },
+        { "feature": "Drones 250 g – 25 kg", "basic": "yes", "advanced": "yes" }
+      ],
+      "footnote": "Sample summary for orientation only — not operational advice. Refer to the current Canadian Aviation Regulations (CARs)."
+    },
+    "reviews": {
+      "kicker": "Reviews",
+      "title": "What pilots say",
+      "disclaimer": "Sample testimonials shown for demonstration.",
+      "items": [
+        { "name": "Jordan M.", "role": "Real-estate videographer · Calgary", "rating": 5, "quote": "The mock exams felt exactly like the real Basic test. Passed on my first try with room to spare." },
+        { "name": "Priya S.", "role": "Survey drone operator · Toronto", "rating": 5, "quote": "The Advanced airspace and comms lessons finally made controlled-airspace requests click for me." },
+        { "name": "Marc-André L.", "role": "Hobbyist pilot · Montréal", "rating": 4, "quote": "Clean, distraction-free lessons, and the question-bank explanations are genuinely useful." },
+        { "name": "Dana W.", "role": "Ag-tech field tech · Saskatoon", "rating": 5, "quote": "Studied on my phone between jobs and went from zero to Advanced-ready in a few weeks." }
+      ]
+    },
+    "footer": {
+      "tagline": "RPAS exam prep, done right.",
+      "blurb": "Independent study tools for Canadian Basic and Advanced RPAS certification.",
+      "exploreTitle": "Explore",
+      "resourcesTitle": "Resources",
+      "contactTitle": "Contact",
+      "linkHome": "Home",
+      "linkBasic": "Basic course",
+      "linkAdvanced": "Advanced course",
+      "linkExam": "Mock exam",
+      "linkDashboard": "Dashboard",
+      "resTP": "TP-15263 standard",
+      "resFaq": "FAQ",
+      "resPricing": "Pricing",
+      "resContact": "Contact us",
+      "sampleTag": "sample",
+      "email": "hello@rpasacademy.example",
+      "phone": "+1 (555) 015-2630",
+      "address": "123 Skyline Way, Calgary, AB",
+      "rights": "RPAS Academy. Demonstration site — all content is sample.",
+      "disclaimer": "Not affiliated with or endorsed by Transport Canada. Always consult the current Canadian Aviation Regulations."
+    }
+  },
   "auth": {
     "signIn": "Sign In",
     "register": "Create Account",

@@ -1,5 +1,115 @@
 {
-  "nav": { "modules": "课程模块", "exam": "模拟考试", "learn": "学习" },
+  "nav": { "home": "首页", "modules": "课程模块", "exam": "模拟考试", "learn": "学习" },
+  "home": {
+    "hero": {
+      "kicker": "加拿大交通部 · TP-15263",
+      "name": "RPAS ACADEMY",
+      "slogan": "合法飞行，持证起飞。",
+      "lede": "面向加拿大遥控驾驶航空器（RPAS）飞手的专注备考平台——清晰的课程、练习题库，以及贴近真实考试的模拟考，覆盖基础与高级两个等级。",
+      "ctaPrimary": "免费开始基础课程",
+      "ctaSecondary": "对比两个等级",
+      "imageAlt": "品牌主视觉图",
+      "imageNote": "在此放置你的品牌主视觉图",
+      "stats": [
+        { "value": "8", "label": "知识领域" },
+        { "value": "13", "label": "精讲课程" },
+        { "value": "2", "label": "认证等级" }
+      ]
+    },
+    "flow": {
+      "kicker": "学习路径",
+      "title": "从第一节课到持证飞手",
+      "steps": [
+        { "no": "01", "title": "学习", "body": "通过对应 TP-15263 各知识领域的精炼课程逐步掌握。" },
+        { "no": "02", "title": "练习", "body": "刷题库，每道题都附有详细解析。" },
+        { "no": "03", "title": "模拟考", "body": "完成限时、贴近真实的模拟考，并复盘薄弱环节。" },
+        { "no": "04", "title": "取得执照", "body": "有备而来，自信通过交通部正式考试。" }
+      ]
+    },
+    "tracks": {
+      "kicker": "课程服务",
+      "title": "两个等级，一条飞行路径",
+      "subtitle": "先免费学习基础课程，准备好进入更高风险环境时，再补上高级部分的进阶内容。",
+      "learnTitle": "学习内容",
+      "examTitle": "模拟考",
+      "basic": {
+        "badge": "免费",
+        "name": "基础操作（Basic）",
+        "for": "在低风险、非管制空域、远离旁观者环境下飞行的新手飞手。",
+        "points": [
+          "航空法与法规",
+          "机体、系统与电池",
+          "人为因素与决策",
+          "气象与飞行计划"
+        ],
+        "exam": "35 题 · 90 分钟 · 65% 通过",
+        "cta": "开始学习"
+      },
+      "advanced": {
+        "badge": "付费",
+        "name": "高级操作（Advanced）",
+        "for": "已持证、希望进入管制空域并在人群附近作业的飞手。",
+        "points": [
+          "管制空域与授权",
+          "在人群附近及上方作业",
+          "航空通信",
+          "进阶气象与场地规划"
+        ],
+        "exam": "50 题 · 60 分钟 · 80% 通过",
+        "cta": "了解高级课程"
+      }
+    },
+    "privileges": {
+      "kicker": "取得执照之后",
+      "title": "你的执照可以飞什么",
+      "subtitle": "取得各等级执照后的飞行权限对比。每次飞行前请务必以最新法规为准。",
+      "colFeature": "操作",
+      "colBasic": "基础",
+      "colAdvanced": "高级",
+      "rows": [
+        { "feature": "在非管制空域飞行", "basic": "yes", "advanced": "yes" },
+        { "feature": "在管制空域飞行", "basic": "no", "advanced": "需 NAV CANADA 授权" },
+        { "feature": "与旁观者的距离", "basic": "需保持 30 米以上", "advanced": "可近于 30 米" },
+        { "feature": "在旁观者上方飞行", "basic": "no", "advanced": "需使用合规无人机" },
+        { "feature": "在机场与直升机场附近飞行", "basic": "no", "advanced": "需授权" },
+        { "feature": "250 克 – 25 公斤无人机", "basic": "yes", "advanced": "yes" }
+      ],
+      "footnote": "此处仅为示意性概览，不构成操作建议。请以最新《加拿大航空条例》（CARs）为准。"
+    },
+    "reviews": {
+      "kicker": "用户评价",
+      "title": "飞手怎么说",
+      "disclaimer": "以下为示意性样例评价，仅供演示。",
+      "items": [
+        { "name": "Jordan M.", "role": "房产摄像 · 卡尔加里", "rating": 5, "quote": "模拟考的感觉和真实的基础考试一模一样，第一次就轻松通过。" },
+        { "name": "Priya S.", "role": "测绘无人机操作员 · 多伦多", "rating": 5, "quote": "高级课程里的空域与通信讲解，让我终于搞懂了管制空域的申请流程。" },
+        { "name": "Marc-André L.", "role": "业余飞手 · 蒙特利尔", "rating": 4, "quote": "课程干净、不啰嗦，题库的答案解析也确实有用。" },
+        { "name": "Dana W.", "role": "农业科技外勤 · 萨斯卡通", "rating": 5, "quote": "用手机在工作间隙学习，几周时间就从零基础到能考高级。" }
+      ]
+    },
+    "footer": {
+      "tagline": "把 RPAS 备考做对。",
+      "blurb": "面向加拿大基础与高级 RPAS 认证的独立备考工具。",
+      "exploreTitle": "浏览",
+      "resourcesTitle": "资源",
+      "contactTitle": "联系",
+      "linkHome": "首页",
+      "linkBasic": "基础课程",
+      "linkAdvanced": "高级课程",
+      "linkExam": "模拟考试",
+      "linkDashboard": "学习面板",
+      "resTP": "TP-15263 标准",
+      "resFaq": "常见问题",
+      "resPricing": "价格",
+      "resContact": "联系我们",
+      "sampleTag": "示例",
+      "email": "hello@rpasacademy.example",
+      "phone": "+1 (555) 015-2630",
+      "address": "123 Skyline Way, Calgary, AB",
+      "rights": "RPAS Academy。演示站点——所有内容均为示例。",
+      "disclaimer": "本站与加拿大交通部无任何隶属或背书关系。请始终以最新《加拿大航空条例》为准。"
+    }
+  },
   "auth": {
     "signIn": "登录",
     "register": "创建账号",
