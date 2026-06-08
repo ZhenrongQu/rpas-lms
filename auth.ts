@@ -4,6 +4,9 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { findOrCreateOAuthUser } from "./src/lib/auth/account";
 import { authorizeLocalPasswordLogin } from "./src/lib/auth/localAccount";
+import { getOAuthProviderCredentials } from "./src/lib/auth/oauthConfig";
+
+const oauthCredentials = getOAuthProviderCredentials();
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -31,14 +34,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-    }),
-    Apple({
-      clientId: process.env.APPLE_CLIENT_ID ?? "",
-      clientSecret: process.env.APPLE_CLIENT_SECRET ?? "",
-    }),
+    ...(oauthCredentials.google
+      ? [
+          Google({
+            clientId: oauthCredentials.google.clientId,
+            clientSecret: oauthCredentials.google.clientSecret,
+          }),
+        ]
+      : []),
+    ...(oauthCredentials.apple
+      ? [
+          Apple({
+            clientId: oauthCredentials.apple.clientId,
+            clientSecret: oauthCredentials.apple.clientSecret,
+          }),
+        ]
+      : []),
   ],
   callbacks: {
     async jwt({ token, user, account, profile }) {

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /Users/quzhenrong/rpas-lms *)",
+      "Read(//tmp/rpas-sec-wt/docs/superpowers/**)"
+    ],
+    "additionalDirectories": [
+      "/tmp/rpas-sec-wt/docs/superpowers/specs",
+      "/private/tmp/rpas-sec-wt/docs/superpowers/specs"
+    ]
+  }
+}

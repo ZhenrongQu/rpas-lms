@@ -141,7 +141,8 @@
     "loginWithEmail": "Email",
     "loginWithPhone": "Phone",
     "loginWithUsername": "Username",
-    "emailVerified": "Email verified. Signing you in..."
+    "emailVerified": "Email verified. Signing you in...",
+    "oauthUnavailable": "OAuth provider is not configured yet."
   },
   "dashboard": {
     "title": "Mission Modules",
