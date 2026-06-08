@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useTranslations, useLocale } from 'next-intl';
 
 type LoginMode = 'email' | 'phone' | 'username';
+type OAuthStatus = { google: boolean; apple: boolean };
 
 export default function SignInPage() {
   const t = useTranslations('auth');
@@ -17,6 +18,26 @@ export default function SignInPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [oauthStatus, setOauthStatus] = useState<OAuthStatus>({ google: false, apple: false });
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/auth/oauth/status')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!active || !data?.providers) return;
+        setOauthStatus({
+          google: Boolean(data.providers.google),
+          apple: Boolean(data.providers.apple),
+        });
+      })
+      .catch(() => {
+        if (active) setOauthStatus({ google: false, apple: false });
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function onPasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,10 +61,22 @@ export default function SignInPage() {
     <div className="auth-view">
       <div className="hud-panel auth-card">
         <div className="auth-title">// {t('signIn')}</div>
-        <button type="button" className="btn-launch" onClick={() => signIn('google', { callbackUrl: `/${locale}/dashboard` })}>
+        <button
+          type="button"
+          className="btn-launch"
+          disabled={!oauthStatus.google}
+          title={!oauthStatus.google ? t('oauthUnavailable') : undefined}
+          onClick={() => signIn('google', { callbackUrl: `/${locale}/dashboard` })}
+        >
           {t('continueGoogle')}
         </button>
-        <button type="button" className="btn-launch" onClick={() => signIn('apple', { callbackUrl: `/${locale}/dashboard` })}>
+        <button
+          type="button"
+          className="btn-launch"
+          disabled={!oauthStatus.apple}
+          title={!oauthStatus.apple ? t('oauthUnavailable') : undefined}
+          onClick={() => signIn('apple', { callbackUrl: `/${locale}/dashboard` })}
+        >
           {t('continueApple')}
         </button>
 

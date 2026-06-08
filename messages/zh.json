@@ -141,7 +141,8 @@
     "loginWithEmail": "邮箱",
     "loginWithPhone": "手机号",
     "loginWithUsername": "用户名",
-    "emailVerified": "邮箱已验证，正在登录..."
+    "emailVerified": "邮箱已验证，正在登录...",
+    "oauthUnavailable": "暂未配置该第三方登录。"
   },
   "dashboard": {
     "title": "课程模块",

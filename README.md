@@ -53,12 +53,13 @@ APPLE_CLIENT_SECRET=""
 ```
 
 `DATABASE_URL` 指向 Prisma 使用的 SQLite 数据库。`AUTH_SECRET` 是 Auth.js 用来签名 session/JWT 数据的密钥。Google 和 Apple 的变量用于 OAuth 登录；本地未配置时仍可使用邮箱/手机验证码流程。
+未配置 Google 或 Apple 的 client id/secret 时，页面会禁用对应第三方登录按钮，避免跳转到 provider 的 `invalid_request` 页面。
 
 ## 当前用户流程
 
 1. 学员访问 `/en` 或 `/zh`。
 2. Guest 用户可以访问 `/[locale]/intro`，查看公司介绍、服务介绍和课程介绍。
-3. 用户可以通过 Google、Apple、邮箱验证码、手机验证码或用户名注册/登录；用户名必须先验证邮箱或手机号。
+3. 用户可以通过 Google、Apple，或本地账号登录。本地账号注册需要邮箱、密码和邮箱验证码；登录时可使用邮箱、手机号或用户名加密码。
 4. 注册用户默认是 `FREE`，可以启动 Basic 模拟考试，但只使用 `difficulty: 0` 的免费题目。
 5. 完整题库和 Advanced 模拟考试预留给 `PAID` 用户。
 6. 客户端只拿到公开题目信息，不包含正确答案。
@@ -67,7 +68,7 @@ APPLE_CLIENT_SECRET=""
 9. 成绩页展示分数、通过/失败状态、按科目拆分的结果和所有错题解释。
 10. 已登录用户可以在 Mission Log 中看到已提交的考试记录。
 
-Registered users are `FREE` by default. Free users can access free lessons and questions marked `difficulty: 0`; paid users can access the full question bank. Username registration is allowed only after verifying an email or phone number.
+Registered users are `FREE` by default. Free users can access free lessons and questions marked `difficulty: 0`; paid users can access the full question bank. Local users must verify email before password login.
 
 ## 项目结构
 
