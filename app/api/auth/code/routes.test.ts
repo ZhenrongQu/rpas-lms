@@ -1,14 +1,9 @@
-import bcrypt from "bcryptjs";
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "../../../../src/lib/db";
 import { POST as requestCode } from "./request/route";
 import { POST as verifyCodeRoute } from "./verify/route";
 
-async function body(res: Response) {
-  return { status: res.status, json: await res.json() };
-}
-
-describe("verification code routes", () => {
+describe("retired public code-login routes", () => {
   beforeEach(async () => {
     await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
@@ -16,7 +11,7 @@ describe("verification code routes", () => {
     await prisma.user.deleteMany();
   });
 
-  it("requests an email code without returning the code", async () => {
+  it("does not allow requesting login codes", async () => {
     const res = await requestCode(
       new Request("http://test/api/auth/code/request", {
         method: "POST",
@@ -24,29 +19,12 @@ describe("verification code routes", () => {
       }),
     );
 
-    const result = await body(res);
-    expect(result.status).toBe(200);
-    expect(result.json).toEqual({ ok: true });
-
-    const code = await prisma.verificationCode.findFirstOrThrow({
-      where: { channel: "email", target: "pilot@example.com" },
-    });
-    expect(code.codeHash).toBeTruthy();
+    expect(res.status).toBe(410);
+    expect(await res.json()).toEqual({ error: "code login disabled" });
+    expect(await prisma.verificationCode.count()).toBe(0);
   });
 
-  it("verifies a code and creates a free user", async () => {
-    await requestCode(
-      new Request("http://test/api/auth/code/request", {
-        method: "POST",
-        body: JSON.stringify({ channel: "email", target: "pilot@example.com" }),
-      }),
-    );
-    const row = await prisma.verificationCode.findFirstOrThrow();
-    await prisma.verificationCode.update({
-      where: { id: row.id },
-      data: { codeHash: await bcrypt.hash("123456", 10) },
-    });
-
+  it("does not allow verifying login codes into users", async () => {
     const res = await verifyCodeRoute(
       new Request("http://test/api/auth/code/verify", {
         method: "POST",
@@ -58,19 +36,8 @@ describe("verification code routes", () => {
       }),
     );
 
-    const result = await body(res);
-    expect(result.status).toBe(200);
-    expect(result.json.user.accessTier).toBe("FREE");
-    expect(result.json.user.email).toBe("pilot@example.com");
-  });
-
-  it("rejects invalid payloads", async () => {
-    const res = await requestCode(
-      new Request("http://test/api/auth/code/request", {
-        method: "POST",
-        body: JSON.stringify({ channel: "fax", target: "" }),
-      }),
-    );
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(410);
+    expect(await res.json()).toEqual({ error: "code login disabled" });
+    expect(await prisma.user.count()).toBe(0);
   });
 });
