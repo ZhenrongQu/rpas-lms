@@ -24,7 +24,14 @@
     "code": "6 位验证码",
     "codeSent": "验证码已发送。",
     "usernameUnavailable": "用户名不可用。",
-    "verificationFailed": "验证码无效或已过期。"
+    "verificationFailed": "验证码无效或已过期。",
+    "emailVerificationRequired": "请查看邮箱中的验证码。",
+    "verifyEmail": "验证邮箱",
+    "identifierType": "登录方式",
+    "loginWithEmail": "邮箱",
+    "loginWithPhone": "手机号",
+    "loginWithUsername": "用户名",
+    "emailVerified": "邮箱已验证，正在登录..."
   },
   "dashboard": {
     "title": "课程模块",
