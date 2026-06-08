@@ -2,11 +2,18 @@
   "permissions": {
     "allow": [
       "Bash(cd /Users/quzhenrong/rpas-lms *)",
-      "Read(//tmp/rpas-sec-wt/docs/superpowers/**)"
+      "Read(//tmp/rpas-sec-wt/docs/superpowers/**)",
+      "Bash(sed -n '1,60p')",
+      "Bash(git ls-tree *)",
+      "Bash(git merge *)",
+      "Bash(git reset *)",
+      "Bash(git branch *)"
     ],
     "additionalDirectories": [
       "/tmp/rpas-sec-wt/docs/superpowers/specs",
-      "/private/tmp/rpas-sec-wt/docs/superpowers/specs"
+      "/private/tmp/rpas-sec-wt/docs/superpowers/specs",
+      "/tmp/rpas-sec-wt/docs/superpowers/plans",
+      "/private/tmp/rpas-sec-wt/docs/superpowers/plans"
     ]
   }
 }
