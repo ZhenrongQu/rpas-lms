@@ -122,4 +122,22 @@ describe("local password accounts", () => {
       }),
     ).resolves.toBeNull();
   });
+
+  it("rejects wrong passwords for verified local accounts", async () => {
+    const user = await registerLocalAccount({
+      email: "pilot@example.com",
+      password: "correct-password",
+    });
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerifiedAt: new Date("2026-06-08T00:00:00.000Z") },
+    });
+
+    await expect(
+      authorizeLocalPasswordLogin({
+        email: "pilot@example.com",
+        password: "wrong-password",
+      }),
+    ).resolves.toBeNull();
+  });
 });
