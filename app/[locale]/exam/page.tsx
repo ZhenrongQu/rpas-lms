@@ -10,11 +10,12 @@ export default function ExamLaunchPage() {
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
-  const [selected, setSelected] = useState<CertLevel>('ADVANCED');
+  const [selected, setSelected] = useState<CertLevel | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   async function launch() {
+    if (!selected) return;
     setLoading(true);
     setError('');
     try {
@@ -63,7 +64,7 @@ export default function ExamLaunchPage() {
         </div>
       )}
 
-      <button className="btn-launch" onClick={launch} disabled={loading}>
+      <button className="btn-launch" onClick={launch} disabled={loading || !selected}>
         {loading ? t('examLaunch.launching') : `▶ ${t('examLaunch.launch')}`}
       </button>
     </div>
