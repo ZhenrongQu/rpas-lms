@@ -9,12 +9,14 @@ datasource db {
 
 model User {
   id              String         @id @default(cuid())
+  userNumber      Int?           @unique  // switch to @default(autoincrement()) on PostgreSQL
   username        String?        @unique
   email           String?        @unique
   phone           String?        @unique
   displayName     String?        @map("name")
   hashedPassword  String?
   accessTier      String         @default("FREE")
+  role            String         @default("USER")  // "USER" | "ADMIN"
   stripeCustomerId String?
   emailVerifiedAt DateTime?
   phoneVerifiedAt DateTime?
@@ -71,6 +73,7 @@ model ExamSession {
   certLevel   String
   locale      String
   questionIds String   // JSON: string[]
+  questionSnapshot String @default("[]") // JSON: Question[] captured at exam creation; grading/review reads this
   answers     String   @default("{}") // JSON: Record<string, string[]>
   startedAt   DateTime
   expiresAt   DateTime
@@ -117,4 +120,66 @@ model WebhookEvent {
   id          String   @id
   type        String
   processedAt DateTime @default(now())
+}
+
+model Question {
+  id          String           @id      // "air-law-0001" format — preserves ExamSession refs
+  moduleId    String
+  certLevel   String                    // "BASIC" | "ADVANCED" | "BOTH"
+  type        String                    // "SINGLE" | "MULTI"
+  selectCount Int
+  difficulty  Int
+  stemEN      String
+  stemZH      String
+  explEN      String
+  explZH      String
+  refEN       String
+  refZH       String
+  tags        String           @default("[]")  // JSON: string[]
+  mediaKind   String?
+  mediaUrl    String?
+  mediaAltEN  String?
+  mediaAltZH  String?
+  status      String           @default("ACTIVE")  // "ACTIVE" | "ARCHIVED"; exam generation only uses ACTIVE
+  archivedAt  DateTime?
+  options     QuestionOption[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([moduleId])
+  @@index([certLevel])
+}
+
+model QuestionOption {
+  id         String   @id @default(cuid())
+  questionId String
+  optionId   String   // "a" | "b" | "c" | "d"
+  labelEN    String
+  labelZH    String
+  isCorrect  Boolean
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, optionId])
+  @@index([questionId])
+}
+
+model Lesson {
+  id         String   @id @default(cuid())
+  lessonId   String   @unique   // "${course}/${moduleId}/${slug}" — matches LessonProgress.lessonId
+  course     String             // "basic" | "advanced"
+  moduleId   String
+  slug       String
+  order      Int
+  estMinutes Int
+  certLevel  String             // "BASIC" | "ADVANCED" | "BOTH"
+  access     String             // "FREE" | "PAID"
+  titleEN    String
+  titleZH    String
+  bodyEN     String             // raw MDX body (frontmatter stripped)
+  bodyZH     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([course, moduleId, slug])
+  @@index([course, moduleId])
 }
