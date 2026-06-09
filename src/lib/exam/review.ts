@@ -7,6 +7,12 @@ export interface ReviewOption {
   isCorrect: boolean;
 }
 
+export interface ReviewMedia {
+  kind: "image" | "video";
+  url: string;
+  alt: string;
+}
+
 export interface ReviewItem {
   id: string;
   moduleId: string;
@@ -17,6 +23,7 @@ export interface ReviewItem {
   isCorrect: boolean;
   explanation: string;
   reference: string;
+  media?: ReviewMedia;
 }
 
 /**
@@ -41,6 +48,7 @@ export function buildReview(
       isCorrect: isAnswerCorrect(q, selected),
       explanation: q.explanation[locale],
       reference: q.reference[locale],
+      ...(q.media ? { media: { kind: q.media.kind, url: q.media.url, alt: q.media.alt[locale] } } : {}),
     };
   });
 }

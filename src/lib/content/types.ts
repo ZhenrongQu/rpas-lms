@@ -26,6 +26,12 @@ export interface QuestionOption {
   isCorrect: boolean;
 }
 
+export interface QuestionMedia {
+  kind: "image" | "video";
+  url: string; // absolute CDN / object-storage URL
+  alt: Localized; // accessibility / bilingual caption
+}
+
 export interface Question {
   id: string;
   moduleId: ModuleId;
@@ -38,6 +44,7 @@ export interface Question {
   explanation: Localized;
   reference: Localized;
   tags: string[];
+  media?: QuestionMedia;
 }
 
 export interface QuestionBank {

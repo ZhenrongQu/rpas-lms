@@ -470,6 +470,8 @@ html, body {
 
 .q-stem { font-size: 15px; font-weight: 500; color: var(--text-1); line-height: 1.65; margin-top: 6px; }
 .q-stem strong { color: var(--cyan); font-weight: 600; }
+.q-media { margin-top: 12px; }
+.q-media img, .q-media video { max-width: 100%; height: auto; border-radius: 8px; display: block; }
 
 .options { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; }
 

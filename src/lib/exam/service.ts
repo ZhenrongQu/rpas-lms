@@ -5,6 +5,7 @@ import { generateExam } from "./generate";
 import { mulberry32 } from "./rng";
 import { scoreExam, type ExamResult } from "./score";
 import { toPublicQuestion, type PublicQuestion } from "./serialize";
+import { orderedOptions } from "./optionOrder";
 import { buildReview, type ReviewItem } from "./review";
 import { questionsForAccess, type AccessTier } from "./access";
 import type { SessionStore, ExamSession } from "./store";
@@ -67,6 +68,7 @@ export class ExamService {
     return session.questionIds
       .map((id) => this.byId(id))
       .filter((q): q is Question => Boolean(q))
+      .map((q) => ({ ...q, options: orderedOptions(q.options, sessionId, q.id) }))
       .map((q) => toPublicQuestion(q, session.locale));
   }
 
@@ -135,7 +137,8 @@ export class ExamService {
     if (!session || !session.submitted) return null;
     const questions = session.questionIds
       .map((id) => this.byId(id))
-      .filter((q): q is Question => Boolean(q));
+      .filter((q): q is Question => Boolean(q))
+      .map((q) => ({ ...q, options: orderedOptions(q.options, sessionId, q.id) }));
     return buildReview(questions, session.answers, session.locale);
   }
 }

@@ -18,6 +18,16 @@ export default function QuestionCard({ question, pendingSelection, isConfirmed, 
     <div className="hud-panel question-card">
       <div className="hud-panel-glow" />
       <div className="q-stem">{question.stem}</div>
+      {question.media && (
+        <div className="q-media">
+          {question.media.kind === 'video' ? (
+            <video src={question.media.url} controls aria-label={question.media.alt} />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={question.media.url} alt={question.media.alt} loading="lazy" />
+          )}
+        </div>
+      )}
       {question.type === 'MULTI' && (
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--amber)', marginTop: 8 }}>
           {t('selectN', { count: question.selectCount })}

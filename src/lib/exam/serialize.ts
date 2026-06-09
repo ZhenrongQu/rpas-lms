@@ -5,6 +5,12 @@ export interface PublicOption {
   label: string;
 }
 
+export interface PublicMedia {
+  kind: "image" | "video";
+  url: string;
+  alt: string;
+}
+
 export interface PublicQuestion {
   id: string;
   moduleId: string;
@@ -12,6 +18,7 @@ export interface PublicQuestion {
   selectCount: number;
   stem: string;
   options: PublicOption[];
+  media?: PublicMedia;
 }
 
 /**
@@ -27,5 +34,6 @@ export function toPublicQuestion(q: Question, locale: Locale): PublicQuestion {
     selectCount: q.selectCount,
     stem: q.stem[locale],
     options: q.options.map((o) => ({ id: o.id, label: o.label[locale] })),
+    ...(q.media ? { media: { kind: q.media.kind, url: q.media.url, alt: q.media.alt[locale] } } : {}),
   };
 }

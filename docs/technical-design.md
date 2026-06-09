@@ -231,8 +231,9 @@ Generation:
 Serving:
 
 - `GET /api/exam/:id/questions` returns public question data only.
-- Public question data includes stems, options, type, select count, module id, and difficulty.
+- Public question data includes stems, options, type, select count, module id, difficulty, and optional `media`.
 - Public question data excludes `isCorrect`, explanation, and reference.
+- **Option display order is shuffled deterministically per `(sessionId, questionId)`** (`src/lib/exam/optionOrder.ts`): a string hash seeds `mulberry32`, then Fisher–Yates reorders the options. The order is stable across re-fetches and identical in the post-submit review. Grading is unaffected because it compares option **ids** (`grade.ts`), never display order or letters. The A/B/C/D labels are assigned by render index, so shuffling the array reassigns letters automatically.
 
 Answering:
 
@@ -277,6 +278,12 @@ const Option = z.object({
   isCorrect: z.boolean(),
 });
 
+const Media = z.object({
+  kind: z.enum(["image", "video"]),
+  url: z.string().url(),
+  alt: Localized,
+});
+
 const QuestionSchema = z.object({
   id: z.string().regex(/^[a-z-]+-\d{4}$/),
   moduleId: z.enum(MODULE_IDS),
@@ -289,6 +296,7 @@ const QuestionSchema = z.object({
   explanation: Localized,
   reference: Localized,
   tags: z.array(z.string()),
+  media: Media.optional(),
 });
 ```
 
@@ -300,6 +308,13 @@ Authoring rules:
 4. `difficulty: 0` marks free questions.
 5. References cite CARs, RPAS 101, Standard 921/922, TP-15263, or another authoritative source.
 6. Correct answers must never be serialized before submission.
+
+Media (optional, by URL — never a DB blob):
+
+- `media` is optional; text-only questions omit it. When present, `media.url` is a valid absolute URL and `media.alt` is bilingual.
+- Media files live in **object storage + CDN** (Cloudflare R2 / Vercel Blob / Supabase Storage). Recommended path convention: `media/<moduleId>/<questionId>.<ext>`.
+- `media` carries no answer information, so it is safe to include in public question data and post-submit review.
+- The question bank JSON stays the version-controlled source of truth; adding media is a content edit.
 
 ## 13. Security Boundaries
 
@@ -319,6 +334,25 @@ Local development uses SQLite via Prisma.
 - `prisma/test.db`: Vitest database.
 
 User information is stored in `User`; registered login identities are stored in `UserIdentity`; temporary verification codes are stored in `VerificationCode`.
+
+### Production DB Migration (managed Postgres) — deferred
+
+SQLite is fine for local dev and Vitest but does not survive serverless/multi-instance cloud
+hosting (e.g. Vercel), where each instance has its own ephemeral filesystem. For production,
+migrate the **runtime** database (users, sessions, progress) to managed **Postgres**
+(Supabase / Neon / Vercel Postgres). Planned, not yet executed.
+
+Migration steps when executed:
+
+1. Set `datasource db { provider = "postgresql" }` in `prisma/schema.prisma`.
+2. Point `DATABASE_URL` at the managed Postgres instance.
+3. Run `prisma migrate` to create the schema on Postgres.
+4. Re-run the seed to load the question bank into the new DB.
+5. Verify exam create → answer → submit → review end-to-end against Postgres.
+
+Scope note: only the runtime tables move to Postgres. The **authored question bank stays as
+JSON in git** (the reviewable, Zod-validated source of truth) regardless of DB backend, and
+**media stays in object storage + CDN** (URLs only in the bank) — never as DB blobs.
 
 ## 15. Testing Strategy
 

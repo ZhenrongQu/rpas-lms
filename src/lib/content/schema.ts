@@ -9,6 +9,12 @@ const Option = z.object({
   isCorrect: z.boolean(),
 });
 
+const Media = z.object({
+  kind: z.enum(["image", "video"]),
+  url: z.string().url(),
+  alt: Localized,
+});
+
 export const QuestionSchema = z
   .object({
     id: z.string().regex(/^[a-z-]+-\d{4}$/),
@@ -22,6 +28,7 @@ export const QuestionSchema = z
     explanation: Localized,
     reference: Localized,
     tags: z.array(z.string()),
+    media: Media.optional(),
   })
   .superRefine((q, ctx) => {
     const correct = q.options.filter((o) => o.isCorrect).length;
