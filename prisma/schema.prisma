@@ -15,6 +15,7 @@ model User {
   displayName     String?        @map("name")
   hashedPassword  String?
   accessTier      String         @default("FREE")
+  stripeCustomerId String?
   emailVerifiedAt DateTime?
   phoneVerifiedAt DateTime?
   createdAt       DateTime       @default(now())
@@ -22,6 +23,8 @@ model User {
   identities      UserIdentity[]
   examSessions    ExamSession[]
   lessonProgress  LessonProgress[]
+  payments         Payment[]
+  entitlements     Entitlement[]
 }
 
 model LessonProgress {
@@ -76,4 +79,42 @@ model ExamSession {
   createdAt   DateTime @default(now())
 
   @@index([userId])
+}
+
+model Payment {
+  id                      String   @id @default(cuid())
+  userId                  String
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCheckoutSessionId String   @unique
+  stripePaymentIntentId   String?  @unique
+  stripeCustomerId        String?
+  product                 String
+  amountTotal             Int?
+  currency                String?
+  status                  String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([userId])
+  @@index([product])
+}
+
+model Entitlement {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   String
+  source    String
+  grantedAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  @@index([userId])
+  @@index([product])
+  @@unique([userId, product])
+}
+
+model WebhookEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now())
 }
