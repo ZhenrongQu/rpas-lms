@@ -29,6 +29,7 @@ describe("POST /api/payments/checkout", () => {
           },
         },
       },
+      webhooks: { constructEvent: () => { throw new Error("not used"); } },
     });
 
     const res = await POST(

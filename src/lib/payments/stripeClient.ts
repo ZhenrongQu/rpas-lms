@@ -1,7 +1,16 @@
 import Stripe from "stripe";
 import { getPaymentConfig } from "./config";
 
-type StripeLike = Pick<Stripe, "checkout" | "webhooks">;
+type StripeLike = {
+  checkout: {
+    sessions: {
+      create: (params: Stripe.Checkout.SessionCreateParams) => Promise<{ url: string | null }>;
+    };
+  };
+  webhooks: {
+    constructEvent: (payload: string, signature: string, secret: string) => unknown;
+  };
+};
 
 let testStripeClient: StripeLike | null = null;
 

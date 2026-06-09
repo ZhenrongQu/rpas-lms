@@ -4,10 +4,12 @@ import { getTranslations } from 'next-intl/server';
 import { getLesson, getModuleLessons } from '@/lib/lessons/catalog';
 import { listCompletedLessonIds } from '@/lib/lessons/progress';
 import { canViewLesson, type AccessTier } from '@/lib/exam/access';
+import { hasPaidAccess } from '@/lib/payments/entitlements';
 import { auth } from '../../../../../../auth';
 import MDXContent from '@/components/learn/MDXContent';
 import LessonShell from '@/components/learn/LessonShell';
 import LessonSidebar from '@/components/learn/LessonSidebar';
+import PurchaseButton from '@/components/payments/PurchaseButton';
 import type { Course, RouteLocale } from '@/lib/lessons/types';
 
 type Props = { params: Promise<{ locale: string; course: string; moduleId: string; slug: string }> };
@@ -20,8 +22,8 @@ export default async function LessonPage({ params }: Props) {
 
   const session = await auth();
   const userId = session?.user?.id ?? null;
-  const tier: AccessTier =
-    session?.user?.accessTier === 'PAID' ? 'PAID' : userId ? 'FREE' : 'GUEST';
+  const isPaid = userId ? await hasPaidAccess(userId) : false;
+  const tier: AccessTier = isPaid ? 'PAID' : userId ? 'FREE' : 'GUEST';
 
   if (!canViewLesson(tier, lesson.meta.access)) {
     const t = await getTranslations({ locale });
@@ -34,6 +36,13 @@ export default async function LessonPage({ params }: Props) {
           <div className="locked-icon">🔒</div>
           <div className="locked-title">{t('learn.lockedTitle')}</div>
           <div className="locked-body">{t('learn.lockedBody')}</div>
+          {userId ? (
+            <PurchaseButton locale={locale} />
+          ) : (
+            <Link href={`/${locale}/signin`} className="btn-review">
+              {t('auth.signIn')}
+            </Link>
+          )}
         </div>
       </div>
     );
