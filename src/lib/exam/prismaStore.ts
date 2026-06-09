@@ -1,5 +1,5 @@
 import { prisma } from "../db";
-import type { ExamCertLevel, Locale } from "../content/types";
+import type { ExamCertLevel, Locale, Question } from "../content/types";
 import type { ExamResult } from "./score";
 import type { ExamSession, SessionStore } from "./store";
 
@@ -9,6 +9,7 @@ type Row = {
   certLevel: string;
   locale: string;
   questionIds: string;
+  questionSnapshot: string;
   answers: string;
   startedAt: Date;
   expiresAt: Date;
@@ -23,6 +24,7 @@ function toRow(s: ExamSession) {
     certLevel: s.certLevel,
     locale: s.locale,
     questionIds: JSON.stringify(s.questionIds),
+    questionSnapshot: JSON.stringify(s.questionSnapshot),
     answers: JSON.stringify(s.answers),
     startedAt: new Date(s.startedAt),
     expiresAt: new Date(s.expiresAt),
@@ -38,6 +40,7 @@ function fromRow(r: Row): ExamSession {
     certLevel: r.certLevel as ExamCertLevel,
     locale: r.locale as Locale,
     questionIds: JSON.parse(r.questionIds) as string[],
+    questionSnapshot: JSON.parse(r.questionSnapshot) as Question[],
     answers: JSON.parse(r.answers) as Record<string, string[]>,
     startedAt: r.startedAt.getTime(),
     expiresAt: r.expiresAt.getTime(),

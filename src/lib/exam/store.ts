@@ -1,4 +1,4 @@
-import type { ExamCertLevel, Locale } from "../content/types";
+import type { ExamCertLevel, Locale, Question } from "../content/types";
 import type { ExamResult } from "./score";
 
 export interface ExamSession {
@@ -7,6 +7,8 @@ export interface ExamSession {
   certLevel: ExamCertLevel;
   locale: Locale;
   questionIds: string[];
+  /** Full questions captured at creation; grading/review read these, not the live bank. */
+  questionSnapshot: Question[];
   startedAt: number;
   expiresAt: number;
   answers: Record<string, string[]>;
