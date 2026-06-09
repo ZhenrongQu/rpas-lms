@@ -1,6 +1,7 @@
 import { loadQuestionBank } from "../content/loadBank";
 import { allocateQuotas } from "./quota";
 import { SUBJECT_WEIGHTS } from "./config";
+import { shuffle } from "./shuffle";
 import {
   MODULE_IDS,
   type ExamCertLevel,
@@ -11,15 +12,6 @@ import {
 /** Questions usable for a given exam level: the level itself plus BOTH. */
 export function eligible(questions: Question[], certLevel: ExamCertLevel): Question[] {
   return questions.filter((q) => q.certLevel === certLevel || q.certLevel === "BOTH");
-}
-
-function shuffle<T>(arr: T[], rng: () => number): T[] {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
 }
 
 /**

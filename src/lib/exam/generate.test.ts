@@ -21,7 +21,7 @@ describe("generateExam", () => {
     expect(exam.every((q) => q.certLevel !== "ADVANCED")).toBe(true);
   });
 
-  it("returns min(total, eligiblePool) — never repeats or invents (Advanced seed = 48)", () => {
+  it("returns min(total, eligiblePool) — never repeats or invents", () => {
     const eligibleCount = eligible(bank.questions, "ADVANCED").length;
     const exam = generateExam("ADVANCED", 50, mulberry32(7), bank);
     expect(exam).toHaveLength(Math.min(50, eligibleCount));

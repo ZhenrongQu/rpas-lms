@@ -2,26 +2,28 @@
 
 `question-bank.json` is the single source of truth for all exam/practice questions. It is validated by the Zod schema in `docs/technical-design.md` §15 and loaded into the DB by the seed script.
 
-## Current coverage (seed set: 50 questions)
+## Current coverage (300 questions)
 
-| Subject | Count | Mock quota (Basic / Adv) | Target pool* |
-|---|---|---|---|
-| Air Law | 11 | ~10 / ~14 | 45+ |
-| Flight Operations | 6 | ~6 / ~8 | 25+ |
-| Human Factors | 6 | ~4 / ~6 | 20+ |
-| Meteorology | 6 | ~4 / ~5 | 18+ |
-| Navigation | 5 | ~3 / ~5 | 18+ |
-| Airframes & Systems | 6 | ~4 / ~4 | 18+ |
-| Radiotelephony | 6 | ~3 / ~5 | 18+ |
-| Theory of Flight | 4 | ~2 / ~3 | 12+ |
+| Subject | Count | Mock quota (Basic / Adv) |
+|---|---|---|
+| Air Law | 87 | ~10 / ~14 |
+| Flight Operations | 48 | ~6 / ~8 |
+| Human Factors | 36 | ~4 / ~6 |
+| Meteorology | 30 | ~4 / ~5 |
+| Navigation | 27 | ~3 / ~5 |
+| Airframes & Systems | 27 | ~4 / ~4 |
+| Radiotelephony | 27 | ~3 / ~5 |
+| Theory of Flight | 18 | ~2 / ~3 |
 
-\* Recommended ≈ 3× the largest mock quota so each generated exam is varied. CI warns when a subject pool < 3× its quota.
+\* Pool ≈ 6× the larger (50-question Advanced) exam, so each generated mock is well varied.
 
 **Eligibility note:** A question is eligible for an exam when its `certLevel` is the requested level **or** `BOTH`.
-- **Basic:** 44 eligible (50 − 6 Advanced-only) → a full **35-question** Basic mock generates with room to spare. ✓
-- **Advanced:** 48 eligible (50 − 2 Basic-only) → a full **50-question** Advanced mock currently falls **2 short**. Add ≥2 more `ADVANCED`/`BOTH` questions to reach 50 unique. Until then the generator returns 48 (it never repeats or invents questions).
+- **Basic:** 275 eligible → a full **35-question** Basic mock generates with large variety. ✓
+- **Advanced:** 294 eligible → a full **50-question** Advanced mock generates with large variety. ✓
 
-By cert level: 42 `BOTH`, 6 `ADVANCED`, 2 `BASIC`. (`BOTH` questions appear in both exams; add more `BASIC`/`ADVANCED`-specific items as content deepens.)
+By cert level: 269 `BOTH`, 25 `ADVANCED`, 6 `BASIC`. (`BOTH` questions appear in both exams.)
+
+**Free-tier preview:** FREE Basic users receive only `difficulty: 0` questions (`questionsForAccess`). The bank keeps 15 `difficulty: 0` Basic-eligible questions spanning all 8 modules, so the free preview is representative across topics while remaining a preview (not a full 35-question exam). Paid questions are `difficulty: 1..3`.
 
 ## Schema (per question)
 
@@ -37,9 +39,28 @@ By cert level: 42 `BOTH`, 6 `ADVANCED`, 2 `BASIC`. (`BOTH` questions appear in b
   "options": [ { "id": "a", "label": { "EN": "...", "ZH": "..." }, "isCorrect": true }, ... ],
   "explanation": { "EN": "...", "ZH": "..." },
   "reference":   { "EN": "CAR 901.xx / RPAS 101 p.NN", "ZH": "CAR 901.xx / RPAS 101 p.NN" },
-  "tags": ["registration", "weight"]
+  "tags": ["registration", "weight"],
+
+  // OPTIONAL — omit entirely for text-only questions
+  "media": {
+    "kind": "image",                                                   // image | video
+    "url": "https://cdn.example.com/media/air-law/air-law-0001.png",   // absolute CDN/object-storage URL
+    "alt": { "EN": "Class C airspace diagram", "ZH": "C 类空域示意图" } // bilingual alt / caption
+  }
 }
 ```
+
+## Media (images / video)
+Media is **referenced by URL**, never embedded in the JSON or stored as a DB blob.
+
+- Files live in **object storage + CDN** (Cloudflare R2 / Vercel Blob / Supabase Storage). The
+  question bank stores only the absolute `url`.
+- Recommended path convention: `media/<moduleId>/<questionId>.<ext>`
+  (e.g. `media/air-law/air-law-0001.png`).
+- `media` is **optional** — text-only questions omit the field. `media.url` must be a valid
+  absolute URL (Zod `z.string().url()`); `media.alt` is bilingual and required when `media` is set.
+- The question bank JSON remains the version-controlled source of truth (git-reviewable,
+  Zod-validated). Adding media to a question is a content edit, not a code change.
 
 ## Authoring rules
 1. **Fully bilingual** — every `EN` and `ZH` field present and non-empty.

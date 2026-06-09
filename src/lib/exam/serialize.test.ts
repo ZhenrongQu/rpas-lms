@@ -34,4 +34,23 @@ describe("toPublicQuestion", () => {
     expect(serialized).not.toContain("expl");
     expect(serialized).not.toContain("ref");
   });
+
+  it("omits media when absent and passes through localized media when present", () => {
+    expect(toPublicQuestion(q, "EN").media).toBeUndefined();
+
+    const withMedia: Question = {
+      ...q,
+      media: {
+        kind: "image",
+        url: "https://cdn.example.com/media/air-law/air-law-0001.png",
+        alt: { EN: "Airspace diagram", ZH: "空域示意图" },
+      },
+    };
+    const pub = toPublicQuestion(withMedia, "ZH");
+    expect(pub.media).toEqual({
+      kind: "image",
+      url: "https://cdn.example.com/media/air-law/air-law-0001.png",
+      alt: "空域示意图",
+    });
+  });
 });
