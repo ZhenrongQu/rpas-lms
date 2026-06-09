@@ -19,17 +19,30 @@ describe("exam API route handlers", () => {
     });
   });
 
-  it("401 when a guest tries to create an exam", async () => {
+  it("lets a guest create a 10-question Basic taster", async () => {
     const res = await createExam(
       new Request("http://test/api/exam", {
         method: "POST",
         body: JSON.stringify({ certLevel: "BASIC", locale: "EN", seed: 42 }),
       }),
     );
-    expect(res.status).toBe(401);
+    const { status, body } = await json(res);
+    expect(status).toBe(201);
+    expect(body.total).toBe(10);
+    expect(typeof body.sessionId).toBe("string");
   });
 
-  it("POST /api/exam creates a Basic session", async () => {
+  it("403 when a guest tries to create an Advanced exam", async () => {
+    const res = await createExam(
+      new Request("http://test/api/exam", {
+        method: "POST",
+        body: JSON.stringify({ certLevel: "ADVANCED", locale: "EN", seed: 42 }),
+      }),
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("POST /api/exam creates a full 35-question Basic session for a free user", async () => {
     const res = await createExam(
       new Request("http://test/api/exam", {
         method: "POST",
@@ -39,8 +52,7 @@ describe("exam API route handlers", () => {
     );
     const { status, body } = await json(res);
     expect(status).toBe(201);
-    expect(body.total).toBeGreaterThan(0);
-    expect(body.total).toBeLessThan(35);
+    expect(body.total).toBe(35);
     expect(typeof body.sessionId).toBe("string");
   });
 
@@ -90,8 +102,7 @@ describe("exam API route handlers", () => {
       params: Promise.resolve({ id: sessionId }),
     });
     const questions = (await qRes.json()) as { id: string }[];
-    expect(questions.length).toBeGreaterThan(0);
-    expect(questions.length).toBeLessThan(35);
+    expect(questions.length).toBe(35);
     expect(JSON.stringify(questions)).not.toContain("isCorrect");
 
     const ansRes = await postAnswer(
@@ -166,7 +177,6 @@ describe("exam API route handlers", () => {
     });
     expect(after.status).toBe(200);
     const items = (await after.json()) as unknown[];
-    expect(items.length).toBeGreaterThan(0);
-    expect(items.length).toBeLessThan(35);
+    expect(items.length).toBe(35);
   });
 });

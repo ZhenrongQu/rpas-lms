@@ -23,7 +23,12 @@
 
 By cert level: 269 `BOTH`, 25 `ADVANCED`, 6 `BASIC`. (`BOTH` questions appear in both exams.)
 
-**Free-tier preview:** FREE Basic users receive only `difficulty: 0` questions (`questionsForAccess`). The bank keeps 15 `difficulty: 0` Basic-eligible questions spanning all 8 modules, so the free preview is representative across topics while remaining a preview (not a full 35-question exam). Paid questions are `difficulty: 1..3`.
+**Access tiers** (`questionsForAccess` + `examQuestionCount`):
+- **GUEST** (not logged in) → **10**-question Basic taster drawn from `difficulty: 0` (15 such questions span all 8 modules).
+- **FREE** (registered, not purchased) → full **35**-question Basic exam drawn from `difficulty: 1` (82 such Basic-eligible questions).
+- **PAID** → all questions, both Basic (35) and Advanced (50), every difficulty.
+
+Keep ≥10 `difficulty: 0` and ≥35 `difficulty: 1` Basic-eligible questions so the GUEST and FREE pools stay fillable. Advanced is PAID-only.
 
 ## Schema (per question)
 

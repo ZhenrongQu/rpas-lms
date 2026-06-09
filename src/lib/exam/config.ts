@@ -1,4 +1,13 @@
 import type { ExamCertLevel, ModuleId } from "../content/types";
+import type { AccessTier } from "./access";
+
+/** Number of questions in a mock for a given access tier. */
+export const GUEST_BASIC_QUESTION_COUNT = 10;
+
+export function examQuestionCount(tier: AccessTier, certLevel: ExamCertLevel): number {
+  if (tier === "GUEST" && certLevel === "BASIC") return GUEST_BASIC_QUESTION_COUNT;
+  return EXAM_SPECS[certLevel].totalQuestions;
+}
 
 export interface ExamSpec {
   totalQuestions: number;

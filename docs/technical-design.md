@@ -207,17 +207,17 @@ type AccessTier = "GUEST" | "FREE" | "PAID";
 
 Rules:
 
-- `GUEST`: cannot create exams.
-- `FREE`: can create Basic exams only.
+- `GUEST` (anonymous, not logged in): can create a Basic taster only.
+- `FREE` (registered, not yet purchased): can create Basic exams only.
 - `PAID`: can create Basic and Advanced exams.
 
-Question filtering:
+Question filtering (`questionsForAccess`) and exam size (`examQuestionCount`):
 
-- `PAID`: eligible questions where `certLevel` matches the requested level or `BOTH`.
-- `FREE`: Basic-eligible questions where `difficulty === 0`.
-- `GUEST`: no exam questions.
+- `PAID`: all eligible questions (`certLevel` matches the requested level or `BOTH`); Basic = 35, Advanced = 50.
+- `FREE`: Basic-eligible, `difficulty === 1`; a full **35**-question Basic exam.
+- `GUEST`: Basic-eligible, `difficulty === 0`; a **10**-question Basic taster.
 
-`difficulty: 0` is the free-question marker. `difficulty: 1..3` are paid-bank questions by increasing difficulty.
+`difficulty: 0` is the anonymous-taster pool, `difficulty: 1` is the free registered-user pool, and `difficulty: 2..3` (plus all Advanced) are PAID-only.
 
 ## 10. Exam Engine
 
@@ -321,7 +321,7 @@ Media (optional, by URL — never a DB blob):
 - Correct answers stay server-side until submit.
 - Verification codes are hashed, time-limited, and consumed after success.
 - Code login requires the code in the same Auth.js credentials authorization call.
-- Guest users cannot create exams.
+- Guest users may create only a 10-question Basic taster (no Advanced, no paid-difficulty questions). Guest sessions are anonymous (no owner) and accessible by their unguessable session id; they carry no PII and are throwaway. Owned (logged-in) sessions still require the requesting user to match the session owner.
 - Advanced/full-bank access requires `PAID`.
 - Route handlers validate JSON payloads with Zod.
 - Production email/SMS delivery should replace the current development delivery adapter without changing auth service semantics.

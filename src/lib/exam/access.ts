@@ -2,10 +2,13 @@ import type { ExamCertLevel, Question } from "../content/types";
 
 export type AccessTier = "GUEST" | "FREE" | "PAID";
 
+/**
+ * PAID can create any exam. GUEST (anonymous) and FREE (registered, not yet
+ * purchased) can create Basic exams only; Advanced requires PAID.
+ */
 export function canCreateExam(tier: AccessTier, certLevel: ExamCertLevel): boolean {
   if (tier === "PAID") return true;
-  if (tier === "FREE") return certLevel === "BASIC";
-  return false;
+  return certLevel === "BASIC";
 }
 
 /** Lesson read access: FREE lessons are open to all; PAID lessons need a paid tier. */
@@ -14,6 +17,13 @@ export function canViewLesson(tier: AccessTier, access: "FREE" | "PAID"): boolea
   return tier === "PAID";
 }
 
+/**
+ * Scopes the question pool by access tier for a Basic exam:
+ * - PAID  → all eligible questions (every difficulty)
+ * - FREE  → Basic, difficulty 1 (a full registered-but-unpaid sample)
+ * - GUEST → Basic, difficulty 0 (anonymous taster)
+ * Advanced is PAID-only, so FREE/GUEST get an empty Advanced pool.
+ */
 export function questionsForAccess(
   questions: Question[],
   tier: AccessTier,
@@ -21,6 +31,8 @@ export function questionsForAccess(
 ): Question[] {
   const eligible = questions.filter((q) => q.certLevel === certLevel || q.certLevel === "BOTH");
   if (tier === "PAID") return eligible;
-  if (tier === "FREE" && certLevel === "BASIC") return eligible.filter((q) => q.difficulty === 0);
+  if (certLevel !== "BASIC") return [];
+  if (tier === "FREE") return eligible.filter((q) => q.difficulty === 1);
+  if (tier === "GUEST") return eligible.filter((q) => q.difficulty === 0);
   return [];
 }

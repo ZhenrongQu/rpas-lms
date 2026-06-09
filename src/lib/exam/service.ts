@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { loadQuestionBank } from "../content/loadBank";
-import { EXAM_SPECS } from "./config";
+import { EXAM_SPECS, examQuestionCount } from "./config";
 import { generateExam } from "./generate";
 import { mulberry32 } from "./rng";
 import { scoreExam, type ExamResult } from "./score";
@@ -41,7 +41,8 @@ export class ExamService {
       ...this.bank,
       questions: questionsForAccess(this.bank.questions, accessTier, certLevel),
     };
-    const questions = generateExam(certLevel, spec.totalQuestions, mulberry32(seed), scopedBank);
+    const total = examQuestionCount(accessTier, certLevel);
+    const questions = generateExam(certLevel, total, mulberry32(seed), scopedBank);
     const startedAt = this.now();
     const session: ExamSession = {
       id: randomUUID(),

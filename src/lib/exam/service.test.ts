@@ -27,14 +27,29 @@ describe("ExamService", () => {
     expect(questions![0].stem).toBeTruthy();
   });
 
-  it("free users receive only difficulty 0 Basic questions", async () => {
+  it("free users receive a full 35-question Basic exam of difficulty 1 questions", async () => {
     const store = new InMemorySessionStore();
     const svc = new ExamService(store, () => 1_000, bank);
     const created = await svc.createMock("BASIC", "EN", 42, "user-123", "FREE");
     const session = await store.get(created.sessionId);
 
-    expect(created.total).toBeLessThan(35);
+    expect(created.total).toBe(35);
     expect(session?.questionIds.length).toBe(created.total);
+    expect(session?.questionIds.every((id) => {
+      const q = bank.questions.find((item) => item.id === id);
+      return q?.difficulty === 1;
+    })).toBe(true);
+  });
+
+  it("guests receive a 10-question Basic taster of difficulty 0 questions", async () => {
+    const store = new InMemorySessionStore();
+    const svc = new ExamService(store, () => 1_000, bank);
+    const created = await svc.createMock("BASIC", "EN", 42, null, "GUEST");
+    const session = await store.get(created.sessionId);
+
+    expect(created.total).toBe(10);
+    expect(session?.userId).toBeNull();
+    expect(session?.questionIds.length).toBe(10);
     expect(session?.questionIds.every((id) => {
       const q = bank.questions.find((item) => item.id === id);
       return q?.difficulty === 0;

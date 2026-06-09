@@ -31,6 +31,12 @@ export async function requireExamOwner(req: Request, sessionId: string): Promise
     return Response.json({ error: "session not found" }, { status: 404 });
   }
 
+  // Anonymous (guest) sessions have no owner and are accessible by their
+  // (unguessable) session id — this is the free anonymous Basic taster.
+  if (ownerId === null) {
+    return null;
+  }
+
   const account = await currentAccount(req);
   if (!account.userId) {
     return Response.json({ error: "authentication required" }, { status: 401 });

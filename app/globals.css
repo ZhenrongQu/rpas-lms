@@ -752,7 +752,12 @@ html, body {
   padding: 24px;
   max-width: 880px;
   margin: 0 auto;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
 }
+.review-view::-webkit-scrollbar { width: 4px; }
+.review-view::-webkit-scrollbar-thumb { background: var(--cyan-dim); border-radius: 2px; }
 .review-head {
   display: flex;
   align-items: center;
