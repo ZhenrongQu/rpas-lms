@@ -22,9 +22,7 @@ export async function POST(req: Request): Promise<Response> {
   }
   const { certLevel, locale, seed } = parsed.data;
   const account = await currentAccount(req);
-  if (!account.userId) {
-    return Response.json({ error: "authentication required" }, { status: 401 });
-  }
+  // GUEST (anonymous) and FREE may create Basic exams; Advanced requires PAID.
   if (!canCreateExam(account.accessTier, certLevel)) {
     return Response.json({ error: "upgrade required" }, { status: 403 });
   }
