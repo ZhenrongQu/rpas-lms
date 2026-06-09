@@ -7,6 +7,10 @@ export default defineConfig({
     env: {
       DATABASE_URL: "file:./test.db",
       AUTH_SECRET: "test-secret-test-secret-test-secret-0000",
+      APP_URL: "https://rpas.test",
+      STRIPE_SECRET_KEY: "sk_test_unit",
+      STRIPE_WEBHOOK_SECRET: "whsec_unit",
+      STRIPE_PAID_ACCESS_PRICE_ID: "price_paid_access_unit",
     },
     globalSetup: ["./vitest.globalSetup.ts"],
     // All test files share one SQLite file; run them sequentially so concurrent
