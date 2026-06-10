@@ -7,13 +7,15 @@
       "Bash(git ls-tree *)",
       "Bash(git merge *)",
       "Bash(git reset *)",
-      "Bash(git branch *)"
+      "Bash(git branch *)",
+      "Bash(mkdir -p /Users/quzhenrong/rpas-lms/app/api/admin/questions/\\\\[id\\\\] /Users/quzhenrong/rpas-lms/app/api/admin/lessons/\\\\[id\\\\])"
     ],
     "additionalDirectories": [
       "/tmp/rpas-sec-wt/docs/superpowers/specs",
       "/private/tmp/rpas-sec-wt/docs/superpowers/specs",
       "/tmp/rpas-sec-wt/docs/superpowers/plans",
-      "/private/tmp/rpas-sec-wt/docs/superpowers/plans"
+      "/private/tmp/rpas-sec-wt/docs/superpowers/plans",
+      "/Users/quzhenrong/rpas-lms/app/api/admin/questions"
     ]
   }
 }
