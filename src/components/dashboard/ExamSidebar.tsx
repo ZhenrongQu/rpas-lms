@@ -11,11 +11,16 @@ export default async function ExamSidebar({ locale }: { locale: string }) {
   const userId = session?.user?.id ?? null;
   const completed = new Set(userId ? await listCompletedLessonIds(userId) : []);
 
-  const basicTotal = getCourseLessonCount('basic');
+  const basicTotal = await getCourseLessonCount('basic');
   const basicDone = [...completed].filter((l) => l.startsWith('basic/')).length;
   const overall = basicTotal === 0 ? 0 : Math.round((basicDone / basicTotal) * 100);
+  const basicModuleCounts = Object.fromEntries(
+    await Promise.all(
+      MODULE_IDS.map(async (id) => [id, await getModuleLessonCount('basic', id)] as const),
+    ),
+  ) as Record<string, number>;
   const pctFor = (id: string) => {
-    const tot = getModuleLessonCount('basic', id);
+    const tot = basicModuleCounts[id] ?? 0;
     if (tot === 0) return null;
     const done = [...completed].filter((l) => l.startsWith(`basic/${id}/`)).length;
     return Math.round((done / tot) * 100);

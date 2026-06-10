@@ -41,14 +41,16 @@
       "Bash(sqlite3 /Users/quzhenrong/rpas-lms/prisma/dev.db \"UPDATE User SET accessTier = 'PAID' WHERE id = 'cmq4nunhg0000k2804wi4ffmr'; SELECT id, username, accessTier FROM User;\")",
       "Bash(sqlite3 /Users/quzhenrong/rpas-lms/prisma/dev.db \"UPDATE User SET userNumber = 1 WHERE id = 'cmq4nunhg0000k2804wi4ffmr'; SELECT id, username, userNumber, accessTier FROM User;\")",
       "Bash(node -e ' *)",
-      "Bash(echo \"TSC_EXIT=$?\")"
+      "Bash(echo \"TSC_EXIT=$?\")",
+      "Bash(mkdir -p /Users/quzhenrong/rpas-lms/app/api/admin/questions/\\\\[id\\\\] /Users/quzhenrong/rpas-lms/app/api/admin/lessons/\\\\[id\\\\])"
     ],
     "additionalDirectories": [
       "/tmp/rpas-sec-wt/docs/superpowers/specs",
       "/private/tmp/rpas-sec-wt/docs/superpowers/specs",
       "/tmp/rpas-sec-wt/docs/superpowers/plans",
       "/private/tmp/rpas-sec-wt/docs/superpowers/plans",
-      "/Users/quzhenrong/rpas-lms/app/[locale]"
+      "/Users/quzhenrong/rpas-lms/app/[locale]",
+      "/Users/quzhenrong/rpas-lms/app/api/admin/questions"
     ]
   }
 }

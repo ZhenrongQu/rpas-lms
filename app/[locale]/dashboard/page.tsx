@@ -20,8 +20,10 @@ export default async function DashboardPage({ params }: Props) {
   const accessTier = (session.user as { accessTier?: string }).accessTier ?? 'FREE';
 
   const completed = new Set(userId ? await listCompletedLessonIds(userId) : []);
-  const basicTotal = getCourseLessonCount('basic');
-  const advancedTotal = getCourseLessonCount('advanced');
+  const [basicTotal, advancedTotal] = await Promise.all([
+    getCourseLessonCount('basic'),
+    getCourseLessonCount('advanced'),
+  ]);
   const basicDone = [...completed].filter((l) => l.startsWith('basic/')).length;
   const advancedDone = [...completed].filter((l) => l.startsWith('advanced/')).length;
   const basicPct = basicTotal === 0 ? 0 : Math.round((basicDone / basicTotal) * 100);

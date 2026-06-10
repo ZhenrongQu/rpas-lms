@@ -33,6 +33,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email ?? undefined,
           name: user.displayName ?? user.username ?? undefined,
           accessTier: user.accessTier,
+          role: user.role,
         };
       },
     }),
@@ -79,11 +80,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
         token.id = localUser.id;
         token.accessTier = localUser.accessTier;
+        token.role = localUser.role;
         return token;
       }
 
       if (user) token.id = (user as { id: string }).id;
       if (user) token.accessTier = (user as { accessTier?: string }).accessTier;
+      if (user) token.role = (user as { role?: string }).role;
       return token;
     },
     session({ session, token }) {
@@ -91,6 +94,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.accessTier && session.user) {
         session.user.accessTier = token.accessTier as "FREE" | "PAID";
       }
+      // Display/nav hint only — admin authorization re-checks role in the DB.
+      if (token.role && session.user) session.user.role = token.role as string;
       return session;
     },
   },

@@ -10,7 +10,7 @@ export default async function ModuleLanding({ params }: Props) {
   const { locale, course, moduleId } = await params;
   if (course !== 'basic' && course !== 'advanced') notFound();
   const t = await getTranslations({ locale });
-  const lessons = getModuleLessons(locale as RouteLocale, course as Course, moduleId);
+  const lessons = await getModuleLessons(locale as RouteLocale, course as Course, moduleId);
 
   return (
     <div className="module-landing">

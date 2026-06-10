@@ -2,6 +2,26 @@ import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { prisma } from "../db";
 import { PrismaSessionStore } from "./prismaStore";
 import type { ExamSession } from "./store";
+import type { Question } from "../content/types";
+
+const snapshot: Question[] = [
+  {
+    id: "air-law-0001",
+    moduleId: "air-law",
+    certLevel: "BOTH",
+    type: "SINGLE",
+    selectCount: 1,
+    difficulty: 0,
+    stem: { EN: "Q?", ZH: "问题?" },
+    options: [
+      { id: "a", label: { EN: "A", ZH: "甲" }, isCorrect: true },
+      { id: "b", label: { EN: "B", ZH: "乙" }, isCorrect: false },
+    ],
+    explanation: { EN: "because", ZH: "因为" },
+    reference: { EN: "ref", ZH: "参考" },
+    tags: ["x"],
+  },
+];
 
 function sampleSession(id: string): ExamSession {
   return {
@@ -10,6 +30,7 @@ function sampleSession(id: string): ExamSession {
     certLevel: "BASIC",
     locale: "EN",
     questionIds: ["air-law-0001", "navigation-0002"],
+    questionSnapshot: snapshot,
     startedAt: 1_000,
     expiresAt: 1_000 + 90 * 60_000,
     answers: {},

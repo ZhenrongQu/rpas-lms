@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { loadQuestionBank } from "../content/loadBank";
+import { loadQuestionBankFromDB } from "../content/loadBank";
 import { EXAM_SPECS, examQuestionCount } from "./config";
 import { generateExam } from "./generate";
 import { mulberry32 } from "./rng";
@@ -26,7 +26,7 @@ export class ExamService {
   constructor(
     private store: SessionStore,
     private now: () => number = Date.now,
-    private bank: QuestionBank = loadQuestionBank(),
+    private bankOverride?: QuestionBank,
   ) {}
 
   async createMock(
@@ -37,9 +37,10 @@ export class ExamService {
     accessTier: AccessTier = "PAID",
   ): Promise<CreatedExam> {
     const spec = EXAM_SPECS[certLevel];
+    const bank = this.bankOverride ?? (await loadQuestionBankFromDB());
     const scopedBank: QuestionBank = {
-      ...this.bank,
-      questions: questionsForAccess(this.bank.questions, accessTier, certLevel),
+      ...bank,
+      questions: questionsForAccess(bank.questions, accessTier, certLevel),
     };
     const total = examQuestionCount(accessTier, certLevel);
     const questions = generateExam(certLevel, total, mulberry32(seed), scopedBank);
@@ -50,6 +51,7 @@ export class ExamService {
       certLevel,
       locale,
       questionIds: questions.map((q) => q.id),
+      questionSnapshot: questions,
       startedAt,
       expiresAt: startedAt + spec.timeLimitMinutes * 60_000,
       answers: {},
@@ -59,15 +61,16 @@ export class ExamService {
     return { sessionId: session.id, expiresAt: session.expiresAt, total: questions.length };
   }
 
-  private byId(id: string): Question | undefined {
-    return this.bank.questions.find((q) => q.id === id);
+  /** Looks up a question from the session's snapshot — never the live bank. */
+  private questionById(session: ExamSession, id: string): Question | undefined {
+    return session.questionSnapshot.find((q) => q.id === id);
   }
 
   async getPublicQuestions(sessionId: string): Promise<PublicQuestion[] | null> {
     const session = await this.store.get(sessionId);
     if (!session) return null;
     return session.questionIds
-      .map((id) => this.byId(id))
+      .map((id) => this.questionById(session, id))
       .filter((q): q is Question => Boolean(q))
       .map((q) => ({ ...q, options: orderedOptions(q.options, sessionId, q.id) }))
       .map((q) => toPublicQuestion(q, session.locale));
@@ -91,7 +94,7 @@ export class ExamService {
     if (session.submitted) return session.result ?? null;
     session.submitted = true;
     const questions = session.questionIds
-      .map((id) => this.byId(id))
+      .map((id) => this.questionById(session, id))
       .filter((q): q is Question => Boolean(q));
     const result = scoreExam(questions, session.answers, EXAM_SPECS[session.certLevel].passThreshold);
     session.result = result;
@@ -137,7 +140,7 @@ export class ExamService {
     const session = await this.store.get(sessionId);
     if (!session || !session.submitted) return null;
     const questions = session.questionIds
-      .map((id) => this.byId(id))
+      .map((id) => this.questionById(session, id))
       .filter((q): q is Question => Boolean(q))
       .map((q) => ({ ...q, options: orderedOptions(q.options, sessionId, q.id) }));
     return buildReview(questions, session.answers, session.locale);
