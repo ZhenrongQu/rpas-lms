@@ -18,14 +18,21 @@ export default async function DashboardPage({ params }: Props) {
   const userId = session?.user?.id ?? null;
 
   const completed = new Set(userId ? await listCompletedLessonIds(userId) : []);
+  const [basicTotal, advancedTotal] = await Promise.all([
+    getCourseLessonCount('basic'),
+    getCourseLessonCount('advanced'),
+  ]);
+  const basicModuleCounts = Object.fromEntries(
+    await Promise.all(
+      MODULE_IDS.map(async (id) => [id, await getModuleLessonCount('basic', id)] as const),
+    ),
+  ) as Record<string, number>;
   const basicModulePct = (id: string) => {
-    const total = getModuleLessonCount('basic', id);
+    const total = basicModuleCounts[id] ?? 0;
     if (total === 0) return 0;
     const done = [...completed].filter((l) => l.startsWith(`basic/${id}/`)).length;
     return Math.round((done / total) * 100);
   };
-  const basicTotal = getCourseLessonCount('basic');
-  const advancedTotal = getCourseLessonCount('advanced');
   const allTotal = basicTotal + advancedTotal;
   const overallPct = allTotal === 0 ? 0 : Math.round((completed.size / allTotal) * 100);
   const advancedDone = [...completed].filter((l) => l.startsWith('advanced/')).length;
@@ -47,7 +54,7 @@ export default async function DashboardPage({ params }: Props) {
         <div className="modules-grid">
           <ModuleCard moduleId="intro" index={0} progress={100} href={`/${locale}/intro`} />
           {MODULE_IDS.map((id, i) => {
-            const hasBasic = getModuleLessonCount('basic', id) > 0;
+            const hasBasic = (basicModuleCounts[id] ?? 0) > 0;
             return (
               <ModuleCard
                 key={id}
