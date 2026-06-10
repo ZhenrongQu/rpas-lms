@@ -6,7 +6,7 @@ import { requestVerificationCode } from "../../../../src/lib/auth/verificationCo
 const RegisterBody = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  username: z.string().min(3).max(24).optional(),
+  username: z.string().min(6).max(24).regex(/^[a-zA-Z0-9]+$/, "letters and numbers only").optional(),
   phone: z.string().min(7).optional(),
 }).strict();
 

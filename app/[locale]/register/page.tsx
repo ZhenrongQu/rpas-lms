@@ -8,14 +8,38 @@ import { useTranslations, useLocale } from 'next-intl';
 
 type OAuthStatus = { google: boolean; apple: boolean };
 
+interface PasswordCheck {
+  label: string;
+  ok: boolean;
+}
+
+function getPasswordChecks(pw: string, t: (k: string) => string): PasswordCheck[] {
+  return [
+    { label: t('pwLength'), ok: pw.length >= 8 && pw.length <= 20 },
+    { label: t('pwUpper'), ok: /[A-Z]/.test(pw) },
+    { label: t('pwLower'), ok: /[a-z]/.test(pw) },
+    { label: t('pwDigit'), ok: /[0-9]/.test(pw) },
+    { label: t('pwSpecial'), ok: /[!@#$%^&*()\-_=+[\]{};':",.<>/?\\|`~]/.test(pw) },
+  ];
+}
+
+function isPasswordValid(pw: string): boolean {
+  return (
+    pw.length >= 8 && pw.length <= 20 &&
+    /[A-Z]/.test(pw) && /[a-z]/.test(pw) &&
+    /[0-9]/.test(pw) && /[!@#$%^&*()\-_=+[\]{};':",.<>/?\\|`~]/.test(pw)
+  );
+}
+
 export default function RegisterPage() {
   const t = useTranslations('auth');
   const locale = useLocale();
   const router = useRouter();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
   const [username, setUsername] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [pwFocused, setPwFocused] = useState(false);
   const [code, setCode] = useState('');
   const [verificationRequested, setVerificationRequested] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,21 +57,16 @@ export default function RegisterPage() {
           apple: Boolean(data.providers.apple),
         });
       })
-      .catch(() => {
-        if (active) setOauthStatus({ google: false, apple: false });
-      });
-    return () => {
-      active = false;
-    };
+      .catch(() => { if (active) setOauthStatus({ google: false, apple: false }); });
+    return () => { active = false; };
   }, []);
-
-  function optional(value: string): string | undefined {
-    const trimmed = value.trim();
-    return trimmed ? trimmed : undefined;
-  }
 
   async function register(e: React.FormEvent) {
     e.preventDefault();
+    if (!isPasswordValid(password)) {
+      setError(t('pwInvalid'));
+      return;
+    }
     setBusy(true);
     setError(null);
     const res = await fetch('/api/auth/register', {
@@ -56,8 +75,8 @@ export default function RegisterPage() {
       body: JSON.stringify({
         email,
         password,
-        phone: optional(phone),
-        username: optional(username),
+        phone: phone.trim() || undefined,
+        username: username.trim() || undefined,
       }),
     });
     setBusy(false);
@@ -82,7 +101,6 @@ export default function RegisterPage() {
       setError(t('verificationFailed'));
       return;
     }
-
     const signInResult = await signIn('credentials', { email, password, redirect: false });
     setBusy(false);
     if (signInResult?.error) {
@@ -93,59 +111,93 @@ export default function RegisterPage() {
     router.refresh();
   }
 
+  const pwChecks = getPasswordChecks(password, t);
+
   return (
     <div className="auth-view">
       <div className="hud-panel auth-card">
         <div className="auth-title">// {t('register')}</div>
-        <button
-          type="button"
-          className="btn-launch"
-          disabled={!oauthStatus.google}
-          title={!oauthStatus.google ? t('oauthUnavailable') : undefined}
-          onClick={() => signIn('google', { callbackUrl: `/${locale}/dashboard` })}
-        >
-          {t('continueGoogle')}
-        </button>
-        <button
-          type="button"
-          className="btn-launch"
-          disabled={!oauthStatus.apple}
-          title={!oauthStatus.apple ? t('oauthUnavailable') : undefined}
-          onClick={() => signIn('apple', { callbackUrl: `/${locale}/dashboard` })}
-        >
-          {t('continueApple')}
-        </button>
 
-        <form onSubmit={verificationRequested ? verifyEmail : register}>
-          <label className="auth-label">{t('email')}
-            <input className="auth-input" type="email" value={email} required disabled={verificationRequested}
+        {(oauthStatus.google || oauthStatus.apple) && (
+          <div className="auth-oauth">
+            {oauthStatus.google && (
+              <button type="button" className="btn-launch"
+                onClick={() => signIn('google', { callbackUrl: `/${locale}/dashboard` })}>
+                {t('continueGoogle')}
+              </button>
+            )}
+            {oauthStatus.apple && (
+              <button type="button" className="btn-launch"
+                onClick={() => signIn('apple', { callbackUrl: `/${locale}/dashboard` })}>
+                {t('continueApple')}
+              </button>
+            )}
+            <div className="auth-divider"><span>{t('orDivider')}</span></div>
+          </div>
+        )}
+
+        <form onSubmit={verificationRequested ? verifyEmail : register} className="auth-form">
+          {/* Email — required */}
+          <label className="auth-label">
+            <span>{t('email')} <span className="auth-required">*</span></span>
+            <input className="auth-input" type="email" autoComplete="email"
+              value={email} required disabled={verificationRequested}
               onChange={(e) => setEmail(e.target.value)} />
           </label>
-          <label className="auth-label">{t('password')}
-            <input className="auth-input" type="password" value={password} required disabled={verificationRequested}
-              onChange={(e) => setPassword(e.target.value)} />
-          </label>
-          <label className="auth-label">{t('phone')}
-            <input className="auth-input" type="tel" value={phone} disabled={verificationRequested}
-              onChange={(e) => setPhone(e.target.value)} />
-          </label>
-          <label className="auth-label">{t('username')}
-            <input className="auth-input" type="text" value={username} disabled={verificationRequested}
+
+          {/* Username — optional */}
+          <label className="auth-label">
+            {t('username')}
+            <input className="auth-input" type="text" autoComplete="username"
+              placeholder={t('usernamePlaceholder')}
+              value={username} disabled={verificationRequested}
               onChange={(e) => setUsername(e.target.value)} />
           </label>
 
+          {/* Phone — optional */}
+          <label className="auth-label">
+            {t('phone')}
+            <input className="auth-input" type="tel" autoComplete="tel"
+              placeholder={t('phonePlaceholder')}
+              value={phone} disabled={verificationRequested}
+              onChange={(e) => setPhone(e.target.value)} />
+          </label>
+
+          {/* Password — required */}
+          <label className="auth-label">
+            <span>{t('password')} <span className="auth-required">*</span></span>
+            <input className="auth-input" type="password" autoComplete="new-password"
+              value={password} required disabled={verificationRequested}
+              onFocus={() => setPwFocused(true)}
+              onChange={(e) => setPassword(e.target.value)} />
+          </label>
+
+          {/* Password strength checklist */}
+          {pwFocused && !verificationRequested && (
+            <ul className="pw-rules">
+              {pwChecks.map((c, i) => (
+                <li key={i} className={c.ok ? 'pw-ok' : 'pw-fail'}>
+                  <span className="pw-icon">{c.ok ? '✓' : '○'}</span> {c.label}
+                </li>
+              ))}
+            </ul>
+          )}
+
           {verificationRequested && (
             <>
-              <div className="auth-link">{t('emailVerificationRequired')}</div>
-              <label className="auth-label">{t('code')}
-                <input className="auth-input" type="text" inputMode="numeric" value={code} required
-                  onChange={(e) => setCode(e.target.value)} />
+              <div className="auth-info">{t('emailVerificationRequired')}</div>
+              <label className="auth-label">
+                {t('code')}
+                <input className="auth-input" type="text" inputMode="numeric"
+                  value={code} required onChange={(e) => setCode(e.target.value)} />
               </label>
             </>
           )}
 
           {error && <div className="auth-error">{error}</div>}
-          <button className="btn-launch" type="submit" disabled={busy || !email || !password || (verificationRequested && !code)}>
+
+          <button className="btn-launch" type="submit"
+            disabled={busy || !email || !password || (verificationRequested && !code)}>
             {busy ? t('working') : verificationRequested ? t('verifyEmail') : t('register')}
           </button>
         </form>

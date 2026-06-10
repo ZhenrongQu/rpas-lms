@@ -59,13 +59,15 @@ export async function grantPaidAccessFromCheckout(grant: CheckoutGrant): Promise
         revokedAt: null,
       },
     });
+  });
 
-    await tx.user.update({
-      where: { id: grant.userId },
-      data: {
-        accessTier: "PAID",
-        stripeCustomerId: grant.customerId ?? undefined,
-      },
-    });
+  // Update User.accessTier outside the transaction to avoid SQLite interactive-transaction
+  // edge cases. Entitlement is the source of truth; this is a denormalized cache.
+  await prisma.user.update({
+    where: { id: grant.userId },
+    data: {
+      accessTier: "PAID",
+      ...(grant.customerId ? { stripeCustomerId: grant.customerId } : {}),
+    },
   });
 }

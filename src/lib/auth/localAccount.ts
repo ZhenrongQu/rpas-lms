@@ -30,7 +30,7 @@ function normalizePhone(phone: string): string {
 
 function normalizeUsername(username: string): string {
   const normalized = username.trim().toLowerCase();
-  if (!/^[a-z0-9_]{3,24}$/.test(normalized)) {
+  if (!/^[a-z0-9]{6,24}$/.test(normalized)) {
     throw new Error("invalid_username");
   }
   return normalized;
@@ -114,10 +114,14 @@ export async function registerLocalAccount(input: RegisterLocalAccountInput) {
     });
   }
 
+  const maxResult = await prisma.user.aggregate({ _max: { userNumber: true } });
+  const nextUserNumber = (maxResult._max.userNumber ?? 0) + 1;
+
   return prisma.user.create({
     data: {
       ...data,
       email,
+      userNumber: nextUserNumber,
     },
   });
 }

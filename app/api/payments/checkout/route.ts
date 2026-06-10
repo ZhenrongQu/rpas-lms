@@ -18,10 +18,20 @@ export async function POST(req: Request): Promise<Response> {
     body = {};
   }
 
-  const { successUrl, cancelUrl } = paidAccessCheckoutUrls(body.locale);
+  let successUrl: string;
+  let cancelUrl: string;
+  let config: ReturnType<typeof getPaymentConfig>;
+  try {
+    const urls = paidAccessCheckoutUrls(body.locale);
+    successUrl = urls.successUrl;
+    cancelUrl = urls.cancelUrl;
+    config = getPaymentConfig();
+  } catch {
+    return Response.json({ error: "payments not configured" }, { status: 503 });
+  }
+
   if (await hasPaidAccess(account.userId)) return Response.json({ url: successUrl }, { status: 200 });
 
-  const config = getPaymentConfig();
   const session = await getStripeClient().checkout.sessions.create({
     mode: "payment",
     line_items: [{ price: config.paidAccessPriceId, quantity: 1 }],
