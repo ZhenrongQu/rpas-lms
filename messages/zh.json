@@ -1,5 +1,5 @@
 {
-  "nav": { "home": "首页", "modules": "课程模块", "exam": "模拟考试", "learn": "学习" },
+  "nav": { "home": "首页", "services": "服务", "about": "关于我们", "dashboard": "我的学习" },
   "home": {
     "hero": {
       "kicker": "加拿大交通部 · TP-15263",
@@ -28,8 +28,8 @@
     },
     "tracks": {
       "kicker": "课程服务",
-      "title": "两个等级，一条飞行路径",
-      "subtitle": "先免费学习基础课程，准备好进入更高风险环境时，再补上高级部分的进阶内容。",
+      "title": "三种方式，全面保持飞行状态",
+      "subtitle": "先免费学习基础课程，需要时升级高级认证，或预约飞行复查保持资质更新。",
       "learnTitle": "学习内容",
       "examTitle": "模拟考",
       "basic": {
@@ -57,6 +57,20 @@
         ],
         "exam": "50 题 · 60 分钟 · 80% 通过",
         "cta": "了解高级课程"
+      },
+      "flightReview": {
+        "badge": "付费",
+        "name": "飞行复查（Flight Review）",
+        "for": "已持高级执照、需每24个月完成一次飞行技能定期复查的飞手。",
+        "reviewTitle": "复查内容",
+        "points": [
+          "法规更新与CARs变化",
+          "紧急程序与应急决策",
+          "管制空域最新实操规范",
+          "飞行技能综合评估"
+        ],
+        "duration": "约2小时 · 现场或远程",
+        "cta": "预约复查"
       }
     },
     "privileges": {
@@ -142,7 +156,19 @@
     "loginWithPhone": "手机号",
     "loginWithUsername": "用户名",
     "emailVerified": "邮箱已验证，正在登录...",
-    "oauthUnavailable": "暂未配置该第三方登录。"
+    "oauthUnavailable": "暂未配置该第三方登录。",
+    "identifier": "用户名 / 邮箱 / 手机号",
+    "identifierPlaceholder": "输入用户名、邮箱或手机号",
+    "orDivider": "或",
+    "usernamePlaceholder": "6–24位，仅限字母和数字",
+    "phonePlaceholder": "+86 138 0000 0000",
+    "pwLength": "8–20个字符",
+    "pwUpper": "至少一个大写字母（A–Z）",
+    "pwLower": "至少一个小写字母（a–z）",
+    "pwDigit": "至少一个数字（0–9）",
+    "pwSpecial": "至少一个特殊字符（!@#$%…）",
+    "pwInvalid": "密码不符合要求。",
+    "authRequired": "请先登录"
   },
   "dashboard": {
     "title": "课程模块",
@@ -159,7 +185,14 @@
     "history": "考试记录",
     "noHistory": "还没有考试记录。开始一次模拟考试吧。",
     "signInToSave": "登录后可保存考试历史。",
-    "viewResult": "查看"
+    "viewResult": "查看",
+    "accessTier": "账户类型",
+    "lessonsComplete": "已完成课时",
+    "myProfile": "我的信息",
+    "myCourse": "我的课程",
+    "goToCourse": "进入课程",
+    "upgradeToPay": "升级解锁",
+    "profileName": "姓名"
   },
   "modules": {
     "intro": "平台介绍",

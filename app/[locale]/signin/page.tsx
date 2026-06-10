@@ -6,14 +6,18 @@ import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useTranslations, useLocale } from 'next-intl';
 
-type LoginMode = 'email' | 'phone' | 'username';
 type OAuthStatus = { google: boolean; apple: boolean };
+
+function detectIdentifierMode(value: string): 'email' | 'phone' | 'username' {
+  if (value.includes('@')) return 'email';
+  if (/^\+?[\d\s\-().]{7,}$/.test(value.trim())) return 'phone';
+  return 'username';
+}
 
 export default function SignInPage() {
   const t = useTranslations('auth');
   const locale = useLocale();
   const router = useRouter();
-  const [mode, setMode] = useState<LoginMode>('email');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -31,20 +35,17 @@ export default function SignInPage() {
           apple: Boolean(data.providers.apple),
         });
       })
-      .catch(() => {
-        if (active) setOauthStatus({ google: false, apple: false });
-      });
-    return () => {
-      active = false;
-    };
+      .catch(() => { if (active) setOauthStatus({ google: false, apple: false }); });
+    return () => { active = false; };
   }, []);
 
-  async function onPasswordSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
+    const mode = detectIdentifierMode(identifier);
     const res = await signIn('credentials', {
-      [mode]: identifier,
+      [mode]: identifier.trim(),
       password,
       redirect: false,
     });
@@ -61,49 +62,55 @@ export default function SignInPage() {
     <div className="auth-view">
       <div className="hud-panel auth-card">
         <div className="auth-title">// {t('signIn')}</div>
-        <button
-          type="button"
-          className="btn-launch"
-          disabled={!oauthStatus.google}
-          title={!oauthStatus.google ? t('oauthUnavailable') : undefined}
-          onClick={() => signIn('google', { callbackUrl: `/${locale}/dashboard` })}
-        >
-          {t('continueGoogle')}
-        </button>
-        <button
-          type="button"
-          className="btn-launch"
-          disabled={!oauthStatus.apple}
-          title={!oauthStatus.apple ? t('oauthUnavailable') : undefined}
-          onClick={() => signIn('apple', { callbackUrl: `/${locale}/dashboard` })}
-        >
-          {t('continueApple')}
-        </button>
 
-        <form onSubmit={onPasswordSubmit}>
-          <div className="auth-label">{t('identifierType')}</div>
-          <label className="auth-label">{t('loginWithEmail')}
-            <input type="radio" checked={mode === 'email'} onChange={() => setMode('email')} />
+        {(oauthStatus.google || oauthStatus.apple) && (
+          <div className="auth-oauth">
+            {oauthStatus.google && (
+              <button type="button" className="btn-launch"
+                onClick={() => signIn('google', { callbackUrl: `/${locale}/dashboard` })}>
+                {t('continueGoogle')}
+              </button>
+            )}
+            {oauthStatus.apple && (
+              <button type="button" className="btn-launch"
+                onClick={() => signIn('apple', { callbackUrl: `/${locale}/dashboard` })}>
+                {t('continueApple')}
+              </button>
+            )}
+            <div className="auth-divider"><span>{t('orDivider')}</span></div>
+          </div>
+        )}
+
+        <form onSubmit={onSubmit} className="auth-form">
+          <label className="auth-label">
+            {t('identifier')}
+            <input
+              className="auth-input"
+              type="text"
+              autoComplete="username"
+              placeholder={t('identifierPlaceholder')}
+              value={identifier}
+              required
+              onChange={(e) => setIdentifier(e.target.value)}
+            />
           </label>
-          <label className="auth-label">{t('loginWithPhone')}
-            <input type="radio" checked={mode === 'phone'} onChange={() => setMode('phone')} />
-          </label>
-          <label className="auth-label">{t('loginWithUsername')}
-            <input type="radio" checked={mode === 'username'} onChange={() => setMode('username')} />
-          </label>
-          <label className="auth-label">{mode === 'phone' ? t('phone') : mode === 'username' ? t('username') : t('email')}
-            <input className="auth-input" type={mode === 'phone' ? 'tel' : mode === 'email' ? 'email' : 'text'} value={identifier} required
-              onChange={(e) => setIdentifier(e.target.value)} />
-          </label>
-          <label className="auth-label">{t('password')}
-            <input className="auth-input" type="password" value={password} required
-              onChange={(e) => setPassword(e.target.value)} />
+          <label className="auth-label">
+            {t('password')}
+            <input
+              className="auth-input"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              required
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </label>
           {error && <div className="auth-error">{error}</div>}
           <button className="btn-launch" type="submit" disabled={busy || !identifier || !password}>
             {busy ? t('working') : t('signIn')}
           </button>
         </form>
+
         <Link href={`/${locale}/register`} className="auth-link">{t('needAccount')}</Link>
       </div>
     </div>

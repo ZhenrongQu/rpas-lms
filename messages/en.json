@@ -1,5 +1,5 @@
 {
-  "nav": { "home": "Home", "modules": "Modules", "exam": "Exam", "learn": "Learn" },
+  "nav": { "home": "Home", "services": "Services", "about": "About Us", "dashboard": "Dashboard" },
   "home": {
     "hero": {
       "kicker": "Transport Canada · TP-15263",
@@ -28,8 +28,8 @@
     },
     "tracks": {
       "kicker": "Services",
-      "title": "Two tracks, one flight path",
-      "subtitle": "Start with Basic for free, then add the Advanced delta when you're ready to fly in higher-risk environments.",
+      "title": "Three ways to stay flight-ready",
+      "subtitle": "Start with Basic for free, upgrade to Advanced when you need it, or book a Flight Review to stay current.",
       "learnTitle": "What you'll cover",
       "examTitle": "Mock exam",
       "basic": {
@@ -57,6 +57,20 @@
         ],
         "exam": "50 questions · 60 min · Pass 80%",
         "cta": "Explore Advanced"
+      },
+      "flightReview": {
+        "badge": "PAID",
+        "name": "Flight Review",
+        "for": "Advanced-certified pilots required to complete a recurrent skills check every 24 months.",
+        "reviewTitle": "What it covers",
+        "points": [
+          "Regulatory updates & CARs changes",
+          "Emergency procedures & decision-making",
+          "Controlled airspace current practices",
+          "Practical skills evaluation"
+        ],
+        "duration": "Approx. 2 hrs · On-site or remote",
+        "cta": "Book a review"
       }
     },
     "privileges": {
@@ -142,7 +156,19 @@
     "loginWithPhone": "Phone",
     "loginWithUsername": "Username",
     "emailVerified": "Email verified. Signing you in...",
-    "oauthUnavailable": "OAuth provider is not configured yet."
+    "oauthUnavailable": "OAuth provider is not configured yet.",
+    "identifier": "Username / Email / Phone",
+    "identifierPlaceholder": "Enter your username, email, or phone",
+    "orDivider": "or",
+    "usernamePlaceholder": "6–24 chars, letters and numbers only",
+    "phonePlaceholder": "+1 (555) 000-0000",
+    "pwLength": "8–20 characters",
+    "pwUpper": "At least one uppercase letter (A–Z)",
+    "pwLower": "At least one lowercase letter (a–z)",
+    "pwDigit": "At least one number (0–9)",
+    "pwSpecial": "At least one special character (!@#$%…)",
+    "pwInvalid": "Password does not meet the requirements.",
+    "authRequired": "Sign in to continue"
   },
   "dashboard": {
     "title": "Mission Modules",
@@ -159,7 +185,14 @@
     "history": "Mission Log",
     "noHistory": "No exams yet. Launch your first mock.",
     "signInToSave": "Sign in to save your exam history.",
-    "viewResult": "View"
+    "viewResult": "View",
+    "accessTier": "Access Tier",
+    "lessonsComplete": "Lessons Done",
+    "myProfile": "My Profile",
+    "myCourse": "My Course",
+    "goToCourse": "Go to Course",
+    "upgradeToPay": "Upgrade to Access",
+    "profileName": "Name"
   },
   "modules": {
     "intro": "Intro",

@@ -3,7 +3,71 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import SignOutButton from '@/components/auth/SignOutButton';
+import { useEffect, useRef, useState } from 'react';
+import { signOut } from 'next-auth/react';
+
+function UserMenu({
+  user,
+  locale,
+}: {
+  user: { name?: string | null; email?: string | null };
+  locale: string;
+}) {
+  const t = useTranslations('auth');
+  const tNav = useTranslations('nav');
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, [open]);
+
+  const displayName = user.name || user.email || '';
+
+  return (
+    <div className="user-menu" ref={ref}>
+      <button
+        type="button"
+        className="account-name"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        <span className="account-dot" />
+        {displayName}
+        <span className="account-chevron">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="user-dropdown">
+          <div className="user-dropdown-header">
+            <div className="user-dropdown-name">{displayName}</div>
+            <div className="user-dropdown-email">{user.email}</div>
+          </div>
+          <div className="user-dropdown-divider" />
+          <Link
+            href={`/${locale}/dashboard`}
+            className="user-dropdown-item"
+            onClick={() => setOpen(false)}
+          >
+            {tNav('dashboard')}
+          </Link>
+          <button
+            type="button"
+            className="user-dropdown-item danger"
+            onClick={() => signOut({ callbackUrl: `/${locale}` })}
+          >
+            {t('signOut')}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function HudHeader({
   locale,
@@ -17,19 +81,22 @@ export default function HudHeader({
   const pathname = usePathname();
 
   const isHome = pathname === `/${locale}` || pathname === `/${locale}/`;
-  const isModules = pathname.startsWith(`/${locale}/dashboard`);
-  const isLearn = pathname.startsWith(`/${locale}/learn`);
-  const isExam = pathname.startsWith(`/${locale}/exam`);
 
-  // Same path under a target locale, swapping the leading locale segment.
   const localeHref = (target: string) =>
     pathname.replace(new RegExp(`^/${locale}`), `/${target}`);
+
+  const handleHashNav = (hash: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isHome) {
+      e.preventDefault();
+      document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
     <header className="hud-header">
       {/* Logo */}
       <Link href={`/${locale}`} className="logo-mark">
-        <svg width="36" height="36" viewBox="0 0 40 40" fill="none" style={{ filter: 'drop-shadow(0 0 8px #00d4ff)' }}>
+        <svg width="32" height="32" viewBox="0 0 40 40" fill="none" style={{ filter: 'drop-shadow(0 0 8px #00d4ff)' }}>
           <line x1="20" y1="20" x2="8"  y2="8"  stroke="#00d4ff" strokeWidth="1.5"/>
           <line x1="20" y1="20" x2="32" y2="8"  stroke="#00d4ff" strokeWidth="1.5"/>
           <line x1="20" y1="20" x2="8"  y2="32" stroke="#00d4ff" strokeWidth="1.5"/>
@@ -47,65 +114,42 @@ export default function HudHeader({
         </div>
       </Link>
 
-      <div className="header-divider" />
-
-      <div className="header-stat">
-        <div className="stat-label">Status</div>
-        <div className="stat-value" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span className="status-blip" />
-          ACTIVE
-        </div>
-      </div>
-
       <div className="header-spacer" />
-
-      {/* Radar widget */}
-      <div className="radar-widget">
-        <svg viewBox="0 0 44 44" width="44" height="44">
-          <circle cx="22" cy="22" r="20" stroke="rgba(0,212,255,0.12)" strokeWidth="1" fill="none"/>
-          <circle cx="22" cy="22" r="13" stroke="rgba(0,212,255,0.08)" strokeWidth="1" fill="none"/>
-          <circle cx="22" cy="22" r="6"  stroke="rgba(0,212,255,0.10)" strokeWidth="1" fill="none"/>
-          <line x1="2" y1="22" x2="42" y2="22" stroke="rgba(0,212,255,0.06)" strokeWidth="1"/>
-          <line x1="22" y1="2" x2="22" y2="42" stroke="rgba(0,212,255,0.06)" strokeWidth="1"/>
-          <g className="radar-sweep">
-            <line x1="22" y1="22" x2="22" y2="2" stroke="rgba(0,212,255,0.7)" strokeWidth="1"/>
-            <path d="M22 22 L22 2 A20 20 0 0 1 38 32 Z" fill="rgba(0,212,255,0.05)"/>
-          </g>
-          <circle cx="30" cy="14" r="2" fill="#00d4ff" className="radar-blip"/>
-        </svg>
-      </div>
-
-      <div className="cert-badge">ADVANCED OPS</div>
 
       {/* Nav tabs */}
       <nav className="nav-tabs">
         <Link href={`/${locale}`} className={`nav-tab${isHome ? ' active' : ''}`}>
           {t('home')}
         </Link>
-        <Link href={`/${locale}/dashboard`} className={`nav-tab${isModules ? ' active' : ''}`}>
-          {t('modules')}
+        <Link
+          href={`/${locale}#tracks`}
+          className="nav-tab"
+          onClick={handleHashNav('tracks')}
+        >
+          {t('services')}
         </Link>
-        <Link href={`/${locale}/learn`} className={`nav-tab${isLearn ? ' active' : ''}`}>
-          {t('learn')}
-        </Link>
-        <Link href={`/${locale}/exam`} className={`nav-tab${isExam ? ' active' : ''}`}>
-          {t('exam')}
+        <Link
+          href={`/${locale}#how`}
+          className="nav-tab"
+          onClick={handleHashNav('how')}
+        >
+          {t('about')}
         </Link>
       </nav>
 
       {/* Account */}
-      <div className="account-box">
-        {user ? (
-          <>
-            <span className="account-name">{user.name || user.email}</span>
-            <SignOutButton locale={locale} />
-          </>
-        ) : (
-          <Link href={`/${locale}/signin`} className="locale-btn">
+      {user ? (
+        <UserMenu user={user} locale={locale} />
+      ) : (
+        <div className="auth-links">
+          <Link href={`/${locale}/signin`} className="nav-tab">
             {tAuth('signIn')}
           </Link>
-        )}
-      </div>
+          <Link href={`/${locale}/register`} className="nav-tab-cta">
+            {tAuth('register')}
+          </Link>
+        </div>
+      )}
 
       {/* Locale switcher */}
       <div className="locale-switcher">

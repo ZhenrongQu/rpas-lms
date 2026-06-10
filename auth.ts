@@ -5,6 +5,8 @@ import Google from "next-auth/providers/google";
 import { findOrCreateOAuthUser } from "./src/lib/auth/account";
 import { authorizeLocalPasswordLogin } from "./src/lib/auth/localAccount";
 import { getOAuthProviderCredentials } from "./src/lib/auth/oauthConfig";
+import { prisma } from "./src/lib/db";
+import { hasPaidAccess } from "./src/lib/payments/entitlements";
 
 const oauthCredentials = getOAuthProviderCredentials();
 
@@ -52,7 +54,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       : []),
   ],
   callbacks: {
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user, account, profile, trigger }) {
+      // On explicit session.update() call, re-derive accessTier from Entitlement (source of truth)
+      // so payment takes effect immediately without sign-out.
+      if (trigger === "update" && token.id) {
+        const paid = await hasPaidAccess(token.id as string);
+        token.accessTier = paid ? "PAID" : "FREE";
+        return token;
+      }
+
       if (account?.provider === "google" || account?.provider === "apple") {
         const email = typeof profile?.email === "string" ? profile.email : null;
         const emailVerified =
