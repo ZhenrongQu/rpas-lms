@@ -13,7 +13,7 @@ interface Props {
 
 export default async function LessonSidebar({ locale, course, moduleId, currentSlug, completed }: Props) {
   const t = await getTranslations({ locale });
-  const lessons = getModuleLessons(locale as RouteLocale, course, moduleId);
+  const lessons = await getModuleLessons(locale as RouteLocale, course, moduleId);
   const done = lessons.filter((l) => completed.has(l.lessonId)).length;
   const pct = lessons.length === 0 ? 0 : Math.round((done / lessons.length) * 100);
 

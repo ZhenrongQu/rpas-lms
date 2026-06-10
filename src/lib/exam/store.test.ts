@@ -7,6 +7,7 @@ function makeSession(id: string): ExamSession {
     certLevel: "BASIC",
     locale: "EN",
     questionIds: ["air-law-0001"],
+    questionSnapshot: [],
     startedAt: 0,
     expiresAt: 1000,
     answers: {},

@@ -3,8 +3,34 @@ import { ExamService } from "./service";
 import { InMemorySessionStore } from "./store";
 import { loadQuestionBank } from "../content/loadBank";
 import { correctOptionIds } from "./grade";
+import type { QuestionBank } from "../content/types";
 
 const bank = loadQuestionBank();
+
+/** Single-question bank whose correct option can be flipped, for snapshot-isolation tests. */
+function oneQuestionBank(correctOptionId: "a" | "b"): QuestionBank {
+  return {
+    schemaVersion: 1,
+    questions: [
+      {
+        id: "air-law-0001",
+        moduleId: "air-law",
+        certLevel: "BASIC",
+        type: "SINGLE",
+        selectCount: 1,
+        difficulty: 1,
+        stem: { EN: "Q?", ZH: "问题?" },
+        options: [
+          { id: "a", label: { EN: "A", ZH: "甲" }, isCorrect: correctOptionId === "a" },
+          { id: "b", label: { EN: "B", ZH: "乙" }, isCorrect: correctOptionId === "b" },
+        ],
+        explanation: { EN: "e", ZH: "e" },
+        reference: { EN: "r", ZH: "r" },
+        tags: [],
+      },
+    ],
+  };
+}
 
 function newService() {
   return new ExamService(new InMemorySessionStore(), () => 1_000, bank);
@@ -211,5 +237,28 @@ describe("ExamService", () => {
   it("getReview() is null for an unknown session", async () => {
     const svc = newService();
     expect(await svc.getReview("missing")).toBeNull();
+  });
+
+  it("grades an in-flight exam from its snapshot even after the bank's correct answer changes", async () => {
+    const liveBank = oneQuestionBank("a"); // correct answer is "a" at creation time
+    const svc = new ExamService(new InMemorySessionStore(), () => 1_000, liveBank);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 1);
+    await svc.answer(sessionId, "air-law-0001", ["a"]);
+
+    // Admin edits the live bank mid-exam: correct answer becomes "b".
+    liveBank.questions[0].options[0].isCorrect = false;
+    liveBank.questions[0].options[1].isCorrect = true;
+
+    // The in-flight exam still grades "a" as correct — it reads its own snapshot.
+    const result = await svc.submit(sessionId);
+    expect(result!.correct).toBe(1);
+    expect(result!.scorePct).toBe(1);
+
+    // A brand-new exam built from the edited bank reflects the change: "a" is now wrong.
+    const svc2 = new ExamService(new InMemorySessionStore(), () => 1_000, liveBank);
+    const created2 = await svc2.createMock("BASIC", "EN", 1);
+    await svc2.answer(created2.sessionId, "air-law-0001", ["a"]);
+    const result2 = await svc2.submit(created2.sessionId);
+    expect(result2!.correct).toBe(0);
   });
 });

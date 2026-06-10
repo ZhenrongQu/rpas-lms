@@ -17,7 +17,7 @@ type Props = { params: Promise<{ locale: string; course: string; moduleId: strin
 export default async function LessonPage({ params }: Props) {
   const { locale, course, moduleId, slug } = await params;
   if (course !== 'basic' && course !== 'advanced') notFound();
-  const lesson = getLesson(locale as RouteLocale, course as Course, moduleId, slug);
+  const lesson = await getLesson(locale as RouteLocale, course as Course, moduleId, slug);
   if (!lesson) notFound();
 
   const session = await auth();
@@ -49,7 +49,7 @@ export default async function LessonPage({ params }: Props) {
   }
 
   const completed = new Set(userId ? await listCompletedLessonIds(userId) : []);
-  const lessons = getModuleLessons(locale as RouteLocale, course as Course, moduleId);
+  const lessons = await getModuleLessons(locale as RouteLocale, course as Course, moduleId);
   const idx = lessons.findIndex((l) => l.slug === slug);
   const next = idx >= 0 && idx < lessons.length - 1 ? lessons[idx + 1] : null;
   const nextHref = next ? `/${locale}/learn/${course}/${moduleId}/${next.slug}` : null;

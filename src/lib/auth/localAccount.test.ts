@@ -28,12 +28,12 @@ describe("local password accounts", () => {
     const user = await registerLocalAccount({
       email: " Pilot@Example.COM ",
       password: "correct-password",
-      username: "Pilot_One",
+      username: "PilotOne",
       phone: "(604) 555-1234",
     });
 
     expect(user.email).toBe("pilot@example.com");
-    expect(user.username).toBe("pilot_one");
+    expect(user.username).toBe("pilotone");
     expect(user.phone).toBe("+16045551234");
     expect(user.emailVerifiedAt).toBeNull();
     expect(user.hashedPassword).not.toBe("correct-password");
@@ -44,7 +44,7 @@ describe("local password accounts", () => {
     await prisma.user.create({
       data: {
         email: "taken@example.com",
-        username: "taken",
+        username: "takenname",
         phone: "+16045550000",
         hashedPassword: "hash",
         emailVerifiedAt: new Date("2026-06-08T00:00:00.000Z"),
@@ -60,7 +60,7 @@ describe("local password accounts", () => {
       registerLocalAccount({
         email: "new@example.com",
         password: "correct-password",
-        username: "taken",
+        username: "takenname",
       }),
     ).rejects.toThrow("username_unavailable");
 
