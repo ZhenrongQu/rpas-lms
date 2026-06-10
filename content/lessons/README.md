@@ -34,9 +34,11 @@ access: FREE                                 # FREE | PAID
 ## Body conventions
 
 - Markdown headings/lists/bold, plus four MDX components: `<Tip>`, `<Caution>`,
-  `<Note>`, and exactly **one** `<Checkpoint questionId="…" />` per lesson.
-- The checkpoint `questionId` **must** be a real id in `content/question-bank.json`
-  from the **same module** — never invent ids.
+  `<Note>`, and **one or more** `<Checkpoint questionId="…" />` per lesson.
+  Rules: no duplicate `questionId` within a lesson; EN and ZH must reference the
+  **same set** of `questionId`s; all ids must be `ACTIVE` and from the **same module**.
+- The checkpoint `questionId` **must** be a real id in the DB (or `content/question-bank.json`
+  before seeding) from the **same module** — never invent ids.
 - Diagrams are referenced with markdown images: `![alt](/lessons/diagrams/name.svg)`.
 - End with `## Key takeaways` and a `Sources:` line (RPAS 101 page / CAR / Standard /
   TP‑15263 §). Original study content only — do **not** copy actual TC exam questions.
