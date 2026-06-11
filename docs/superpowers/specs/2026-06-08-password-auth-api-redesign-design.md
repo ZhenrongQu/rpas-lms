@@ -96,6 +96,49 @@ Rules:
 
 Google and Apple continue to use OAuth. If the provider returns a verified email, that email is treated as verified and can be linked to an existing local account.
 
+## OAuth Configuration Requirements
+
+Google and Apple OAuth are enabled only when their required environment variables are present. If a provider is missing configuration, the UI should show the provider button as unavailable instead of starting a broken OAuth request.
+
+### Google
+
+Required application configuration:
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+
+Google Console must register this app as a web OAuth client and include each environment's redirect URI:
+
+```text
+http://localhost:3000/api/auth/callback/google
+http://localhost:3002/api/auth/callback/google
+https://<production-domain>/api/auth/callback/google
+```
+
+The exact localhost port must match the port used by the local Next.js dev server. The production redirect URI must match the deployed domain exactly.
+
+### Apple
+
+Required application configuration:
+
+- `APPLE_CLIENT_ID`: Apple Services ID for web sign-in, for example `com.example.web`
+- `APPLE_CLIENT_SECRET`: Apple client secret JWT generated from the Apple Developer private key
+
+Apple Developer must configure the Services ID for Sign in with Apple and include the deployed return URL:
+
+```text
+https://<production-domain>/api/auth/callback/apple
+```
+
+Apple web sign-in generally requires a verified HTTPS domain for the configured return URL. Localhost testing may require a separate HTTPS tunnel or staging domain that is also registered in Apple Developer.
+
+Information needed from the project owner before production OAuth can work:
+
+- Production domain, including protocol, for example `https://app.example.com`.
+- Local development port that should be supported, currently `3000` or `3002`.
+- Google OAuth web client ID and client secret.
+- Apple Developer Team ID, Key ID, Services ID, and either a generated `APPLE_CLIENT_SECRET` or the local `.p8` private key path needed to generate it.
+
 ## API Surface
 
 Keep the public API small:
