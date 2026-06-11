@@ -1,18 +1,14 @@
-import { createElement, Fragment, type ReactNode } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { compileMDX } from "next-mdx-remote/rsc";
 import { prisma } from "../db";
 
 export type MdxValidationResult = { ok: true } | { ok: false; errors: string[] };
 
-// Stub components for validation render. The four known lesson components map to
-// passthroughs so valid MDX renders without client context/fetch; any other
-// capitalized component is absent from this map, so render throws — that is the
-// whitelist. (Run 7: the real Checkpoint is 'use client' + context, so a real
-// component map would throw on valid MDX.)
-const passthrough = (props: { children?: ReactNode }) =>
-  createElement(Fragment, null, props.children);
-const STUBS = { Tip: passthrough, Caution: passthrough, Note: passthrough, Checkpoint: passthrough };
+// Whitelisted lesson components. Any other capitalized JSX tag is rejected by
+// scanComponents — that scan IS the whitelist. (Previously enforced by rendering
+// the compiled MDX against a stub map and letting unknown components throw; that
+// needed react-dom/server, which Next's App Router build forbids in the server
+// bundle, so the whitelist is now a static scan.)
+const ALLOWED_COMPONENTS = ["Tip", "Caution", "Note", "Checkpoint"] as const;
 
 /** Removes fenced code blocks so scans don't false-positive on documented code. */
 const stripFences = (s: string): string =>
@@ -23,16 +19,29 @@ const EVENT_ATTR = /\son[a-z]+\s*=/i;
 const JS_URL = /javascript:/i;
 const DATA_HTML_URL = /data:text\/html/i;
 
-async function compileAndRender(body: string, locale: string, errors: string[]): Promise<void> {
+async function compileForSyntax(body: string, locale: string, errors: string[]): Promise<void> {
   try {
-    const { content } = await compileMDX({
-      source: body,
-      components: STUBS,
-      options: { parseFrontmatter: false },
-    });
-    renderToStaticMarkup(content);
+    // Compile to surface MDX syntax/parse errors. We deliberately do NOT render
+    // the result — rendering would require react-dom/server, which the App Router
+    // build forbids; the component whitelist is enforced by scanComponents.
+    await compileMDX({ source: body, options: { parseFrontmatter: false } });
   } catch (err) {
     errors.push(`${locale}: invalid MDX — ${(err as Error).message}`);
+  }
+}
+
+/** Whitelist: reject any capitalized JSX component not in ALLOWED_COMPONENTS. */
+function scanComponents(body: string, locale: string, errors: string[]): void {
+  const s = stripFences(body);
+  const tagRe = /<\s*([A-Z][A-Za-z0-9]*)/g;
+  const flagged = new Set<string>();
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(s))) {
+    const name = m[1];
+    if (!(ALLOWED_COMPONENTS as readonly string[]).includes(name) && !flagged.has(name)) {
+      flagged.add(name);
+      errors.push(`${locale}: unknown component <${name}> (allowed: ${ALLOWED_COMPONENTS.join(", ")})`);
+    }
   }
 }
 
@@ -114,8 +123,11 @@ export async function validateLessonMdxBodies({
 }): Promise<MdxValidationResult> {
   const errors: string[] = [];
 
-  await compileAndRender(bodyEN, "EN", errors);
-  await compileAndRender(bodyZH, "ZH", errors);
+  await compileForSyntax(bodyEN, "EN", errors);
+  await compileForSyntax(bodyZH, "ZH", errors);
+
+  scanComponents(bodyEN, "EN", errors);
+  scanComponents(bodyZH, "ZH", errors);
 
   scanImportsExports(bodyEN, "EN", errors);
   scanImportsExports(bodyZH, "ZH", errors);
