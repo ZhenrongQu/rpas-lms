@@ -8,7 +8,7 @@ import {
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** GET /api/admin/questions/[id] */
+/** GET /api/<admin>/questions/[id] */
 export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
   const deny = await requireAdminApi();
   if (deny) return deny;
@@ -22,7 +22,7 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
   return Response.json(row, { status: 200 });
 }
 
-/** PUT /api/admin/questions/[id] — update scalars + replace options */
+/** PUT /api/<admin>/questions/[id] — update scalars + replace options */
 export async function PUT(req: Request, ctx: Ctx): Promise<Response> {
   const deny = await requireAdminApi();
   if (deny) return deny;
@@ -62,7 +62,7 @@ export async function PUT(req: Request, ctx: Ctx): Promise<Response> {
   return Response.json(row, { status: 200 });
 }
 
-/** DELETE /api/admin/questions/[id] — soft-archive (reject if referenced by a lesson) */
+/** DELETE /api/<admin>/questions/[id] — soft-archive (reject if referenced by a lesson) */
 export async function DELETE(_req: Request, ctx: Ctx): Promise<Response> {
   const deny = await requireAdminApi();
   if (deny) return deny;

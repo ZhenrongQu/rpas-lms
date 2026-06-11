@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { auth } from "../../../auth";
 import { prisma } from "../db";
 
@@ -14,16 +14,17 @@ export async function getCurrentAdmin() {
   return user?.role === "ADMIN" ? user : null;
 }
 
-/** For admin server pages: redirect non-admins to sign-in. */
-export async function requireAdmin(locale: string): Promise<void> {
+/** For admin server pages: 404 for non-admins so the route is indistinguishable
+ *  from a non-existent path (don't confirm the admin surface exists). */
+export async function requireAdmin(): Promise<void> {
   const admin = await getCurrentAdmin();
   if (!admin) {
-    redirect(`/${locale}/signin`);
+    notFound();
   }
 }
 
-/** For admin API routes: returns a 403 Response for non-admins, or null to proceed. */
+/** For admin API routes: returns a 404 Response for non-admins, or null to proceed. */
 export async function requireAdminApi(): Promise<Response | null> {
   const admin = await getCurrentAdmin();
-  return admin ? null : Response.json({ error: "forbidden" }, { status: 403 });
+  return admin ? null : Response.json({ error: "not found" }, { status: 404 });
 }

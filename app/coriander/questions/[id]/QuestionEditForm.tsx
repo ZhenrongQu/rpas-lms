@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MODULE_IDS } from "@/lib/content/types";
+import { ADMIN_BASE, ADMIN_API_BASE } from "@/lib/admin/route";
 
 type OptionRow = {
   optionId: string;
@@ -34,7 +35,6 @@ type QuestionRow = {
 };
 
 type Props = {
-  locale: string;
   question: QuestionRow | null;
 };
 
@@ -45,7 +45,7 @@ const DEFAULT_OPTIONS: OptionRow[] = [
   { optionId: "d", labelEN: "", labelZH: "", isCorrect: false },
 ];
 
-export default function QuestionEditForm({ locale, question }: Props) {
+export default function QuestionEditForm({ question }: Props) {
   const router = useRouter();
   const isNew = question === null;
 
@@ -109,8 +109,8 @@ export default function QuestionEditForm({ locale, question }: Props) {
     setErrors([]);
     try {
       const url = isNew
-        ? "/api/admin/questions"
-        : `/api/admin/questions/${question!.id}`;
+        ? `${ADMIN_API_BASE}/questions`
+        : `${ADMIN_API_BASE}/questions/${question!.id}`;
       const method = isNew ? "POST" : "PUT";
       const res = await fetch(url, {
         method,
@@ -126,7 +126,7 @@ export default function QuestionEditForm({ locale, question }: Props) {
         );
         return;
       }
-      router.push(`/${locale}/admin/questions`);
+      router.push(`${ADMIN_BASE}/questions`);
       router.refresh();
     } finally {
       setSaving(false);
@@ -139,13 +139,13 @@ export default function QuestionEditForm({ locale, question }: Props) {
     setArchiving(true);
     setErrors([]);
     try {
-      const res = await fetch(`/api/admin/questions/${question.id}`, { method: "DELETE" });
+      const res = await fetch(`${ADMIN_API_BASE}/questions/${question.id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json();
         setErrors([data.error ?? "Archive failed"]);
         return;
       }
-      router.push(`/${locale}/admin/questions`);
+      router.push(`${ADMIN_BASE}/questions`);
       router.refresh();
     } finally {
       setArchiving(false);

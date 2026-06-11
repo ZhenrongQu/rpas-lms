@@ -7,7 +7,7 @@ import {
   nextQuestionId,
 } from "../../../../src/lib/admin/questions";
 
-/** GET /api/admin/questions?moduleId=&certLevel=&difficulty=&q= */
+/** GET /api/<admin>/questions?moduleId=&certLevel=&difficulty=&q= */
 export async function GET(req: Request): Promise<Response> {
   const deny = await requireAdminApi();
   if (deny) return deny;
@@ -50,7 +50,7 @@ export async function GET(req: Request): Promise<Response> {
   return Response.json(rows, { status: 200 });
 }
 
-/** POST /api/admin/questions — create a new question */
+/** POST /api/<admin>/questions — create a new question */
 export async function POST(req: Request): Promise<Response> {
   const deny = await requireAdminApi();
   if (deny) return deny;

@@ -6,7 +6,7 @@ import { validateLessonMdxBodies } from "../../../../../src/lib/admin/mdxValidat
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** GET /api/admin/lessons/[id] */
+/** GET /api/<admin>/lessons/[id] */
 export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
   const deny = await requireAdminApi();
   if (deny) return deny;
@@ -17,7 +17,7 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
   return Response.json(row, { status: 200 });
 }
 
-/** PUT /api/admin/lessons/[id] — update editable fields; validates MDX before saving */
+/** PUT /api/<admin>/lessons/[id] — update editable fields; validates MDX before saving */
 export async function PUT(req: Request, ctx: Ctx): Promise<Response> {
   const deny = await requireAdminApi();
   if (deny) return deny;
