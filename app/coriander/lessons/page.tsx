@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { MODULE_IDS } from "@/lib/content/types";
+import { ADMIN_BASE } from "@/lib/admin/route";
 
-type Props = { params: Promise<{ locale: string }>; searchParams: Promise<Record<string, string>> };
+type Props = { searchParams: Promise<Record<string, string>> };
 
-export default async function AdminLessonsPage({ params, searchParams }: Props) {
-  const { locale } = await params;
+export default async function AdminLessonsPage({ searchParams }: Props) {
   const sp = await searchParams;
   const course = sp.course ?? "";
   const moduleId = sp.moduleId ?? "";
@@ -85,7 +85,7 @@ export default async function AdminLessonsPage({ params, searchParams }: Props) 
               <td>{row.access}</td>
               <td>{row.titleEN}</td>
               <td>
-                <Link href={`/${locale}/admin/lessons/${row.id}`}>Edit</Link>
+                <Link href={`${ADMIN_BASE}/lessons/${row.id}`}>Edit</Link>
               </td>
             </tr>
           ))}

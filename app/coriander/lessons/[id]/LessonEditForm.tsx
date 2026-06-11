@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ADMIN_BASE, ADMIN_API_BASE } from "@/lib/admin/route";
 
 type LessonRow = {
   id: string;
@@ -19,9 +20,9 @@ type LessonRow = {
   bodyZH: string;
 };
 
-type Props = { locale: string; lesson: LessonRow };
+type Props = { lesson: LessonRow };
 
-export default function LessonEditForm({ locale, lesson }: Props) {
+export default function LessonEditForm({ lesson }: Props) {
   const router = useRouter();
 
   const [titleEN, setTitleEN] = useState(lesson.titleEN);
@@ -40,7 +41,7 @@ export default function LessonEditForm({ locale, lesson }: Props) {
     setSaving(true);
     setErrors([]);
     try {
-      const res = await fetch(`/api/admin/lessons/${lesson.id}`, {
+      const res = await fetch(`${ADMIN_API_BASE}/lessons/${lesson.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ titleEN, titleZH, order, estMinutes, certLevel, access, bodyEN, bodyZH }),
@@ -56,7 +57,7 @@ export default function LessonEditForm({ locale, lesson }: Props) {
         }
         return;
       }
-      router.push(`/${locale}/admin/lessons`);
+      router.push(`${ADMIN_BASE}/lessons`);
       router.refresh();
     } finally {
       setSaving(false);

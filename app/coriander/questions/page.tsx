@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { MODULE_IDS } from "@/lib/content/types";
+import { ADMIN_BASE } from "@/lib/admin/route";
 
-type Props = { params: Promise<{ locale: string }>; searchParams: Promise<Record<string, string>> };
+type Props = { searchParams: Promise<Record<string, string>> };
 
-export default async function AdminQuestionsPage({ params, searchParams }: Props) {
-  const { locale } = await params;
+export default async function AdminQuestionsPage({ searchParams }: Props) {
   const sp = await searchParams;
   const moduleId = sp.moduleId ?? "air-law";
   const certLevel = sp.certLevel ?? "";
@@ -42,7 +42,7 @@ export default async function AdminQuestionsPage({ params, searchParams }: Props
     <div className="admin-page">
       <div className="admin-page-header">
         <h1>Questions</h1>
-        <Link href={`/${locale}/admin/questions/new`} className="btn-primary">
+        <Link href={`${ADMIN_BASE}/questions/new`} className="btn-primary">
           + New question
         </Link>
       </div>
@@ -96,7 +96,7 @@ export default async function AdminQuestionsPage({ params, searchParams }: Props
               <td>{row.status}</td>
               <td className="admin-table-stem">{row.stemEN.slice(0, 80)}{row.stemEN.length > 80 ? "…" : ""}</td>
               <td>
-                <Link href={`/${locale}/admin/questions/${row.id}`}>Edit</Link>
+                <Link href={`${ADMIN_BASE}/questions/${row.id}`}>Edit</Link>
               </td>
             </tr>
           ))}

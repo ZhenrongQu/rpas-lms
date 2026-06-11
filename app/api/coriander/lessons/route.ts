@@ -1,7 +1,7 @@
 import { prisma } from "../../../../src/lib/db";
 import { requireAdminApi } from "../../../../src/lib/auth/adminGuard";
 
-/** GET /api/admin/lessons?course=&moduleId=&access= */
+/** GET /api/<admin>/lessons?course=&moduleId=&access= */
 export async function GET(req: Request): Promise<Response> {
   const deny = await requireAdminApi();
   if (deny) return deny;
