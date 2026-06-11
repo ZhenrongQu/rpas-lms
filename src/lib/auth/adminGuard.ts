@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import { auth } from "../../../auth";
 import { prisma } from "../db";
 
@@ -12,15 +11,6 @@ export async function getCurrentAdmin() {
     select: { id: true, role: true },
   });
   return user?.role === "ADMIN" ? user : null;
-}
-
-/** For admin server pages: 404 for non-admins so the route is indistinguishable
- *  from a non-existent path (don't confirm the admin surface exists). */
-export async function requireAdmin(): Promise<void> {
-  const admin = await getCurrentAdmin();
-  if (!admin) {
-    notFound();
-  }
 }
 
 /** For admin API routes: returns a 404 Response for non-admins, or null to proceed. */
