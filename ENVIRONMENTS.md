@@ -8,7 +8,8 @@
 - **dev 库已就绪**：`prisma migrate deploy`（init + RLS 触发器）+ `seed:content`（150 题 / 13 课）+ dev 管理员（`devadmin` / robbieqzr@gmail.com，密码在 `.env` 注释 `DEV_ADMIN_PASSWORD`）。
 - **`dev` 分支** 已建并推到 origin，作为 dev 部署环境。稳定 URL：`https://rpas-lms-git-dev-rpas-lms-projects.vercel.app`（受 Vercel Preview Protection，登录 Vercel 账号访问；要公开可在项目设置关掉 Deployment Protection 或配 bypass token）。
 - **Vercel Preview scope（绑 `dev` 分支）已设 6 个变量**：`DATABASE_URL`/`DIRECT_URL`（dev 库）、独立 `AUTH_SECRET`、`APP_URL`（= 上面别名）、`RESEND_API_KEY`/`EMAIL_FROM`（复用生产）。生产 scope 未动。
-- **待补（可选）**：dev 的 Stripe 仍未配 → dev 上点购买会报错。需要 test 模式 price ID + 在 dev URL 注册 test webhook（见下"待定"）。
+- **本地 Stripe 已切 test**（修了第二个隐患：本地原本是 `rk_live_` + 生产 price，点购买会创建真实 LIVE checkout）。现本地 `STRIPE_SECRET_KEY`→`sk_test_`、`STRIPE_PAID_ACCESS_PRICE_ID`→ test price `price_1ThJC49PdDm7daK3QuPUu3aE`（test product `prod_UggZCstvebuXOx`，占位 199 CAD）；live 值备份为注释 `PROD_STRIPE_*`。本地测支付：`stripe listen --forward-to localhost:3000/api/payments/webhook`（whsec 以它打印的为准）。
+- **部署态 dev 不跑支付（已决定）**：test 支付一律在本地跑；部署态 dev preview 维持 Vercel 保护、Preview scope 不配 Stripe（点购买会报错，其余正常）。
 
 ## 推荐架构（Vercel 原生三环境）
 
@@ -39,5 +40,5 @@
 
 ## 待定 / 后续
 - ~~dev 暴露方式~~：已选 **固定 `dev` 分支**（无子域名）。以后想要 `dev.pacificdrone.ca` 再用 Cloudflare API 加 CNAME 绑 dev 分支即可。
-- **dev 的 Stripe（可选）**：要在 dev 跑通支付需 3 步 —— ① 用 test secret(`sk_test_`，已在 `.env` 注释) 在 Stripe test 模式建/取一个 price ID；② 在 Stripe test 模式注册 webhook 指向 `https://rpas-lms-git-dev-rpas-lms-projects.vercel.app/api/payments/webhook`，拿 test `whsec_`；③ 把 `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PAID_ACCESS_PRICE_ID` 绑到 Preview@dev。不配则 dev 上购买按钮报错，其余功能正常。
+- ~~dev 的 Stripe~~：已决定 **test 支付只在本地跑**（部署态 dev 不配 Stripe，维持 Vercel 保护）。若将来要让部署态 dev 也跑支付，需让 Stripe webhook 穿过 Vercel Preview Protection（关保护变公开，或用 Protection Bypass token），再注册 dev test webhook + 配 3 个 `STRIPE_*` 到 Preview@dev。
 - 测试库：本地 vitest 仍用 Docker Postgres :5433（已就绪），与 dev 库分开，无需动。
