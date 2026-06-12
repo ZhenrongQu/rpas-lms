@@ -1,108 +1,137 @@
 /**
- * Seeds Question/QuestionOption/Lesson rows from the content files into the DB.
- * Idempotent — uses upsert throughout, so re-running syncs edits.
+ * Seeds a handful of PLACEHOLDER rows into each content table so the app has
+ * something to render after the Basic/Advanced split + content reset. Real
+ * content is authored later via the admin CMS.
+ *
+ * Tables: BasicQuestionBank, AdvancedQuestionBank, BasicLesson, AdvancedLesson.
+ * Idempotent — upserts throughout, so re-running is safe.
  *
  * Run: pnpm exec tsx scripts/seed-content.ts   (or: pnpm seed:content)
  */
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
-import matter from "gray-matter";
-import { loadQuestionBankFromFile } from "../src/lib/content/loadBank";
 import { prisma } from "../src/lib/db";
-import { FrontmatterSchema, type Course } from "../src/lib/lessons/types";
 
-const LESSONS_ROOT = join(process.cwd(), "content", "lessons");
+type SeedOption = { optionId: string; labelEN: string; labelZH: string; isCorrect: boolean };
+type SeedQuestion = {
+  id: string;
+  moduleId: string;
+  type: "SINGLE";
+  selectCount: number;
+  difficulty: number;
+  stemEN: string;
+  stemZH: string;
+  explEN: string;
+  explZH: string;
+  refEN: string;
+  refZH: string;
+  options: SeedOption[];
+};
+type SeedLesson = {
+  slug: string;
+  moduleId: string;
+  order: number;
+  estMinutes: number;
+  certLevel: string;
+  access: string;
+  titleEN: string;
+  titleZH: string;
+  bodyEN: string;
+  bodyZH: string;
+};
 
-async function seedQuestions(): Promise<number> {
-  const bank = loadQuestionBankFromFile();
-  for (const q of bank.questions) {
-    const data = {
-      moduleId: q.moduleId,
-      certLevel: q.certLevel,
-      type: q.type,
-      selectCount: q.selectCount,
-      difficulty: q.difficulty,
-      stemEN: q.stem.EN,
-      stemZH: q.stem.ZH,
-      explEN: q.explanation.EN,
-      explZH: q.explanation.ZH,
-      refEN: q.reference.EN,
-      refZH: q.reference.ZH,
-      tags: JSON.stringify(q.tags),
-      mediaKind: q.media?.kind ?? null,
-      mediaUrl: q.media?.url ?? null,
-      mediaAltEN: q.media?.alt.EN ?? null,
-      mediaAltZH: q.media?.alt.ZH ?? null,
-    };
-    const options = q.options.map((o) => ({
-      optionId: o.id,
-      labelEN: o.label.EN,
-      labelZH: o.label.ZH,
-      isCorrect: o.isCorrect,
-    }));
-    await prisma.question.upsert({
-      where: { id: q.id },
-      create: { id: q.id, ...data, options: { create: options } },
-      update: { ...data, options: { deleteMany: {}, create: options } },
-    });
-  }
-  return bank.questions.length;
+const OPTIONS: SeedOption[] = [
+  { optionId: "a", labelEN: "Option A", labelZH: "选项 A", isCorrect: true },
+  { optionId: "b", labelEN: "Option B", labelZH: "选项 B", isCorrect: false },
+  { optionId: "c", labelEN: "Option C", labelZH: "选项 C", isCorrect: false },
+  { optionId: "d", labelEN: "Option D", labelZH: "选项 D", isCorrect: false },
+];
+
+function placeholderQuestions(prefix: string): SeedQuestion[] {
+  return [1, 2].map((n) => ({
+    id: `air-law-000${n}`,
+    moduleId: "air-law",
+    type: "SINGLE" as const,
+    selectCount: 1,
+    difficulty: 1,
+    stemEN: `${prefix} placeholder question ${n}: which option is correct?`,
+    stemZH: `${prefix} 占位题 ${n}：哪个选项正确？`,
+    explEN: "Option A is correct (placeholder explanation).",
+    explZH: "选项 A 正确（占位解析）。",
+    refEN: "Placeholder reference",
+    refZH: "占位出处",
+    options: OPTIONS,
+  }));
 }
 
-async function seedLessons(): Promise<number> {
-  const enRoot = join(LESSONS_ROOT, "en");
-  let count = 0;
-  for (const course of readdirSync(enRoot)) {
-    const courseDir = join(enRoot, course);
-    if (!statSync(courseDir).isDirectory()) continue;
-    for (const moduleId of readdirSync(courseDir)) {
-      const modDir = join(courseDir, moduleId);
-      if (!statSync(modDir).isDirectory()) continue;
-      for (const file of readdirSync(modDir)) {
-        if (!file.endsWith(".mdx")) continue;
-        const slug = file.replace(/\.mdx$/, "");
-        const en = matter(readFileSync(join(modDir, file), "utf8"));
-        const fm = FrontmatterSchema.parse(en.data);
+function placeholderLessons(course: "basic" | "advanced"): SeedLesson[] {
+  const certLevel = course === "basic" ? "BASIC" : "ADVANCED";
+  return [1, 2].map((n) => ({
+    slug: `intro-${n}`,
+    moduleId: "air-law",
+    order: n,
+    estMinutes: 5,
+    certLevel,
+    access: "FREE",
+    titleEN: `${course} placeholder lesson ${n}`,
+    titleZH: `${course} 占位课 ${n}`,
+    bodyEN: `Placeholder ${course} lesson ${n}.\n\n<Checkpoint questionId="air-law-000${n}" />\n`,
+    bodyZH: `占位 ${course} 课程 ${n}。\n\n<Checkpoint questionId="air-law-000${n}" />\n`,
+  }));
+}
 
-        let titleZH = fm.title;
-        let bodyZH = en.content;
-        const zhFile = join(LESSONS_ROOT, "zh", course, moduleId, file);
-        if (existsSync(zhFile)) {
-          const zh = matter(readFileSync(zhFile, "utf8"));
-          titleZH = FrontmatterSchema.parse(zh.data).title;
-          bodyZH = zh.content;
-        }
-
-        const lessonId = `${course}/${moduleId}/${slug}`;
-        const data = {
-          course: course as Course,
-          moduleId,
-          slug,
-          order: fm.order,
-          estMinutes: fm.estMinutes,
-          certLevel: fm.certLevel,
-          access: fm.access,
-          titleEN: fm.title,
-          titleZH,
-          bodyEN: en.content,
-          bodyZH,
-        };
-        await prisma.lesson.upsert({
-          where: { lessonId },
-          create: { lessonId, ...data },
-          update: data,
-        });
-        count++;
-      }
-    }
+async function seedBasicQuestions(): Promise<number> {
+  for (const { id, options, ...scalar } of placeholderQuestions("Basic")) {
+    await prisma.basicQuestionBank.upsert({
+      where: { id },
+      create: { id, ...scalar, options: { create: options } },
+      update: { ...scalar, options: { deleteMany: {}, create: options } },
+    });
   }
-  return count;
+  return 2;
+}
+
+async function seedAdvancedQuestions(): Promise<number> {
+  for (const { id, options, ...scalar } of placeholderQuestions("Advanced")) {
+    await prisma.advancedQuestionBank.upsert({
+      where: { id },
+      create: { id, ...scalar, options: { create: options } },
+      update: { ...scalar, options: { deleteMany: {}, create: options } },
+    });
+  }
+  return 2;
+}
+
+async function seedBasicLessons(): Promise<number> {
+  for (const lesson of placeholderLessons("basic")) {
+    const lessonId = `basic/${lesson.moduleId}/${lesson.slug}`;
+    await prisma.basicLesson.upsert({
+      where: { lessonId },
+      create: { lessonId, course: "basic", ...lesson },
+      update: lesson,
+    });
+  }
+  return 2;
+}
+
+async function seedAdvancedLessons(): Promise<number> {
+  for (const lesson of placeholderLessons("advanced")) {
+    const lessonId = `advanced/${lesson.moduleId}/${lesson.slug}`;
+    await prisma.advancedLesson.upsert({
+      where: { lessonId },
+      create: { lessonId, course: "advanced", ...lesson },
+      update: lesson,
+    });
+  }
+  return 2;
 }
 
 async function main() {
-  const questions = await seedQuestions();
-  const lessons = await seedLessons();
-  console.log(`✓ seeded ${questions} questions, ${lessons} lessons`);
+  const bq = await seedBasicQuestions();
+  const aq = await seedAdvancedQuestions();
+  const bl = await seedBasicLessons();
+  const al = await seedAdvancedLessons();
+  console.log(
+    `✓ seeded placeholders — questions: ${bq} basic / ${aq} advanced, lessons: ${bl} basic / ${al} advanced`,
+  );
 }
 
 main()

@@ -13,8 +13,8 @@ async function json(res: Response) {
 describe("exam API route handlers", () => {
   beforeEach(async () => {
     await prisma.examSession.deleteMany();
-    await prisma.user.deleteMany();
-    await prisma.user.create({
+    await prisma.customer.deleteMany();
+    await prisma.customer.create({
       data: { id: "u1", email: "u1@test.local", hashedPassword: "x", accessTier: "FREE" },
     });
   });

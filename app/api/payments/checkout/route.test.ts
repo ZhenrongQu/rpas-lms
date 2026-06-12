@@ -9,8 +9,8 @@ describe("POST /api/payments/checkout", () => {
     await prisma.webhookEvent.deleteMany();
     await prisma.payment.deleteMany();
     await prisma.entitlement.deleteMany();
-    await prisma.user.deleteMany();
-    await prisma.user.create({ data: { id: "u1", email: "u1@test.local", accessTier: "FREE" } });
+    await prisma.customer.deleteMany();
+    await prisma.customer.create({ data: { id: "u1", email: "u1@test.local", accessTier: "FREE" } });
   });
 
   it("rejects guests", async () => {

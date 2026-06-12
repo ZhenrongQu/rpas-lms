@@ -7,60 +7,58 @@ type Props = { searchParams: Promise<Record<string, string>> };
 
 export default async function AdminQuestionsPage({ searchParams }: Props) {
   const sp = await searchParams;
+  const level = sp.level === "ADVANCED" ? "ADVANCED" : "BASIC";
   const moduleId = sp.moduleId ?? "air-law";
-  const certLevel = sp.certLevel ?? "";
   const difficulty = sp.difficulty ?? "";
   const q = sp.q ?? "";
 
-  const rows = await prisma.question.findMany({
-    where: {
-      moduleId,
-      ...(certLevel ? { certLevel } : {}),
-      ...(difficulty !== "" ? { difficulty: Number(difficulty) } : {}),
-      ...(q
-        ? {
-            OR: [
-              { id: { contains: q } },
-              { stemEN: { contains: q } },
-              { stemZH: { contains: q } },
-            ],
-          }
-        : {}),
-    },
-    select: {
-      id: true,
-      certLevel: true,
-      type: true,
-      difficulty: true,
-      status: true,
-      stemEN: true,
-    },
-    orderBy: { id: "asc" },
-  });
+  const where = {
+    moduleId,
+    ...(difficulty !== "" ? { difficulty: Number(difficulty) } : {}),
+    ...(q
+      ? {
+          OR: [
+            { id: { contains: q } },
+            { stemEN: { contains: q } },
+            { stemZH: { contains: q } },
+          ],
+        }
+      : {}),
+  };
+  const select = {
+    id: true,
+    certLevel: true,
+    type: true,
+    difficulty: true,
+    status: true,
+    stemEN: true,
+  };
+  const rows =
+    level === "BASIC"
+      ? await prisma.basicQuestionBank.findMany({ where, select, orderBy: { id: "asc" } })
+      : await prisma.advancedQuestionBank.findMany({ where, select, orderBy: { id: "asc" } });
 
   return (
     <div className="admin-page">
       <div className="admin-page-header">
         <h1>Questions</h1>
-        <Link href={`${ADMIN_BASE}/questions/new`} className="btn-primary">
+        <Link href={`${ADMIN_BASE}/questions/new?level=${level}`} className="btn-primary">
           + New question
         </Link>
       </div>
 
       {/* Filters */}
       <form method="get" className="admin-filters">
+        <select name="level" defaultValue={level}>
+          <option value="BASIC">Basic bank</option>
+          <option value="ADVANCED">Advanced bank</option>
+        </select>
         <select name="moduleId" defaultValue={moduleId}>
           {MODULE_IDS.map((id) => (
             <option key={id} value={id}>
               {id}
             </option>
           ))}
-        </select>
-        <select name="certLevel" defaultValue={certLevel}>
-          <option value="">All cert levels</option>
-          <option value="BASIC">BASIC</option>
-          <option value="ADVANCED">ADVANCED</option>
-          <option value="BOTH">BOTH</option>
         </select>
         <select name="difficulty" defaultValue={difficulty}>
           <option value="">All difficulties</option>
@@ -96,7 +94,7 @@ export default async function AdminQuestionsPage({ searchParams }: Props) {
               <td>{row.status}</td>
               <td className="admin-table-stem">{row.stemEN.slice(0, 80)}{row.stemEN.length > 80 ? "…" : ""}</td>
               <td>
-                <Link href={`${ADMIN_BASE}/questions/${row.id}`}>Edit</Link>
+                <Link href={`${ADMIN_BASE}/questions/${row.id}?level=${level}`}>Edit</Link>
               </td>
             </tr>
           ))}

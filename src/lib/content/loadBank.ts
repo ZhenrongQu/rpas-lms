@@ -1,8 +1,8 @@
 import bankJson from "../../../content/question-bank.json";
 import { prisma } from "../db";
-import { dbQuestionsToQuestionBank } from "./dbMappers";
+import { dbQuestionToQuestion, dbQuestionsToQuestionBank } from "./dbMappers";
 import { QuestionBankSchema } from "./schema";
-import type { QuestionBank } from "./types";
+import type { ExamCertLevel, Question, QuestionBank } from "./types";
 
 let cached: QuestionBank | null = null;
 
@@ -46,11 +46,35 @@ export function loadQuestionBankFromFile(): QuestionBank {
 /** Compatibility alias for the file loader (tests / fallback). */
 export const loadQuestionBank = loadQuestionBankFromFile;
 
-/** Loads the ACTIVE question bank from the database (no long-lived cache). */
-export async function loadQuestionBankFromDB(): Promise<QuestionBank> {
-  const rows = await prisma.question.findMany({
-    where: { status: "ACTIVE" },
+/** Loads the ACTIVE question bank for a certification level from the database
+ *  (no long-lived cache). Basic and advanced questions live in separate tables. */
+export async function loadQuestionBankFromDB(level: ExamCertLevel): Promise<QuestionBank> {
+  const rows =
+    level === "BASIC"
+      ? await prisma.basicQuestionBank.findMany({
+          where: { status: "ACTIVE" },
+          include: { options: true },
+        })
+      : await prisma.advancedQuestionBank.findMany({
+          where: { status: "ACTIVE" },
+          include: { options: true },
+        });
+  return dbQuestionsToQuestionBank(rows);
+}
+
+/** Finds a single ACTIVE question by id across both banks (basic first), or null.
+ *  Used by lesson checkpoints, which reference a question id without knowing the
+ *  bank. */
+export async function findActiveQuestion(id: string): Promise<Question | null> {
+  const basic = await prisma.basicQuestionBank.findFirst({
+    where: { id, status: "ACTIVE" },
     include: { options: true },
   });
-  return dbQuestionsToQuestionBank(rows);
+  if (basic) return dbQuestionToQuestion(basic);
+  const advanced = await prisma.advancedQuestionBank.findFirst({
+    where: { id, status: "ACTIVE" },
+    include: { options: true },
+  });
+  if (advanced) return dbQuestionToQuestion(advanced);
+  return null;
 }

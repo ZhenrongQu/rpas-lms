@@ -37,7 +37,7 @@ export class ExamService {
     accessTier: AccessTier = "PAID",
   ): Promise<CreatedExam> {
     const spec = EXAM_SPECS[certLevel];
-    const bank = this.bankOverride ?? (await loadQuestionBankFromDB());
+    const bank = this.bankOverride ?? (await loadQuestionBankFromDB(certLevel));
     const scopedBank: QuestionBank = {
       ...bank,
       questions: questionsForAccess(bank.questions, accessTier, certLevel),

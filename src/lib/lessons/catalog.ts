@@ -9,20 +9,19 @@ export async function getModuleLessons(
   course: Course,
   moduleId: string,
 ): Promise<LessonMeta[]> {
-  const rows = await prisma.lesson.findMany({
-    where: { course, moduleId },
-    orderBy: { order: "asc" },
-  });
+  const rows =
+    course === "basic"
+      ? await prisma.basicLesson.findMany({ where: { moduleId }, orderBy: { order: "asc" } })
+      : await prisma.advancedLesson.findMany({ where: { moduleId }, orderBy: { order: "asc" } });
   return rows.map((row) => dbLessonToMeta(row, locale));
 }
 
 /** Module ids that have at least one lesson in a course, in canonical order. */
 export async function getCourseModules(_locale: RouteLocale, course: Course): Promise<string[]> {
-  const rows = await prisma.lesson.findMany({
-    where: { course },
-    distinct: ["moduleId"],
-    select: { moduleId: true },
-  });
+  const rows =
+    course === "basic"
+      ? await prisma.basicLesson.findMany({ distinct: ["moduleId"], select: { moduleId: true } })
+      : await prisma.advancedLesson.findMany({ distinct: ["moduleId"], select: { moduleId: true } });
   const present = new Set(rows.map((r) => r.moduleId));
   return MODULE_IDS.filter((id) => present.has(id));
 }
@@ -34,19 +33,23 @@ export async function getLesson(
   moduleId: string,
   slug: string,
 ): Promise<{ meta: LessonMeta; body: string } | null> {
-  const row = await prisma.lesson.findUnique({
-    where: { course_moduleId_slug: { course, moduleId, slug } },
-  });
+  const where = { course_moduleId_slug: { course, moduleId, slug } };
+  const row =
+    course === "basic"
+      ? await prisma.basicLesson.findUnique({ where })
+      : await prisma.advancedLesson.findUnique({ where });
   if (!row) return null;
   return { meta: dbLessonToMeta(row, locale), body: dbLessonBody(row, locale) };
 }
 
 /** Lesson count for a module in a course. */
 export async function getModuleLessonCount(course: Course, moduleId: string): Promise<number> {
-  return prisma.lesson.count({ where: { course, moduleId } });
+  return course === "basic"
+    ? prisma.basicLesson.count({ where: { moduleId } })
+    : prisma.advancedLesson.count({ where: { moduleId } });
 }
 
 /** Total lesson count for a whole course. */
 export async function getCourseLessonCount(course: Course): Promise<number> {
-  return prisma.lesson.count({ where: { course } });
+  return course === "basic" ? prisma.basicLesson.count() : prisma.advancedLesson.count();
 }

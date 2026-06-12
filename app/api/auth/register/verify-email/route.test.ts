@@ -15,13 +15,13 @@ describe("POST /api/auth/register/verify-email", () => {
   beforeEach(async () => {
     await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
-    await prisma.user.deleteMany();
+    await prisma.customer.deleteMany();
   });
 
   afterAll(async () => {
     await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
-    await prisma.user.deleteMany();
+    await prisma.customer.deleteMany();
     await prisma.$disconnect();
   });
 
@@ -44,7 +44,7 @@ describe("POST /api/auth/register/verify-email", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
 
-    const user = await prisma.user.findUniqueOrThrow({ where: { email: "pilot@example.com" } });
+    const user = await prisma.customer.findUniqueOrThrow({ where: { email: "pilot@example.com" } });
     expect(user.emailVerifiedAt).toBeTruthy();
 
     const identity = await prisma.userIdentity.findUniqueOrThrow({

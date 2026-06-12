@@ -1,8 +1,3 @@
-import type {
-  Lesson as PrismaLesson,
-  Question as PrismaQuestion,
-  QuestionOption as PrismaOption,
-} from "@prisma/client";
 import type { Course, LessonMeta, RouteLocale } from "../lessons/types";
 import type {
   CertLevel,
@@ -12,7 +7,43 @@ import type {
   QuestionType,
 } from "./types";
 
-type QuestionRow = PrismaQuestion & { options: PrismaOption[] };
+// Structural row shapes. Basic*/Advanced* tables are physically separate but
+// column-identical, so one structural type maps both — no coupling to a model name.
+type OptionRow = { optionId: string; labelEN: string; labelZH: string; isCorrect: boolean };
+type QuestionRow = {
+  id: string;
+  moduleId: string;
+  certLevel: string;
+  type: string;
+  selectCount: number;
+  difficulty: number;
+  stemEN: string;
+  stemZH: string;
+  explEN: string;
+  explZH: string;
+  refEN: string;
+  refZH: string;
+  tags: string;
+  mediaKind: string | null;
+  mediaUrl: string | null;
+  mediaAltEN: string | null;
+  mediaAltZH: string | null;
+  options: OptionRow[];
+};
+type LessonRow = {
+  lessonId: string;
+  course: string;
+  moduleId: string;
+  slug: string;
+  titleEN: string;
+  titleZH: string;
+  order: number;
+  estMinutes: number;
+  certLevel: string;
+  access: string;
+  bodyEN: string;
+  bodyZH: string;
+};
 
 /** Prisma Question (+ its options) → the in-app `Question` shape from types.ts. */
 export function dbQuestionToQuestion(row: QuestionRow): Question {
@@ -55,7 +86,7 @@ export function dbQuestionsToQuestionBank(rows: QuestionRow[]): QuestionBank {
 }
 
 /** Prisma Lesson row → `LessonMeta`, selecting locale-specific title. */
-export function dbLessonToMeta(row: PrismaLesson, locale: RouteLocale): LessonMeta {
+export function dbLessonToMeta(row: LessonRow, locale: RouteLocale): LessonMeta {
   return {
     lessonId: row.lessonId,
     course: row.course as Course,
@@ -70,6 +101,6 @@ export function dbLessonToMeta(row: PrismaLesson, locale: RouteLocale): LessonMe
 }
 
 /** Locale-specific raw MDX body for a Prisma Lesson row. */
-export function dbLessonBody(row: PrismaLesson, locale: RouteLocale): string {
+export function dbLessonBody(row: Pick<LessonRow, "bodyEN" | "bodyZH">, locale: RouteLocale): string {
   return locale === "zh" ? row.bodyZH : row.bodyEN;
 }

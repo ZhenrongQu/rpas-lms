@@ -1,5 +1,6 @@
 import { compileMDX } from "next-mdx-remote/rsc";
 import { prisma } from "../db";
+import type { Course } from "../lessons/types";
 
 export type MdxValidationResult = { ok: true } | { ok: false; errors: string[] };
 
@@ -89,12 +90,19 @@ function parseCheckpoints(body: string, locale: string, errors: string[]): strin
   return ids;
 }
 
-async function checkQuestionIds(ids: string[], moduleId: string, errors: string[]): Promise<void> {
+async function checkQuestionIds(
+  ids: string[],
+  moduleId: string,
+  course: Course,
+  errors: string[],
+): Promise<void> {
   if (ids.length === 0) return;
-  const rows = await prisma.question.findMany({
-    where: { id: { in: ids }, status: "ACTIVE" },
-    select: { id: true, moduleId: true },
-  });
+  const where = { id: { in: ids }, status: "ACTIVE" };
+  const select = { id: true, moduleId: true };
+  const rows =
+    course === "basic"
+      ? await prisma.basicQuestionBank.findMany({ where, select })
+      : await prisma.advancedQuestionBank.findMany({ where, select });
   const byId = new Map(rows.map((r) => [r.id, r]));
   for (const id of ids) {
     const row = byId.get(id);
@@ -116,10 +124,12 @@ export async function validateLessonMdxBodies({
   bodyEN,
   bodyZH,
   moduleId,
+  course,
 }: {
   bodyEN: string;
   bodyZH: string;
   moduleId: string;
+  course: Course;
 }): Promise<MdxValidationResult> {
   const errors: string[] = [];
 
@@ -144,7 +154,7 @@ export async function validateLessonMdxBodies({
     errors.push(`EN and ZH must reference the same Checkpoint questionId set (differs: ${diff.join(", ")})`);
   }
 
-  await checkQuestionIds([...new Set([...enIds, ...zhIds])], moduleId, errors);
+  await checkQuestionIds([...new Set([...enIds, ...zhIds])], moduleId, course, errors);
 
   return errors.length > 0 ? { ok: false, errors } : { ok: true };
 }

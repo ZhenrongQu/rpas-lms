@@ -3,9 +3,9 @@ import Apple from "next-auth/providers/apple";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { findOrCreateOAuthUser } from "./src/lib/auth/account";
+import { authorizeAdminPasswordLogin } from "./src/lib/auth/adminAccount";
 import { authorizeLocalPasswordLogin } from "./src/lib/auth/localAccount";
 import { getOAuthProviderCredentials } from "./src/lib/auth/oauthConfig";
-import { prisma } from "./src/lib/db";
 import { hasPaidAccess } from "./src/lib/payments/entitlements";
 
 const oauthCredentials = getOAuthProviderCredentials();
@@ -15,6 +15,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   providers: [
     Credentials({
+      id: "credentials",
       credentials: {
         email: {},
         phone: {},
@@ -33,7 +34,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email ?? undefined,
           name: user.displayName ?? user.username ?? undefined,
           accessTier: user.accessTier,
-          role: user.role,
+        };
+      },
+    }),
+    Credentials({
+      id: "admin",
+      credentials: {
+        email: {},
+        phone: {},
+        username: {},
+        password: {},
+      },
+      async authorize(creds) {
+        const email = typeof creds?.email === "string" ? creds.email : undefined;
+        const phone = typeof creds?.phone === "string" ? creds.phone : undefined;
+        const username = typeof creds?.username === "string" ? creds.username : undefined;
+        const password = typeof creds?.password === "string" ? creds.password : undefined;
+        const admin = await authorizeAdminPasswordLogin({ email, phone, username, password });
+        if (!admin) return null;
+        return {
+          id: admin.id,
+          email: admin.email ?? undefined,
+          name: admin.displayName ?? admin.username,
+          isAdmin: true,
         };
       },
     }),
@@ -64,6 +87,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return token;
       }
 
+      // Admin sign-in (separate `Admin` table, no customer data / accessTier).
+      if (account?.provider === "admin") {
+        if (user) token.id = (user as { id: string }).id;
+        token.isAdmin = true;
+        return token;
+      }
+
       if (account?.provider === "google" || account?.provider === "apple") {
         const email = typeof profile?.email === "string" ? profile.email : null;
         const emailVerified =
@@ -80,13 +110,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
         token.id = localUser.id;
         token.accessTier = localUser.accessTier;
-        token.role = localUser.role;
+        token.isAdmin = false;
         return token;
       }
 
       if (user) token.id = (user as { id: string }).id;
       if (user) token.accessTier = (user as { accessTier?: string }).accessTier;
-      if (user) token.role = (user as { role?: string }).role;
+      if (user) token.isAdmin = false;
       return token;
     },
     session({ session, token }) {
@@ -94,8 +124,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.accessTier && session.user) {
         session.user.accessTier = token.accessTier as "FREE" | "PAID";
       }
-      // Display/nav hint only — admin authorization re-checks role in the DB.
-      if (token.role && session.user) session.user.role = token.role as string;
+      // Display/nav hint only — admin authorization re-checks in the DB.
+      if (session.user) session.user.isAdmin = Boolean(token.isAdmin);
       return session;
     },
   },

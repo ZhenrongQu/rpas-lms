@@ -11,25 +11,27 @@ export default async function AdminLessonsPage({ searchParams }: Props) {
   const moduleId = sp.moduleId ?? "";
   const access = sp.access ?? "";
 
-  const rows = await prisma.lesson.findMany({
-    where: {
-      ...(course ? { course } : {}),
-      ...(moduleId ? { moduleId } : {}),
-      ...(access ? { access } : {}),
-    },
-    select: {
-      id: true,
-      lessonId: true,
-      course: true,
-      moduleId: true,
-      slug: true,
-      order: true,
-      certLevel: true,
-      access: true,
-      titleEN: true,
-    },
-    orderBy: [{ course: "asc" }, { moduleId: "asc" }, { order: "asc" }],
-  });
+  const where = {
+    ...(moduleId ? { moduleId } : {}),
+    ...(access ? { access } : {}),
+  };
+  const select = {
+    id: true,
+    lessonId: true,
+    course: true,
+    moduleId: true,
+    slug: true,
+    order: true,
+    certLevel: true,
+    access: true,
+    titleEN: true,
+  };
+  const orderBy = [{ moduleId: "asc" as const }, { order: "asc" as const }];
+  const [basic, advanced] = await Promise.all([
+    course === "advanced" ? [] : prisma.basicLesson.findMany({ where, select, orderBy }),
+    course === "basic" ? [] : prisma.advancedLesson.findMany({ where, select, orderBy }),
+  ]);
+  const rows = [...basic, ...advanced];
 
   return (
     <div className="admin-page">

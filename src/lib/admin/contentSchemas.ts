@@ -9,7 +9,9 @@ import { MODULE_IDS } from "../content/types";
 export const adminQuestionSchema = z
   .object({
     moduleId: z.enum(MODULE_IDS),
-    certLevel: z.enum(["BASIC", "ADVANCED", "BOTH"]),
+    // Which physical bank this question belongs to. There is no "BOTH": basic and
+    // advanced questions live in separate tables.
+    level: z.enum(["BASIC", "ADVANCED"]),
     type: z.enum(["SINGLE", "MULTI"]),
     selectCount: z.number().int().min(1),
     difficulty: z.number().int().min(0).max(3),

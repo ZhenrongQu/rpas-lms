@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { prisma } from "../../../../src/lib/db";
-import { dbQuestionToQuestion } from "../../../../src/lib/content/dbMappers";
+import { findActiveQuestion } from "../../../../src/lib/content/loadBank";
 import { correctOptionIds, isAnswerCorrect } from "../../../../src/lib/exam/grade";
 
 const CheckBody = z.object({
@@ -19,12 +18,8 @@ export async function POST(req: Request): Promise<Response> {
   const parsed = CheckBody.safeParse(raw);
   if (!parsed.success) return Response.json({ error: "invalid body" }, { status: 400 });
   const { questionId, selectedOptionIds, locale } = parsed.data;
-  const row = await prisma.question.findFirst({
-    where: { id: questionId, status: "ACTIVE" },
-    include: { options: true },
-  });
-  if (!row) return Response.json({ error: "not found" }, { status: 404 });
-  const q = dbQuestionToQuestion(row);
+  const q = await findActiveQuestion(questionId);
+  if (!q) return Response.json({ error: "not found" }, { status: 404 });
   const L = locale === "zh" ? "ZH" : "EN";
   return Response.json(
     {

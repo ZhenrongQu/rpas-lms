@@ -13,14 +13,14 @@ describe("local password accounts", () => {
     await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
     await prisma.examSession.deleteMany();
-    await prisma.user.deleteMany();
+    await prisma.customer.deleteMany();
   });
 
   afterAll(async () => {
     await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
     await prisma.examSession.deleteMany();
-    await prisma.user.deleteMany();
+    await prisma.customer.deleteMany();
     await prisma.$disconnect();
   });
 
@@ -41,7 +41,7 @@ describe("local password accounts", () => {
   });
 
   it("rejects duplicate verified emails, usernames, and phones", async () => {
-    await prisma.user.create({
+    await prisma.customer.create({
       data: {
         email: "taken@example.com",
         username: "takenname",
@@ -128,7 +128,7 @@ describe("local password accounts", () => {
       email: "pilot@example.com",
       password: "correct-password",
     });
-    await prisma.user.update({
+    await prisma.customer.update({
       where: { id: user.id },
       data: { emailVerifiedAt: new Date("2026-06-08T00:00:00.000Z") },
     });

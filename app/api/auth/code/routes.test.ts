@@ -8,7 +8,7 @@ describe("retired public code-login routes", () => {
     await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
     await prisma.examSession.deleteMany();
-    await prisma.user.deleteMany();
+    await prisma.customer.deleteMany();
   });
 
   it("does not allow requesting login codes", async () => {
@@ -38,6 +38,6 @@ describe("retired public code-login routes", () => {
 
     expect(res.status).toBe(410);
     expect(await res.json()).toEqual({ error: "code login disabled" });
-    expect(await prisma.user.count()).toBe(0);
+    expect(await prisma.customer.count()).toBe(0);
   });
 });

@@ -3,33 +3,32 @@ import { requireAdminApi } from "../../../../../src/lib/auth/adminGuard";
 import { adminQuestionSchema } from "../../../../../src/lib/admin/contentSchemas";
 import {
   questionScalarData,
+  optionCreateData,
+  findQuestionById,
   isQuestionReferencedByLesson,
 } from "../../../../../src/lib/admin/questions";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** GET /api/<admin>/questions/[id] */
+/** GET /api/<admin>/questions/[id] (searches both banks) */
 export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
   const deny = await requireAdminApi();
   if (deny) return deny;
 
   const { id } = await ctx.params;
-  const row = await prisma.question.findUnique({
-    where: { id },
-    include: { options: true },
-  });
-  if (!row) return Response.json({ error: "not found" }, { status: 404 });
-  return Response.json(row, { status: 200 });
+  const found = await findQuestionById(id);
+  if (!found) return Response.json({ error: "not found" }, { status: 404 });
+  return Response.json(found.row, { status: 200 });
 }
 
-/** PUT /api/<admin>/questions/[id] — update scalars + replace options */
+/** PUT /api/<admin>/questions/[id] — update scalars + replace options (in its own bank) */
 export async function PUT(req: Request, ctx: Ctx): Promise<Response> {
   const deny = await requireAdminApi();
   if (deny) return deny;
 
   const { id } = await ctx.params;
-  const existing = await prisma.question.findUnique({ where: { id } });
-  if (!existing) return Response.json({ error: "not found" }, { status: 404 });
+  const found = await findQuestionById(id);
+  if (!found) return Response.json({ error: "not found" }, { status: 404 });
 
   const body = await req.json().catch(() => null);
   const parsed = adminQuestionSchema.safeParse(body);
@@ -38,26 +37,22 @@ export async function PUT(req: Request, ctx: Ctx): Promise<Response> {
   }
 
   const input = parsed.data;
+  const data = {
+    ...questionScalarData(input),
+    options: { create: optionCreateData(input) },
+  };
 
   // Delete-and-recreate options keeps things simple and avoids partial updates.
-  const row = await prisma.$transaction(async (tx) => {
-    await tx.questionOption.deleteMany({ where: { questionId: id } });
-    return tx.question.update({
-      where: { id },
-      data: {
-        ...questionScalarData(input),
-        options: {
-          create: input.options.map((o) => ({
-            optionId: o.optionId,
-            labelEN: o.labelEN,
-            labelZH: o.labelZH,
-            isCorrect: o.isCorrect,
-          })),
-        },
-      },
-      include: { options: true },
-    });
-  });
+  const row =
+    found.level === "BASIC"
+      ? await prisma.$transaction(async (tx) => {
+          await tx.basicQuestionOption.deleteMany({ where: { questionId: id } });
+          return tx.basicQuestionBank.update({ where: { id }, data, include: { options: true } });
+        })
+      : await prisma.$transaction(async (tx) => {
+          await tx.advancedQuestionOption.deleteMany({ where: { questionId: id } });
+          return tx.advancedQuestionBank.update({ where: { id }, data, include: { options: true } });
+        });
 
   return Response.json(row, { status: 200 });
 }
@@ -68,8 +63,8 @@ export async function DELETE(_req: Request, ctx: Ctx): Promise<Response> {
   if (deny) return deny;
 
   const { id } = await ctx.params;
-  const existing = await prisma.question.findUnique({ where: { id } });
-  if (!existing) return Response.json({ error: "not found" }, { status: 404 });
+  const found = await findQuestionById(id);
+  if (!found) return Response.json({ error: "not found" }, { status: 404 });
 
   if (await isQuestionReferencedByLesson(id)) {
     return Response.json(
@@ -78,10 +73,11 @@ export async function DELETE(_req: Request, ctx: Ctx): Promise<Response> {
     );
   }
 
-  const row = await prisma.question.update({
-    where: { id },
-    data: { status: "ARCHIVED", archivedAt: new Date() },
-  });
+  const data = { status: "ARCHIVED", archivedAt: new Date() };
+  const row =
+    found.level === "BASIC"
+      ? await prisma.basicQuestionBank.update({ where: { id }, data })
+      : await prisma.advancedQuestionBank.update({ where: { id }, data });
 
   return Response.json(row, { status: 200 });
 }

@@ -25,7 +25,7 @@ export default function AdminLogin() {
     setBusy(true);
     setError(null);
     const mode = detectMode(identifier);
-    const res = await signIn("credentials", {
+    const res = await signIn("admin", {
       [mode]: identifier.trim(),
       password,
       redirect: false,

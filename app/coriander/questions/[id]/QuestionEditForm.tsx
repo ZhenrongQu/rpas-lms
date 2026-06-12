@@ -36,6 +36,9 @@ type QuestionRow = {
 
 type Props = {
   question: QuestionRow | null;
+  /** Which bank: for a new question this picks the target bank; for an existing
+   *  one it reflects the bank it lives in. */
+  initialLevel: "BASIC" | "ADVANCED";
 };
 
 const DEFAULT_OPTIONS: OptionRow[] = [
@@ -45,12 +48,12 @@ const DEFAULT_OPTIONS: OptionRow[] = [
   { optionId: "d", labelEN: "", labelZH: "", isCorrect: false },
 ];
 
-export default function QuestionEditForm({ question }: Props) {
+export default function QuestionEditForm({ question, initialLevel }: Props) {
   const router = useRouter();
   const isNew = question === null;
 
   const [moduleId, setModuleId] = useState(question?.moduleId ?? "air-law");
-  const [certLevel, setCertLevel] = useState(question?.certLevel ?? "BASIC");
+  const [level, setLevel] = useState<"BASIC" | "ADVANCED">(initialLevel);
   const [type, setType] = useState(question?.type ?? "SINGLE");
   const [selectCount, setSelectCount] = useState(question?.selectCount ?? 1);
   const [difficulty, setDifficulty] = useState(question?.difficulty ?? 1);
@@ -86,7 +89,7 @@ export default function QuestionEditForm({ question }: Props) {
   function buildPayload() {
     return {
       moduleId,
-      certLevel,
+      level,
       type,
       selectCount: Number(selectCount),
       difficulty: Number(difficulty),
@@ -182,11 +185,15 @@ export default function QuestionEditForm({ question }: Props) {
           </select>
         </div>
         <div className="admin-form-row">
-          <label>Cert level</label>
-          <select value={certLevel} onChange={(e) => setCertLevel(e.target.value)}>
-            <option>BASIC</option>
-            <option>ADVANCED</option>
-            <option>BOTH</option>
+          <label>Level (bank)</label>
+          <select
+            value={level}
+            onChange={(e) => setLevel(e.target.value as "BASIC" | "ADVANCED")}
+            disabled={!isNew}
+            title={isNew ? undefined : "A question cannot move between banks; archive and recreate instead."}
+          >
+            <option value="BASIC">BASIC</option>
+            <option value="ADVANCED">ADVANCED</option>
           </select>
         </div>
         <div className="admin-form-row">
