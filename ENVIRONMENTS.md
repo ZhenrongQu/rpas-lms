@@ -1,7 +1,14 @@
-# 环境配置计划 — DEV / PRODUCTION（明天实现）
+# 环境配置 — DEV / PRODUCTION
 
-> 状态：计划（2026-06-10 记录，**明天实现**）。
-> 目标：把"本地开发 → 推 GitHub → 上线 production"做成正式的 dev/prod 两环境，并**修掉当前隐患**（本地 `.env` 直连生产库）。
+> 状态：**已实现（2026-06-11）**。dev 暴露方式选定 = **固定 `dev` 分支**（无自定义子域名）。
+> 目标：把"本地开发 → 推 GitHub → 上线 production"做成正式的 dev/prod 两环境，并修掉隐患（本地 `.env` 曾直连生产库）。
+
+## ✅ 已落地（2026-06-11）
+- **本地 `.env` 已摘离生产库** → 现指向 dev 库（Supabase 项目 `pacificdrone-dev`，ref `yifyzuvktgbrjwirbmbt`，ca-central-1）。生产串备份为注释 `PROD_DATABASE_URL`/`PROD_DIRECT_URL`。本地无论在哪个 git 分支，`next dev` 都打 dev 库。
+- **dev 库已就绪**：`prisma migrate deploy`（init + RLS 触发器）+ `seed:content`（150 题 / 13 课）+ dev 管理员（`devadmin` / robbieqzr@gmail.com，密码在 `.env` 注释 `DEV_ADMIN_PASSWORD`）。
+- **`dev` 分支** 已建并推到 origin，作为 dev 部署环境。稳定 URL：`https://rpas-lms-git-dev-rpas-lms-projects.vercel.app`（受 Vercel Preview Protection，登录 Vercel 账号访问；要公开可在项目设置关掉 Deployment Protection 或配 bypass token）。
+- **Vercel Preview scope（绑 `dev` 分支）已设 6 个变量**：`DATABASE_URL`/`DIRECT_URL`（dev 库）、独立 `AUTH_SECRET`、`APP_URL`（= 上面别名）、`RESEND_API_KEY`/`EMAIL_FROM`（复用生产）。生产 scope 未动。
+- **待补（可选）**：dev 的 Stripe 仍未配 → dev 上点购买会报错。需要 test 模式 price ID + 在 dev URL 注册 test webhook（见下"待定"）。
 
 ## 推荐架构（Vercel 原生三环境）
 
@@ -13,8 +20,8 @@
 
 **工作流**：`dev`/功能分支开发 → push GitHub → Vercel 自动建 Preview（连 dev 库）验证 → PR 合并到 `main` → 自动上 production。
 
-## ⚠️ 必须先修的隐患
-当前本地 `.env` 的 `DATABASE_URL`/`DIRECT_URL` 指向**生产库** → 本地 `next dev` 会读写生产数据。配 dev 环境时一并解决。
+## ⚠️ 隐患（已修复 2026-06-11）
+~~本地 `.env` 的 `DATABASE_URL`/`DIRECT_URL` 指向**生产库** → 本地 `next dev` 会读写生产数据。~~ 已切到 dev 库，生产串降级为注释备份。
 
 ## 实施步骤（明天）
 1. **新建第二个 Supabase 项目** `pacificdrone-dev`（免费层，区域同 ca-central-1），拿 pooler(6543) + 直连(5432) 串。
@@ -30,6 +37,7 @@
 - 开发时对 **dev 库** 跑 `prisma migrate dev` 生成迁移并提交。
 - 上线时对 **prod 库** 手动 `prisma migrate deploy`（我们没把 migrate 塞进 build，避免 preview 误迁生产）。
 
-## 待定（明天先确认）
-- dev 暴露方式：**(a) 每 PR 自动 Preview**（推荐起步，零配置）vs **(b) 固定 `dev` 分支 + `dev.pacificdrone.ca`**。
+## 待定 / 后续
+- ~~dev 暴露方式~~：已选 **固定 `dev` 分支**（无子域名）。以后想要 `dev.pacificdrone.ca` 再用 Cloudflare API 加 CNAME 绑 dev 分支即可。
+- **dev 的 Stripe（可选）**：要在 dev 跑通支付需 3 步 —— ① 用 test secret(`sk_test_`，已在 `.env` 注释) 在 Stripe test 模式建/取一个 price ID；② 在 Stripe test 模式注册 webhook 指向 `https://rpas-lms-git-dev-rpas-lms-projects.vercel.app/api/payments/webhook`，拿 test `whsec_`；③ 把 `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PAID_ACCESS_PRICE_ID` 绑到 Preview@dev。不配则 dev 上购买按钮报错，其余功能正常。
 - 测试库：本地 vitest 仍用 Docker Postgres :5433（已就绪），与 dev 库分开，无需动。
