@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import { orderedOptions } from "./optionOrder";
 import { ExamService } from "./service";
 import { InMemorySessionStore } from "./store";
-import { loadQuestionBank } from "../content/loadBank";
+import { makeTestBank } from "../content/__fixtures__/bank";
 import { correctOptionIds } from "./grade";
 
-const bank = loadQuestionBank();
+const bank = makeTestBank();
 
 const opts = [
   { id: "a" },

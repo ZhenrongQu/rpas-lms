@@ -1,6 +1,6 @@
 import type { Course, LessonMeta, RouteLocale } from "../lessons/types";
 import type {
-  CertLevel,
+  ExamCertLevel,
   ModuleId,
   Question,
   QuestionBank,
@@ -59,7 +59,7 @@ export function dbQuestionToQuestion(row: QuestionRow): Question {
   const question: Question = {
     id: row.id,
     moduleId: row.moduleId as ModuleId,
-    certLevel: row.certLevel as CertLevel,
+    certLevel: row.certLevel as ExamCertLevel,
     type: row.type as QuestionType,
     selectCount: row.selectCount,
     difficulty: row.difficulty,

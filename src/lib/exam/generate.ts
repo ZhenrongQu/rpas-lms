@@ -1,4 +1,3 @@
-import { loadQuestionBank } from "../content/loadBank";
 import { allocateQuotas } from "./quota";
 import { SUBJECT_WEIGHTS } from "./config";
 import { shuffle } from "./shuffle";
@@ -9,9 +8,10 @@ import {
   type QuestionBank,
 } from "../content/types";
 
-/** Questions usable for a given exam level: the level itself plus BOTH. */
+/** Questions usable for a given exam level. Each question belongs to exactly one
+ *  level (basic or advanced bank) — there is no cross-level pool. */
 export function eligible(questions: Question[], certLevel: ExamCertLevel): Question[] {
-  return questions.filter((q) => q.certLevel === certLevel || q.certLevel === "BOTH");
+  return questions.filter((q) => q.certLevel === certLevel);
 }
 
 /**
@@ -23,7 +23,7 @@ export function generateExam(
   certLevel: ExamCertLevel,
   total: number,
   rng: () => number,
-  bank: QuestionBank = loadQuestionBank(),
+  bank: QuestionBank,
 ): Question[] {
   const pool = eligible(bank.questions, certLevel);
   const quotas = allocateQuotas(total, SUBJECT_WEIGHTS[certLevel]);

@@ -1,5 +1,5 @@
 import { prisma } from "../db";
-import type { ExamCertLevel } from "../content/types";
+import { questionBankPrefix, type ExamCertLevel } from "../content/types";
 import type { AdminQuestionInput } from "./contentSchemas";
 
 /** Scalar Prisma fields for a Question write (options handled separately).
@@ -33,7 +33,9 @@ export function optionCreateData(input: AdminQuestionInput) {
   }));
 }
 
-/** Next sequential id for a module within a bank, preserving `${moduleId}-NNNN`. */
+/** Next sequential id for a module within a bank: `${bank}-${moduleId}-NNNN`
+ *  (e.g. `basic-air-law-0001`). The bank prefix keeps ids globally unique so a
+ *  lesson checkpoint can resolve a question by id alone. */
 export async function nextQuestionId(moduleId: string, level: ExamCertLevel): Promise<string> {
   const rows =
     level === "BASIC"
@@ -44,12 +46,11 @@ export async function nextQuestionId(moduleId: string, level: ExamCertLevel): Pr
     const m = id.match(/-(\d{4})$/);
     if (m) max = Math.max(max, Number.parseInt(m[1], 10));
   }
-  return `${moduleId}-${String(max + 1).padStart(4, "0")}`;
+  return `${questionBankPrefix(level)}-${moduleId}-${String(max + 1).padStart(4, "0")}`;
 }
 
-/** Locates a question by id across both banks (basic first). Question ids are
- *  `${moduleId}-NNNN` and can collide across banks; callers needing a specific
- *  bank should pass `level` explicitly when known (create path). */
+/** Locates a question by id across both banks (basic first). Ids are bank-
+ *  prefixed and globally unique, so the first hit is unambiguous. */
 export async function findQuestionById(id: string) {
   const basic = await prisma.basicQuestionBank.findUnique({ where: { id }, include: { options: true } });
   if (basic) return { level: "BASIC" as const, row: basic };

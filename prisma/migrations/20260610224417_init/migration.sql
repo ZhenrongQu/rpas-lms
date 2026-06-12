@@ -1,5 +1,18 @@
 -- CreateTable
-CREATE TABLE "User" (
+CREATE TABLE "Admin" (
+    "id" TEXT NOT NULL,
+    "username" TEXT NOT NULL,
+    "email" TEXT,
+    "hashedPassword" TEXT NOT NULL,
+    "name" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Admin_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Customer" (
     "id" TEXT NOT NULL,
     "userNumber" INTEGER,
     "username" TEXT,
@@ -8,24 +21,13 @@ CREATE TABLE "User" (
     "name" TEXT,
     "hashedPassword" TEXT,
     "accessTier" TEXT NOT NULL DEFAULT 'FREE',
-    "role" TEXT NOT NULL DEFAULT 'USER',
     "stripeCustomerId" TEXT,
     "emailVerifiedAt" TIMESTAMP(3),
     "phoneVerifiedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "LessonProgress" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "lessonId" TEXT NOT NULL,
-    "completedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "LessonProgress_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Customer_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -111,10 +113,10 @@ CREATE TABLE "WebhookEvent" (
 );
 
 -- CreateTable
-CREATE TABLE "Question" (
+CREATE TABLE "BasicQuestionBank" (
     "id" TEXT NOT NULL,
     "moduleId" TEXT NOT NULL,
-    "certLevel" TEXT NOT NULL,
+    "certLevel" TEXT NOT NULL DEFAULT 'BASIC',
     "type" TEXT NOT NULL,
     "selectCount" INTEGER NOT NULL,
     "difficulty" INTEGER NOT NULL,
@@ -134,11 +136,38 @@ CREATE TABLE "Question" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Question_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "BasicQuestionBank_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "QuestionOption" (
+CREATE TABLE "AdvancedQuestionBank" (
+    "id" TEXT NOT NULL,
+    "moduleId" TEXT NOT NULL,
+    "certLevel" TEXT NOT NULL DEFAULT 'ADVANCED',
+    "type" TEXT NOT NULL,
+    "selectCount" INTEGER NOT NULL,
+    "difficulty" INTEGER NOT NULL,
+    "stemEN" TEXT NOT NULL,
+    "stemZH" TEXT NOT NULL,
+    "explEN" TEXT NOT NULL,
+    "explZH" TEXT NOT NULL,
+    "refEN" TEXT NOT NULL,
+    "refZH" TEXT NOT NULL,
+    "tags" TEXT NOT NULL DEFAULT '[]',
+    "mediaKind" TEXT,
+    "mediaUrl" TEXT,
+    "mediaAltEN" TEXT,
+    "mediaAltZH" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+    "archivedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AdvancedQuestionBank_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "BasicQuestionOption" (
     "id" TEXT NOT NULL,
     "questionId" TEXT NOT NULL,
     "optionId" TEXT NOT NULL,
@@ -146,14 +175,26 @@ CREATE TABLE "QuestionOption" (
     "labelZH" TEXT NOT NULL,
     "isCorrect" BOOLEAN NOT NULL,
 
-    CONSTRAINT "QuestionOption_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "BasicQuestionOption_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "Lesson" (
+CREATE TABLE "AdvancedQuestionOption" (
+    "id" TEXT NOT NULL,
+    "questionId" TEXT NOT NULL,
+    "optionId" TEXT NOT NULL,
+    "labelEN" TEXT NOT NULL,
+    "labelZH" TEXT NOT NULL,
+    "isCorrect" BOOLEAN NOT NULL,
+
+    CONSTRAINT "AdvancedQuestionOption_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "BasicLesson" (
     "id" TEXT NOT NULL,
     "lessonId" TEXT NOT NULL,
-    "course" TEXT NOT NULL,
+    "course" TEXT NOT NULL DEFAULT 'basic',
     "moduleId" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "order" INTEGER NOT NULL,
@@ -167,26 +208,67 @@ CREATE TABLE "Lesson" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Lesson_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "BasicLesson_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AdvancedLesson" (
+    "id" TEXT NOT NULL,
+    "lessonId" TEXT NOT NULL,
+    "course" TEXT NOT NULL DEFAULT 'advanced',
+    "moduleId" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "order" INTEGER NOT NULL,
+    "estMinutes" INTEGER NOT NULL,
+    "certLevel" TEXT NOT NULL,
+    "access" TEXT NOT NULL,
+    "titleEN" TEXT NOT NULL,
+    "titleZH" TEXT NOT NULL,
+    "bodyEN" TEXT NOT NULL,
+    "bodyZH" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AdvancedLesson_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "BasicLessonProgress" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "lessonId" TEXT NOT NULL,
+    "completedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "BasicLessonProgress_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AdvancedLessonProgress" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "lessonId" TEXT NOT NULL,
+    "completedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AdvancedLessonProgress_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_userNumber_key" ON "User"("userNumber");
+CREATE UNIQUE INDEX "Admin_username_key" ON "Admin"("username");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
+CREATE UNIQUE INDEX "Admin_email_key" ON "Admin"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+CREATE UNIQUE INDEX "Customer_userNumber_key" ON "Customer"("userNumber");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_phone_key" ON "User"("phone");
+CREATE UNIQUE INDEX "Customer_username_key" ON "Customer"("username");
 
 -- CreateIndex
-CREATE INDEX "LessonProgress_userId_idx" ON "LessonProgress"("userId");
+CREATE UNIQUE INDEX "Customer_email_key" ON "Customer"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "LessonProgress_userId_lessonId_key" ON "LessonProgress"("userId", "lessonId");
+CREATE UNIQUE INDEX "Customer_phone_key" ON "Customer"("phone");
 
 -- CreateIndex
 CREATE INDEX "UserIdentity_userId_idx" ON "UserIdentity"("userId");
@@ -222,40 +304,80 @@ CREATE INDEX "Entitlement_product_idx" ON "Entitlement"("product");
 CREATE UNIQUE INDEX "Entitlement_userId_product_key" ON "Entitlement"("userId", "product");
 
 -- CreateIndex
-CREATE INDEX "Question_moduleId_idx" ON "Question"("moduleId");
+CREATE INDEX "BasicQuestionBank_moduleId_idx" ON "BasicQuestionBank"("moduleId");
 
 -- CreateIndex
-CREATE INDEX "Question_certLevel_idx" ON "Question"("certLevel");
+CREATE INDEX "AdvancedQuestionBank_moduleId_idx" ON "AdvancedQuestionBank"("moduleId");
 
 -- CreateIndex
-CREATE INDEX "QuestionOption_questionId_idx" ON "QuestionOption"("questionId");
+CREATE INDEX "BasicQuestionOption_questionId_idx" ON "BasicQuestionOption"("questionId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "QuestionOption_questionId_optionId_key" ON "QuestionOption"("questionId", "optionId");
+CREATE UNIQUE INDEX "BasicQuestionOption_questionId_optionId_key" ON "BasicQuestionOption"("questionId", "optionId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Lesson_lessonId_key" ON "Lesson"("lessonId");
+CREATE INDEX "AdvancedQuestionOption_questionId_idx" ON "AdvancedQuestionOption"("questionId");
 
 -- CreateIndex
-CREATE INDEX "Lesson_course_moduleId_idx" ON "Lesson"("course", "moduleId");
+CREATE UNIQUE INDEX "AdvancedQuestionOption_questionId_optionId_key" ON "AdvancedQuestionOption"("questionId", "optionId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Lesson_course_moduleId_slug_key" ON "Lesson"("course", "moduleId", "slug");
+CREATE UNIQUE INDEX "BasicLesson_lessonId_key" ON "BasicLesson"("lessonId");
+
+-- CreateIndex
+CREATE INDEX "BasicLesson_course_moduleId_idx" ON "BasicLesson"("course", "moduleId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "BasicLesson_course_moduleId_slug_key" ON "BasicLesson"("course", "moduleId", "slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AdvancedLesson_lessonId_key" ON "AdvancedLesson"("lessonId");
+
+-- CreateIndex
+CREATE INDEX "AdvancedLesson_course_moduleId_idx" ON "AdvancedLesson"("course", "moduleId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AdvancedLesson_course_moduleId_slug_key" ON "AdvancedLesson"("course", "moduleId", "slug");
+
+-- CreateIndex
+CREATE INDEX "BasicLessonProgress_userId_idx" ON "BasicLessonProgress"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "BasicLessonProgress_userId_lessonId_key" ON "BasicLessonProgress"("userId", "lessonId");
+
+-- CreateIndex
+CREATE INDEX "AdvancedLessonProgress_userId_idx" ON "AdvancedLessonProgress"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AdvancedLessonProgress_userId_lessonId_key" ON "AdvancedLessonProgress"("userId", "lessonId");
 
 -- AddForeignKey
-ALTER TABLE "LessonProgress" ADD CONSTRAINT "LessonProgress_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "UserIdentity" ADD CONSTRAINT "UserIdentity_userId_fkey" FOREIGN KEY ("userId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "UserIdentity" ADD CONSTRAINT "UserIdentity_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ExamSession" ADD CONSTRAINT "ExamSession_userId_fkey" FOREIGN KEY ("userId") REFERENCES "Customer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ExamSession" ADD CONSTRAINT "ExamSession_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Payment" ADD CONSTRAINT "Payment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Payment" ADD CONSTRAINT "Payment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Entitlement" ADD CONSTRAINT "Entitlement_userId_fkey" FOREIGN KEY ("userId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Entitlement" ADD CONSTRAINT "Entitlement_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "BasicQuestionOption" ADD CONSTRAINT "BasicQuestionOption_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "BasicQuestionBank"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "QuestionOption" ADD CONSTRAINT "QuestionOption_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "Question"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "AdvancedQuestionOption" ADD CONSTRAINT "AdvancedQuestionOption_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "AdvancedQuestionBank"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BasicLessonProgress" ADD CONSTRAINT "BasicLessonProgress_userId_fkey" FOREIGN KEY ("userId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BasicLessonProgress" ADD CONSTRAINT "BasicLessonProgress_lessonId_fkey" FOREIGN KEY ("lessonId") REFERENCES "BasicLesson"("lessonId") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AdvancedLessonProgress" ADD CONSTRAINT "AdvancedLessonProgress_userId_fkey" FOREIGN KEY ("userId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AdvancedLessonProgress" ADD CONSTRAINT "AdvancedLessonProgress_lessonId_fkey" FOREIGN KEY ("lessonId") REFERENCES "AdvancedLesson"("lessonId") ON DELETE CASCADE ON UPDATE CASCADE;
+

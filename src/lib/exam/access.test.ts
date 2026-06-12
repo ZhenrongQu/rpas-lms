@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { canCreateExam, canViewLesson, questionsForAccess } from "./access";
-import { loadQuestionBank } from "../content/loadBank";
+import { makeTestBank } from "../content/__fixtures__/bank";
 
-const bank = loadQuestionBank();
+const bank = makeTestBank();
 
 describe("exam access policy", () => {
   it("lets guests and free users create Basic only, and paid users all exams", () => {

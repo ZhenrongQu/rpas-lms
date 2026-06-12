@@ -9,6 +9,7 @@
  * Run: pnpm exec tsx scripts/seed-content.ts   (or: pnpm seed:content)
  */
 import { prisma } from "../src/lib/db";
+import { questionBankPrefix, type ExamCertLevel } from "../src/lib/content/types";
 
 type SeedOption = { optionId: string; labelEN: string; labelZH: string; isCorrect: boolean };
 type SeedQuestion = {
@@ -45,15 +46,17 @@ const OPTIONS: SeedOption[] = [
   { optionId: "d", labelEN: "Option D", labelZH: "选项 D", isCorrect: false },
 ];
 
-function placeholderQuestions(prefix: string): SeedQuestion[] {
+function placeholderQuestions(level: ExamCertLevel): SeedQuestion[] {
+  const label = level === "BASIC" ? "Basic" : "Advanced";
+  const prefix = questionBankPrefix(level);
   return [1, 2].map((n) => ({
-    id: `air-law-000${n}`,
+    id: `${prefix}-air-law-000${n}`,
     moduleId: "air-law",
     type: "SINGLE" as const,
     selectCount: 1,
     difficulty: 1,
-    stemEN: `${prefix} placeholder question ${n}: which option is correct?`,
-    stemZH: `${prefix} 占位题 ${n}：哪个选项正确？`,
+    stemEN: `${label} placeholder question ${n}: which option is correct?`,
+    stemZH: `${label} 占位题 ${n}：哪个选项正确？`,
     explEN: "Option A is correct (placeholder explanation).",
     explZH: "选项 A 正确（占位解析）。",
     refEN: "Placeholder reference",
@@ -63,7 +66,8 @@ function placeholderQuestions(prefix: string): SeedQuestion[] {
 }
 
 function placeholderLessons(course: "basic" | "advanced"): SeedLesson[] {
-  const certLevel = course === "basic" ? "BASIC" : "ADVANCED";
+  const certLevel: ExamCertLevel = course === "basic" ? "BASIC" : "ADVANCED";
+  const qPrefix = questionBankPrefix(certLevel);
   return [1, 2].map((n) => ({
     slug: `intro-${n}`,
     moduleId: "air-law",
@@ -73,13 +77,13 @@ function placeholderLessons(course: "basic" | "advanced"): SeedLesson[] {
     access: "FREE",
     titleEN: `${course} placeholder lesson ${n}`,
     titleZH: `${course} 占位课 ${n}`,
-    bodyEN: `Placeholder ${course} lesson ${n}.\n\n<Checkpoint questionId="air-law-000${n}" />\n`,
-    bodyZH: `占位 ${course} 课程 ${n}。\n\n<Checkpoint questionId="air-law-000${n}" />\n`,
+    bodyEN: `Placeholder ${course} lesson ${n}.\n\n<Checkpoint questionId="${qPrefix}-air-law-000${n}" />\n`,
+    bodyZH: `占位 ${course} 课程 ${n}。\n\n<Checkpoint questionId="${qPrefix}-air-law-000${n}" />\n`,
   }));
 }
 
 async function seedBasicQuestions(): Promise<number> {
-  for (const { id, options, ...scalar } of placeholderQuestions("Basic")) {
+  for (const { id, options, ...scalar } of placeholderQuestions("BASIC")) {
     await prisma.basicQuestionBank.upsert({
       where: { id },
       create: { id, ...scalar, options: { create: options } },
@@ -90,7 +94,7 @@ async function seedBasicQuestions(): Promise<number> {
 }
 
 async function seedAdvancedQuestions(): Promise<number> {
-  for (const { id, options, ...scalar } of placeholderQuestions("Advanced")) {
+  for (const { id, options, ...scalar } of placeholderQuestions("ADVANCED")) {
     await prisma.advancedQuestionBank.upsert({
       where: { id },
       create: { id, ...scalar, options: { create: options } },

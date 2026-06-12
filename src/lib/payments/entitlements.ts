@@ -61,8 +61,8 @@ export async function grantPaidAccessFromCheckout(grant: CheckoutGrant): Promise
     });
   });
 
-  // Update User.accessTier outside the transaction to avoid SQLite interactive-transaction
-  // edge cases. Entitlement is the source of truth; this is a denormalized cache.
+  // Update Customer.accessTier outside the transaction. Entitlement is the source
+  // of truth; this is a denormalized cache.
   await prisma.customer.update({
     where: { id: grant.userId },
     data: {

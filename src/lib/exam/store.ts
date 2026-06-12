@@ -22,7 +22,8 @@ export interface SessionStore {
   update(session: ExamSession): Promise<void>;
 }
 
-/** In-memory store for dev/test. Swap for a Prisma-backed store in Plan 3. */
+/** In-memory store for tests — the injectable double for ExamService.
+ *  Production uses PrismaSessionStore. */
 export class InMemorySessionStore implements SessionStore {
   private map = new Map<string, ExamSession>();
 

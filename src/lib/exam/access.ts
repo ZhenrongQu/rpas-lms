@@ -1,3 +1,4 @@
+import { eligible } from "./generate";
 import type { ExamCertLevel, Question } from "../content/types";
 
 export type AccessTier = "GUEST" | "FREE" | "PAID";
@@ -29,10 +30,10 @@ export function questionsForAccess(
   tier: AccessTier,
   certLevel: ExamCertLevel,
 ): Question[] {
-  const eligible = questions.filter((q) => q.certLevel === certLevel || q.certLevel === "BOTH");
-  if (tier === "PAID") return eligible;
+  const pool = eligible(questions, certLevel);
+  if (tier === "PAID") return pool;
   if (certLevel !== "BASIC") return [];
-  if (tier === "FREE") return eligible.filter((q) => q.difficulty === 1);
-  if (tier === "GUEST") return eligible.filter((q) => q.difficulty === 0);
+  if (tier === "FREE") return pool.filter((q) => q.difficulty === 1);
+  if (tier === "GUEST") return pool.filter((q) => q.difficulty === 0);
   return [];
 }

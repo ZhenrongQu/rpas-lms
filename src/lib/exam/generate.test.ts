@@ -1,14 +1,15 @@
 import { describe, it, expect } from "vitest";
 import { eligible, generateExam } from "./generate";
-import { loadQuestionBank } from "../content/loadBank";
+import { makeTestBank } from "../content/__fixtures__/bank";
 import { mulberry32 } from "./rng";
 
-const bank = loadQuestionBank();
+const bank = makeTestBank();
 
 describe("eligible", () => {
-  it("includes BOTH and the requested level, excludes the other level", () => {
+  it("includes only the requested level and excludes the other", () => {
     const basic = eligible(bank.questions, "BASIC");
-    expect(basic.every((q) => q.certLevel === "BASIC" || q.certLevel === "BOTH")).toBe(true);
+    expect(basic.length).toBeGreaterThan(0);
+    expect(basic.every((q) => q.certLevel === "BASIC")).toBe(true);
     expect(basic.some((q) => q.certLevel === "ADVANCED")).toBe(false);
   });
 });

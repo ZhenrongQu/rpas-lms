@@ -7,7 +7,7 @@
  * Not idempotent — assumes empty tables (force-reset).
  */
 import { prisma } from "../src/lib/db";
-import { MODULE_IDS } from "../src/lib/content/types";
+import { MODULE_IDS, questionBankPrefix } from "../src/lib/content/types";
 
 const FOUR_OPTIONS = [
   { optionId: "a", labelEN: "A", labelZH: "甲", isCorrect: true },
@@ -22,13 +22,14 @@ const D1_PER_MODULE = 6;
 
 async function seedBank(bank: "basic" | "advanced"): Promise<number> {
   let count = 0;
+  const prefix = questionBankPrefix(bank === "basic" ? "BASIC" : "ADVANCED");
   for (const moduleId of MODULE_IDS) {
     for (const [difficulty, n] of [
       [0, D0_PER_MODULE],
       [1, D1_PER_MODULE],
     ] as const) {
       for (let i = 1; i <= n; i++) {
-        const id = `${moduleId}-d${difficulty}-${String(i).padStart(3, "0")}`;
+        const id = `${prefix}-${moduleId}-d${difficulty}-${String(i).padStart(3, "0")}`;
         const data = {
           id,
           moduleId,

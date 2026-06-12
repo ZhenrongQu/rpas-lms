@@ -6,7 +6,7 @@ function q(id: string, moduleId: Question["moduleId"], correctId: string): Quest
   return {
     id,
     moduleId,
-    certLevel: "BOTH",
+    certLevel: "BASIC",
     type: "SINGLE",
     selectCount: 1,
     difficulty: 1,

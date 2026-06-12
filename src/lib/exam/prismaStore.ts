@@ -49,7 +49,7 @@ function fromRow(r: Row): ExamSession {
   };
 }
 
-/** SQLite/Prisma-backed session store. Survives server restarts (Plan 3). */
+/** Prisma/Postgres-backed session store. Survives server restarts. */
 export class PrismaSessionStore implements SessionStore {
   async create(session: ExamSession): Promise<void> {
     await prisma.examSession.create({ data: toRow(session) });
