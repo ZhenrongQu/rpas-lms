@@ -1,18 +1,23 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { findQuestionById } from "@/lib/admin/questions";
 import QuestionEditForm from "./QuestionEditForm";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string>>;
+};
 
-export default async function AdminQuestionEditPage({ params }: Props) {
+export default async function AdminQuestionEditPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const sp = await searchParams;
+  const initialLevel = sp.level === "ADVANCED" ? "ADVANCED" : "BASIC";
 
   if (id === "new") {
-    return <QuestionEditForm question={null} />;
+    return <QuestionEditForm question={null} initialLevel={initialLevel} />;
   }
 
-  const row = await prisma.question.findUnique({ where: { id }, include: { options: true } });
-  if (!row) notFound();
+  const found = await findQuestionById(id);
+  if (!found) notFound();
 
-  return <QuestionEditForm question={row} />;
+  return <QuestionEditForm question={found.row} initialLevel={found.level} />;
 }

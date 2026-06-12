@@ -9,11 +9,10 @@ const OTHER_MODULE = "mdxtest-nav-1";
 const IDS = [ACTIVE, ACTIVE2, ARCHIVED, OTHER_MODULE];
 
 async function seed(id: string, moduleId: string, status: "ACTIVE" | "ARCHIVED") {
-  await prisma.question.create({
+  await prisma.basicQuestionBank.create({
     data: {
       id,
       moduleId,
-      certLevel: "BOTH",
       type: "SINGLE",
       selectCount: 1,
       difficulty: 0,
@@ -44,7 +43,7 @@ const one = (id: string) => `<Checkpoint questionId="${id}" />`;
 
 describe("validateLessonMdxBodies", () => {
   beforeAll(async () => {
-    await prisma.question.deleteMany({ where: { id: { in: IDS } } });
+    await prisma.basicQuestionBank.deleteMany({ where: { id: { in: IDS } } });
     await seed(ACTIVE, "air-law", "ACTIVE");
     await seed(ACTIVE2, "air-law", "ACTIVE");
     await seed(ARCHIVED, "air-law", "ARCHIVED");
@@ -52,12 +51,12 @@ describe("validateLessonMdxBodies", () => {
   });
 
   afterAll(async () => {
-    await prisma.question.deleteMany({ where: { id: { in: IDS } } });
+    await prisma.basicQuestionBank.deleteMany({ where: { id: { in: IDS } } });
     await prisma.$disconnect();
   });
 
   const valid = (cps: string) =>
-    validateLessonMdxBodies({ bodyEN: body(cps), bodyZH: body(cps), moduleId: "air-law" });
+    validateLessonMdxBodies({ bodyEN: body(cps), bodyZH: body(cps), moduleId: "air-law", course: "basic" });
 
   it("accepts a single valid Checkpoint", async () => {
     expect(await valid(one(ACTIVE))).toEqual({ ok: true });
@@ -71,7 +70,7 @@ describe("validateLessonMdxBodies", () => {
     const res = await validateLessonMdxBodies({
       bodyEN: `Drone under <5 m altitude ${one(ACTIVE)}`,
       bodyZH: body(one(ACTIVE)),
-      moduleId: "air-law",
+      moduleId: "air-law", course: "basic",
     });
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.errors.some((e) => e.startsWith("EN: invalid MDX"))).toBe(true);
@@ -86,7 +85,7 @@ describe("validateLessonMdxBodies", () => {
     const res = await validateLessonMdxBodies({
       bodyEN: `import x from "y"\n\n${body(one(ACTIVE))}`,
       bodyZH: body(one(ACTIVE)),
-      moduleId: "air-law",
+      moduleId: "air-law", course: "basic",
     });
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.errors.some((e) => e.includes("import/export"))).toBe(true);
@@ -96,7 +95,7 @@ describe("validateLessonMdxBodies", () => {
     const res = await validateLessonMdxBodies({
       bodyEN: body(`<script>alert(1)</script>\n\n${one(ACTIVE)}`),
       bodyZH: body(one(ACTIVE)),
-      moduleId: "air-law",
+      moduleId: "air-law", course: "basic",
     });
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.errors.some((e) => e.includes("disallowed HTML"))).toBe(true);
@@ -111,7 +110,7 @@ describe("validateLessonMdxBodies", () => {
     const res = await validateLessonMdxBodies({
       bodyEN: body(`<Checkpoint questionId={qid} />`),
       bodyZH: body(`<Checkpoint questionId={qid} />`),
-      moduleId: "air-law",
+      moduleId: "air-law", course: "basic",
     });
     expect(res.ok).toBe(false);
   });
@@ -126,7 +125,7 @@ describe("validateLessonMdxBodies", () => {
     const res = await validateLessonMdxBodies({
       bodyEN: body(one(ACTIVE)),
       bodyZH: body(one(ACTIVE2)),
-      moduleId: "air-law",
+      moduleId: "air-law", course: "basic",
     });
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.errors.some((e) => e.includes("same Checkpoint questionId set"))).toBe(true);
@@ -148,7 +147,7 @@ describe("validateLessonMdxBodies", () => {
     const res = await validateLessonMdxBodies({
       bodyEN: "Just prose, no checkpoint.",
       bodyZH: "只是文字，没有检查点。",
-      moduleId: "air-law",
+      moduleId: "air-law", course: "basic",
     });
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.errors.some((e) => e.includes("at least one"))).toBe(true);

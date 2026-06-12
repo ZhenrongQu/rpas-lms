@@ -25,8 +25,8 @@ describe("POST /api/payments/webhook", () => {
     await prisma.webhookEvent.deleteMany();
     await prisma.payment.deleteMany();
     await prisma.entitlement.deleteMany();
-    await prisma.user.deleteMany();
-    await prisma.user.create({ data: { id: "u1", email: "u1@test.local", accessTier: "FREE" } });
+    await prisma.customer.deleteMany();
+    await prisma.customer.create({ data: { id: "u1", email: "u1@test.local", accessTier: "FREE" } });
   });
 
   it("rejects invalid signatures", async () => {
@@ -57,7 +57,7 @@ describe("POST /api/payments/webhook", () => {
     expect((await POST(request())).status).toBe(200);
     expect((await POST(request())).status).toBe(200);
 
-    const user = await prisma.user.findUniqueOrThrow({ where: { id: "u1" } });
+    const user = await prisma.customer.findUniqueOrThrow({ where: { id: "u1" } });
     expect(user.accessTier).toBe("PAID");
     expect(await prisma.webhookEvent.count()).toBe(1);
     expect(await prisma.payment.count()).toBe(1);

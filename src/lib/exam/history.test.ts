@@ -24,13 +24,13 @@ async function seedSession(id: string, userId: string | null, startedAt: number,
 describe("listUserExamHistory", () => {
   beforeEach(async () => {
     await prisma.examSession.deleteMany();
-    await prisma.user.deleteMany();
-    await prisma.user.create({ data: { id: "u1", email: "u1@test.local", hashedPassword: "x" } });
-    await prisma.user.create({ data: { id: "u2", email: "u2@test.local", hashedPassword: "x" } });
+    await prisma.customer.deleteMany();
+    await prisma.customer.create({ data: { id: "u1", email: "u1@test.local", hashedPassword: "x" } });
+    await prisma.customer.create({ data: { id: "u2", email: "u2@test.local", hashedPassword: "x" } });
   });
   afterAll(async () => {
     await prisma.examSession.deleteMany();
-    await prisma.user.deleteMany();
+    await prisma.customer.deleteMany();
     await prisma.$disconnect();
   });
 

@@ -1,19 +1,33 @@
 import { prisma } from "../db";
 
-/** Upsert a completed lesson for a user (idempotent on [userId, lessonId]). */
-export async function markLessonComplete(userId: string, lessonId: string): Promise<void> {
-  await prisma.lessonProgress.upsert({
-    where: { userId_lessonId: { userId, lessonId } },
-    create: { userId, lessonId },
-    update: {},
-  });
+/** lessonId is "${course}/${moduleId}/${slug}"; basic vs advanced progress are
+ *  physically separate tables, routed by the course prefix. */
+function isBasic(lessonId: string): boolean {
+  return lessonId.startsWith("basic/");
 }
 
-/** All completed lessonIds for a user. */
+/** Upsert a completed lesson for a user (idempotent on [userId, lessonId]). */
+export async function markLessonComplete(userId: string, lessonId: string): Promise<void> {
+  if (isBasic(lessonId)) {
+    await prisma.basicLessonProgress.upsert({
+      where: { userId_lessonId: { userId, lessonId } },
+      create: { userId, lessonId },
+      update: {},
+    });
+  } else {
+    await prisma.advancedLessonProgress.upsert({
+      where: { userId_lessonId: { userId, lessonId } },
+      create: { userId, lessonId },
+      update: {},
+    });
+  }
+}
+
+/** All completed lessonIds for a user, across both basic and advanced. */
 export async function listCompletedLessonIds(userId: string): Promise<string[]> {
-  const rows = await prisma.lessonProgress.findMany({
-    where: { userId },
-    select: { lessonId: true },
-  });
-  return rows.map((r) => r.lessonId);
+  const [basic, advanced] = await Promise.all([
+    prisma.basicLessonProgress.findMany({ where: { userId }, select: { lessonId: true } }),
+    prisma.advancedLessonProgress.findMany({ where: { userId }, select: { lessonId: true } }),
+  ]);
+  return [...basic, ...advanced].map((r) => r.lessonId);
 }

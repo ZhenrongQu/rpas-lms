@@ -9,11 +9,10 @@ const QID = "air-law-9001";
 const ARCHIVED_QID = "air-law-9002";
 
 async function seedQuestion(id: string, status: "ACTIVE" | "ARCHIVED") {
-  await prisma.question.create({
+  await prisma.basicQuestionBank.create({
     data: {
       id,
       moduleId: "air-law",
-      certLevel: "BOTH",
       type: "SINGLE",
       selectCount: 1,
       difficulty: 0,
@@ -43,13 +42,13 @@ function ctx(id: string) {
 
 describe("checkpoint API", () => {
   beforeAll(async () => {
-    await prisma.question.deleteMany({ where: { id: { in: [QID, ARCHIVED_QID] } } });
+    await prisma.basicQuestionBank.deleteMany({ where: { id: { in: [QID, ARCHIVED_QID] } } });
     await seedQuestion(QID, "ACTIVE");
     await seedQuestion(ARCHIVED_QID, "ARCHIVED");
   });
 
   afterAll(async () => {
-    await prisma.question.deleteMany({ where: { id: { in: [QID, ARCHIVED_QID] } } });
+    await prisma.basicQuestionBank.deleteMany({ where: { id: { in: [QID, ARCHIVED_QID] } } });
     await prisma.$disconnect();
   });
 

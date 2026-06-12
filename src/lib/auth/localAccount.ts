@@ -1,4 +1,6 @@
 import { Prisma } from "@prisma/client";
+// NOTE: `prisma.customer` is the former `User` table (renamed in the
+// Admin/Customer split). This module only deals with customer (learner) login.
 import { prisma } from "../db";
 import { hashPassword, verifyPassword } from "./password";
 import { normalizeTarget, verifyCode } from "./verificationCode";
@@ -65,20 +67,20 @@ async function assertAliasAvailable({
   username?: string;
   currentUserId?: string;
 }) {
-  const existingEmail = await prisma.user.findUnique({ where: { email } });
+  const existingEmail = await prisma.customer.findUnique({ where: { email } });
   if (existingEmail?.emailVerifiedAt && existingEmail.id !== currentUserId) {
     throw new Error("email_already_registered");
   }
 
   if (username) {
-    const existingUsername = await prisma.user.findUnique({ where: { username } });
+    const existingUsername = await prisma.customer.findUnique({ where: { username } });
     if (existingUsername && existingUsername.id !== currentUserId) {
       throw new Error("username_unavailable");
     }
   }
 
   if (phone) {
-    const existingPhone = await prisma.user.findUnique({ where: { phone } });
+    const existingPhone = await prisma.customer.findUnique({ where: { phone } });
     if (existingPhone && existingPhone.id !== currentUserId) {
       throw new Error("phone_unavailable");
     }
@@ -89,7 +91,7 @@ export async function registerLocalAccount(input: RegisterLocalAccountInput) {
   const email = normalizeEmail(input.email);
   const username = input.username ? normalizeUsername(input.username) : undefined;
   const phone = input.phone ? normalizePhone(input.phone) : undefined;
-  const existingPendingUser = await prisma.user.findUnique({ where: { email } });
+  const existingPendingUser = await prisma.customer.findUnique({ where: { email } });
 
   await assertAliasAvailable({
     email,
@@ -108,16 +110,16 @@ export async function registerLocalAccount(input: RegisterLocalAccountInput) {
   };
 
   if (existingPendingUser && !existingPendingUser.emailVerifiedAt) {
-    return prisma.user.update({
+    return prisma.customer.update({
       where: { id: existingPendingUser.id },
       data,
     });
   }
 
-  const maxResult = await prisma.user.aggregate({ _max: { userNumber: true } });
+  const maxResult = await prisma.customer.aggregate({ _max: { userNumber: true } });
   const nextUserNumber = (maxResult._max.userNumber ?? 0) + 1;
 
-  return prisma.user.create({
+  return prisma.customer.create({
     data: {
       ...data,
       email,
@@ -147,7 +149,7 @@ export async function verifyRegistrationEmail({
 
   const verifiedAt = now();
   try {
-    await prisma.user.update({
+    await prisma.customer.update({
       where: { email: normalizedEmail },
       data: {
         emailVerifiedAt: verifiedAt,
@@ -186,10 +188,10 @@ export async function authorizeLocalPasswordLogin(input: LoginInput) {
 
   const user =
     identifier.kind === "email"
-      ? await prisma.user.findUnique({ where: { email: identifier.value } })
+      ? await prisma.customer.findUnique({ where: { email: identifier.value } })
       : identifier.kind === "phone"
-        ? await prisma.user.findUnique({ where: { phone: identifier.value } })
-        : await prisma.user.findUnique({ where: { username: identifier.value } });
+        ? await prisma.customer.findUnique({ where: { phone: identifier.value } })
+        : await prisma.customer.findUnique({ where: { username: identifier.value } });
   if (!user?.hashedPassword || !user.emailVerifiedAt) return null;
 
   const ok = await verifyPassword(input.password, user.hashedPassword);

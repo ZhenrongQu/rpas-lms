@@ -1,5 +1,4 @@
 export type Locale = "EN" | "ZH";
-export type CertLevel = "BASIC" | "ADVANCED" | "BOTH";
 export type ExamCertLevel = "BASIC" | "ADVANCED";
 export type QuestionType = "SINGLE" | "MULTI";
 
@@ -14,6 +13,13 @@ export const MODULE_IDS = [
   "radiotelephony",
 ] as const;
 export type ModuleId = (typeof MODULE_IDS)[number];
+
+/** Per-bank prefix keeping question ids globally unique across the two physical
+ *  banks. A lesson checkpoint resolves a question by id without knowing its
+ *  bank, so basic and advanced must never mint the same id. */
+export function questionBankPrefix(level: ExamCertLevel): "basic" | "adv" {
+  return level === "BASIC" ? "basic" : "adv";
+}
 
 export interface Localized {
   EN: string;
@@ -35,7 +41,7 @@ export interface QuestionMedia {
 export interface Question {
   id: string;
   moduleId: ModuleId;
-  certLevel: CertLevel;
+  certLevel: ExamCertLevel;
   type: QuestionType;
   selectCount: number;
   difficulty: number;

@@ -8,7 +8,7 @@ const snapshot: Question[] = [
   {
     id: "air-law-0001",
     moduleId: "air-law",
-    certLevel: "BOTH",
+    certLevel: "BASIC",
     type: "SINGLE",
     selectCount: 1,
     difficulty: 0,

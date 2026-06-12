@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import { ExamService } from "./service";
 import { InMemorySessionStore } from "./store";
-import { loadQuestionBank } from "../content/loadBank";
+import { makeTestBank } from "../content/__fixtures__/bank";
 import { correctOptionIds } from "./grade";
 import type { QuestionBank } from "../content/types";
 
-const bank = loadQuestionBank();
+const bank = makeTestBank();
 
 /** Single-question bank whose correct option can be flipped, for snapshot-isolation tests. */
 function oneQuestionBank(correctOptionId: "a" | "b"): QuestionBank {
@@ -134,7 +134,7 @@ describe("ExamService", () => {
     const nowFn = vi.fn()
       .mockReturnValueOnce(t0)               // createMock reads now
       .mockReturnValue(t0 + 200 * 60_000);   // answer reads now — 200 min later (past both 60 & 90 min limits)
-    const service = new ExamService(store, nowFn, loadQuestionBank());
+    const service = new ExamService(store, nowFn, makeTestBank());
     const { sessionId } = await service.createMock("BASIC", "EN", 1);
     const questions = await service.getPublicQuestions(sessionId);
     const firstId = questions![0].id;
@@ -146,7 +146,7 @@ describe("ExamService", () => {
     const store = new InMemorySessionStore();
     const t0 = Date.now();
     const nowFn = vi.fn().mockReturnValue(t0); // clock never advances
-    const service = new ExamService(store, nowFn, loadQuestionBank());
+    const service = new ExamService(store, nowFn, makeTestBank());
     const { sessionId } = await service.createMock("BASIC", "EN", 1);
     const questions = await service.getPublicQuestions(sessionId);
     const firstId = questions![0].id;
@@ -156,7 +156,7 @@ describe("ExamService", () => {
 
   it("getExpiresAt() returns the session expiresAt", async () => {
     const store = new InMemorySessionStore();
-    const service = new ExamService(store, Date.now, loadQuestionBank());
+    const service = new ExamService(store, Date.now, makeTestBank());
     const { sessionId, expiresAt } = await service.createMock("BASIC", "EN", 1);
     const retrieved = await service.getExpiresAt(sessionId);
     expect(retrieved).toBe(expiresAt);
@@ -164,7 +164,7 @@ describe("ExamService", () => {
 
   it("getResult() is null before submit, non-null after submit", async () => {
     const store = new InMemorySessionStore();
-    const service = new ExamService(store, Date.now, loadQuestionBank());
+    const service = new ExamService(store, Date.now, makeTestBank());
     const { sessionId } = await service.createMock("BASIC", "EN", 1);
     const before = await service.getResult(sessionId);
     expect(before).toBeNull();
@@ -178,7 +178,7 @@ describe("ExamService", () => {
 
   it("submit() is idempotent — a second call returns the stored result", async () => {
     const store = new InMemorySessionStore();
-    const service = new ExamService(store, Date.now, loadQuestionBank());
+    const service = new ExamService(store, Date.now, makeTestBank());
     const { sessionId } = await service.createMock("BASIC", "EN", 1);
     const first = await service.submit(sessionId);
     const second = await service.submit(sessionId);

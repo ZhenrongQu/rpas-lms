@@ -1,18 +1,18 @@
 /**
- * Create (or promote) an ADMIN user.
+ * Create (or update) an admin in the dedicated `Admin` table.
  *
  * Usage:
- *   ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='your-strong-pw' \
- *     [ADMIN_USERNAME=yourname] pnpm exec tsx scripts/create-admin.ts
+ *   ADMIN_USERNAME=yourname ADMIN_PASSWORD='your-strong-pw' \
+ *     [ADMIN_EMAIL=you@example.com] pnpm exec tsx scripts/create-admin.ts
  *
- * - Email is normalized (trim + lowercase).
- * - Username (optional) is normalized to lowercase and validated like the app's
- *   register flow (^[a-z0-9]{6,24}$), so username login matches case-insensitively.
+ * - Username is required and @unique; normalized to lowercase and validated like
+ *   the app's login (^[a-z0-9]{6,24}$). Admins sign in with username or email.
+ * - Email (optional) is normalized (trim + lowercase).
  * - Password is bcrypt-hashed (same cost as the app's auth path).
- * - emailVerifiedAt is set so the account can sign in immediately.
- * - An "email" UserIdentity is upserted to match the normal verified-login shape.
- * - If the email already exists, the user is promoted to ADMIN and the password
- *   is reset to the provided one (idempotent).
+ * - Idempotent on username: re-running resets the password (and email).
+ *
+ * Admins are physically separate from customers — there is no `role` field and
+ * no customer/learning data on this record.
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -20,70 +20,34 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  const rawEmail = process.env.ADMIN_EMAIL;
+  const rawUsername = process.env.ADMIN_USERNAME;
   const password = process.env.ADMIN_PASSWORD;
+  const rawEmail = process.env.ADMIN_EMAIL;
 
-  if (!rawEmail || !password) {
-    throw new Error("Set ADMIN_EMAIL and ADMIN_PASSWORD env vars.");
+  if (!rawUsername || !password) {
+    throw new Error("Set ADMIN_USERNAME and ADMIN_PASSWORD env vars.");
   }
   if (password.length < 8) {
     throw new Error("ADMIN_PASSWORD must be at least 8 characters.");
   }
 
-  let username: string | undefined;
-  if (process.env.ADMIN_USERNAME) {
-    username = process.env.ADMIN_USERNAME.trim().toLowerCase();
-    if (!/^[a-z0-9]{6,24}$/.test(username)) {
-      throw new Error("ADMIN_USERNAME must be 6-24 lowercase alphanumeric chars.");
-    }
+  const username = rawUsername.trim().toLowerCase();
+  if (!/^[a-z0-9]{6,24}$/.test(username)) {
+    throw new Error("ADMIN_USERNAME must be 6-24 lowercase alphanumeric chars.");
   }
-
-  const email = rawEmail.trim().toLowerCase();
+  const email = rawEmail ? rawEmail.trim().toLowerCase() : undefined;
   const hashedPassword = await bcrypt.hash(password, 10);
-  const verifiedAt = new Date();
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const existing = await prisma.admin.findUnique({ where: { username } });
 
-  const userNumber =
-    existing?.userNumber ??
-    (await prisma.user.aggregate({ _max: { userNumber: true } }))._max.userNumber ??
-    0;
-  const nextUserNumber = existing?.userNumber ?? userNumber + 1;
-
-  const user = await prisma.user.upsert({
-    where: { email },
-    update: {
-      role: "ADMIN",
-      hashedPassword,
-      emailVerifiedAt: verifiedAt,
-      ...(username ? { username } : {}),
-    },
-    create: {
-      email,
-      userNumber: nextUserNumber,
-      role: "ADMIN",
-      accessTier: "FREE",
-      hashedPassword,
-      emailVerifiedAt: verifiedAt,
-      ...(username ? { username } : {}),
-    },
-  });
-
-  await prisma.userIdentity.upsert({
-    where: {
-      provider_providerAccountId: { provider: "email", providerAccountId: email },
-    },
-    update: { verifiedAt },
-    create: {
-      userId: user.id,
-      provider: "email",
-      providerAccountId: email,
-      verifiedAt,
-    },
+  const admin = await prisma.admin.upsert({
+    where: { username },
+    update: { hashedPassword, ...(email ? { email } : {}) },
+    create: { username, hashedPassword, ...(email ? { email } : {}) },
   });
 
   console.log(
-    `✓ ${existing ? "Promoted" : "Created"} ADMIN  id=${user.id}  #${user.userNumber}  ${user.email}`,
+    `✓ ${existing ? "Updated" : "Created"} admin  id=${admin.id}  ${admin.username}${admin.email ? `  ${admin.email}` : ""}`,
   );
 }
 

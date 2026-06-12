@@ -16,7 +16,7 @@ function providerForChannel(channel: VerificationChannel): "email" | "phone" {
 
 export async function isUsernameAvailable(username: string): Promise<boolean> {
   const normalized = assertUsername(username);
-  const existing = await prisma.user.findUnique({
+  const existing = await prisma.customer.findUnique({
     where: { username: normalized },
     select: { id: true },
   });
@@ -49,11 +49,11 @@ export async function createOrLoginVerifiedContactUser({
 
   const existingUser =
     channel === "email"
-      ? await prisma.user.findUnique({ where: { email: normalized } })
-      : await prisma.user.findUnique({ where: { phone: normalized } });
+      ? await prisma.customer.findUnique({ where: { email: normalized } })
+      : await prisma.customer.findUnique({ where: { phone: normalized } });
 
   if (existingUser) {
-    return prisma.user.update({
+    return prisma.customer.update({
       where: { id: existingUser.id },
       data: {
         emailVerifiedAt:
@@ -71,7 +71,7 @@ export async function createOrLoginVerifiedContactUser({
     });
   }
 
-  return prisma.user.create({
+  return prisma.customer.create({
     data: {
       email: channel === "email" ? normalized : undefined,
       phone: channel === "sms" ? normalized : undefined,
@@ -100,7 +100,7 @@ export async function createUsernameUser({
   const user = await createOrLoginVerifiedContactUser({ channel, target, now });
   const verifiedAt = now();
 
-  return prisma.user.update({
+  return prisma.customer.update({
     where: { id: user.id },
     data: {
       username: normalizedUsername,
@@ -126,7 +126,7 @@ export async function assignUsernameToUser({
 }) {
   const normalizedUsername = assertUsername(username);
 
-  return prisma.user.update({
+  return prisma.customer.update({
     where: { id: userId },
     data: {
       username: normalizedUsername,
@@ -165,11 +165,11 @@ export async function findOrCreateOAuthUser({
   const normalizedEmail = email ? normalizeTarget("email", email) : null;
   const verifiedAt = now();
   const existingUser = normalizedEmail && emailVerified
-    ? await prisma.user.findUnique({ where: { email: normalizedEmail } })
+    ? await prisma.customer.findUnique({ where: { email: normalizedEmail } })
     : null;
 
   if (existingUser) {
-    return prisma.user.update({
+    return prisma.customer.update({
       where: { id: existingUser.id },
       data: {
         displayName: existingUser.displayName ?? displayName ?? undefined,
@@ -188,7 +188,7 @@ export async function findOrCreateOAuthUser({
     });
   }
 
-  return prisma.user.create({
+  return prisma.customer.create({
     data: {
       email: emailVerified ? normalizedEmail ?? undefined : undefined,
       displayName: displayName ?? undefined,

@@ -8,47 +8,52 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model User {
-  id              String         @id @default(cuid())
-  userNumber      Int?           @unique  // switch to @default(autoincrement()) on PostgreSQL
-  username        String?        @unique
-  email           String?        @unique
-  phone           String?        @unique
-  displayName     String?        @map("name")
-  hashedPassword  String?
-  accessTier      String         @default("FREE")
-  role            String         @default("USER")  // "USER" | "ADMIN"
+// ─── Identity ────────────────────────────────────────────────────────────────
+// Admins and customers are now physically separate tables. There is no shared
+// `role` field, so a customer row can never be escalated to admin. Admins have
+// their own credential login (see auth.ts "admin" provider); they own no
+// learning/payment data.
+
+model Admin {
+  id             String   @id @default(cuid())
+  username       String   @unique
+  email          String?  @unique
+  hashedPassword String
+  displayName    String?  @map("name")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Customer {
+  id               String                   @id @default(cuid())
+  userNumber       Int?                     @unique // switch to @default(autoincrement()) on PostgreSQL
+  username         String?                  @unique
+  email            String?                  @unique
+  phone            String?                  @unique
+  displayName      String?                  @map("name")
+  hashedPassword   String?
+  accessTier       String                   @default("FREE")
   stripeCustomerId String?
-  emailVerifiedAt DateTime?
-  phoneVerifiedAt DateTime?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  identities      UserIdentity[]
-  examSessions    ExamSession[]
-  lessonProgress  LessonProgress[]
+  emailVerifiedAt  DateTime?
+  phoneVerifiedAt  DateTime?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  identities       UserIdentity[]
+  examSessions     ExamSession[]
+  basicProgress    BasicLessonProgress[]
+  advancedProgress AdvancedLessonProgress[]
   payments         Payment[]
   entitlements     Entitlement[]
 }
 
-model LessonProgress {
-  id          String   @id @default(cuid())
-  userId      String
-  lessonId    String
-  completedAt DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, lessonId])
-  @@index([userId])
-}
-
 model UserIdentity {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   userId            String
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              Customer  @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider          String
   providerAccountId String
   verifiedAt        DateTime?
-  createdAt         DateTime @default(now())
+  createdAt         DateTime  @default(now())
 
   @@unique([provider, providerAccountId])
   @@index([userId])
@@ -68,19 +73,19 @@ model VerificationCode {
 }
 
 model ExamSession {
-  id          String   @id
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id])
-  certLevel   String
-  locale      String
-  questionIds String   // JSON: string[]
-  questionSnapshot String @default("[]") // JSON: Question[] captured at exam creation; grading/review reads this
-  answers     String   @default("{}") // JSON: Record<string, string[]>
-  startedAt   DateTime
-  expiresAt   DateTime
-  submitted   Boolean  @default(false)
-  result      String?  // JSON: ExamResult
-  createdAt   DateTime @default(now())
+  id               String    @id
+  userId           String?
+  user             Customer? @relation(fields: [userId], references: [id])
+  certLevel        String
+  locale           String
+  questionIds      String // JSON: string[]
+  questionSnapshot String    @default("[]") // JSON: Question[] captured at exam creation; grading/review reads this
+  answers          String    @default("{}") // JSON: Record<string, string[]>
+  startedAt        DateTime
+  expiresAt        DateTime
+  submitted        Boolean   @default(false)
+  result           String? // JSON: ExamResult
+  createdAt        DateTime  @default(now())
 
   @@index([userId])
 }
@@ -88,7 +93,7 @@ model ExamSession {
 model Payment {
   id                      String   @id @default(cuid())
   userId                  String
-  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                    Customer @relation(fields: [userId], references: [id], onDelete: Cascade)
   stripeCheckoutSessionId String   @unique
   stripePaymentIntentId   String?  @unique
   stripeCustomerId        String?
@@ -106,7 +111,7 @@ model Payment {
 model Entitlement {
   id        String    @id @default(cuid())
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      Customer  @relation(fields: [userId], references: [id], onDelete: Cascade)
   product   String
   source    String
   grantedAt DateTime  @default(now())
@@ -123,11 +128,16 @@ model WebhookEvent {
   processedAt DateTime @default(now())
 }
 
-model Question {
-  id          String           @id      // "air-law-0001" format — preserves ExamSession refs
+// ─── Question banks (split by certification level) ───────────────────────────
+// Basic and advanced questions live in physically separate banks. There is no
+// "BOTH" — every question belongs to exactly one bank. The `certLevel` column is
+// retained for app/mapper compatibility and is always equal to the bank's level.
+
+model BasicQuestionBank {
+  id          String                @id // "air-law-0001" format — preserves ExamSession refs
   moduleId    String
-  certLevel   String                    // "BASIC" | "ADVANCED" | "BOTH"
-  type        String                    // "SINGLE" | "MULTI"
+  certLevel   String                @default("BASIC") // always "BASIC"
+  type        String // "SINGLE" | "MULTI"
   selectCount Int
   difficulty  Int
   stemEN      String
@@ -136,51 +146,143 @@ model Question {
   explZH      String
   refEN       String
   refZH       String
-  tags        String           @default("[]")  // JSON: string[]
+  tags        String                @default("[]") // JSON: string[]
   mediaKind   String?
   mediaUrl    String?
   mediaAltEN  String?
   mediaAltZH  String?
-  status      String           @default("ACTIVE")  // "ACTIVE" | "ARCHIVED"; exam generation only uses ACTIVE
+  status      String                @default("ACTIVE") // "ACTIVE" | "ARCHIVED"; exam generation only uses ACTIVE
   archivedAt  DateTime?
-  options     QuestionOption[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  options     BasicQuestionOption[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
 
   @@index([moduleId])
-  @@index([certLevel])
 }
 
-model QuestionOption {
-  id         String   @id @default(cuid())
+model AdvancedQuestionBank {
+  id          String                   @id
+  moduleId    String
+  certLevel   String                   @default("ADVANCED") // always "ADVANCED"
+  type        String
+  selectCount Int
+  difficulty  Int
+  stemEN      String
+  stemZH      String
+  explEN      String
+  explZH      String
+  refEN       String
+  refZH       String
+  tags        String                   @default("[]")
+  mediaKind   String?
+  mediaUrl    String?
+  mediaAltEN  String?
+  mediaAltZH  String?
+  status      String                   @default("ACTIVE")
+  archivedAt  DateTime?
+  options     AdvancedQuestionOption[]
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  @@index([moduleId])
+}
+
+model BasicQuestionOption {
+  id         String            @id @default(cuid())
   questionId String
-  optionId   String   // "a" | "b" | "c" | "d"
+  optionId   String // "a" | "b" | "c" | "d"
   labelEN    String
   labelZH    String
   isCorrect  Boolean
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question   BasicQuestionBank @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([questionId, optionId])
   @@index([questionId])
 }
 
-model Lesson {
-  id         String   @id @default(cuid())
-  lessonId   String   @unique   // "${course}/${moduleId}/${slug}" — matches LessonProgress.lessonId
-  course     String             // "basic" | "advanced"
+model AdvancedQuestionOption {
+  id         String               @id @default(cuid())
+  questionId String
+  optionId   String
+  labelEN    String
+  labelZH    String
+  isCorrect  Boolean
+  question   AdvancedQuestionBank @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, optionId])
+  @@index([questionId])
+}
+
+// ─── Lessons (split by course) ───────────────────────────────────────────────
+// Basic and advanced lessons live in physically separate tables. The `course`
+// column is retained for app/mapper compatibility and is always equal to the
+// table's course. `lessonId` ("${course}/${moduleId}/${slug}") stays the stable
+// external identifier used across the completion UI and as the progress FK.
+
+model BasicLesson {
+  id         String                @id @default(cuid())
+  lessonId   String                @unique // "${course}/${moduleId}/${slug}"
+  course     String                @default("basic") // always "basic"
   moduleId   String
   slug       String
   order      Int
   estMinutes Int
-  certLevel  String             // "BASIC" | "ADVANCED" | "BOTH"
-  access     String             // "FREE" | "PAID"
+  certLevel  String // "BASIC" | "ADVANCED" | "BOTH" (lesson tag; orthogonal to course)
+  access     String // "FREE" | "PAID"
   titleEN    String
   titleZH    String
-  bodyEN     String             // raw MDX body (frontmatter stripped)
+  bodyEN     String // raw MDX body (frontmatter stripped)
   bodyZH     String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+  progress   BasicLessonProgress[]
 
   @@unique([course, moduleId, slug])
   @@index([course, moduleId])
+}
+
+model AdvancedLesson {
+  id         String                   @id @default(cuid())
+  lessonId   String                   @unique
+  course     String                   @default("advanced") // always "advanced"
+  moduleId   String
+  slug       String
+  order      Int
+  estMinutes Int
+  certLevel  String
+  access     String
+  titleEN    String
+  titleZH    String
+  bodyEN     String
+  bodyZH     String
+  createdAt  DateTime                 @default(now())
+  updatedAt  DateTime                 @updatedAt
+  progress   AdvancedLessonProgress[]
+
+  @@unique([course, moduleId, slug])
+  @@index([course, moduleId])
+}
+
+model BasicLessonProgress {
+  id          String      @id @default(cuid())
+  userId      String
+  lessonId    String
+  completedAt DateTime    @default(now())
+  user        Customer    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson      BasicLesson @relation(fields: [lessonId], references: [lessonId], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+}
+
+model AdvancedLessonProgress {
+  id          String         @id @default(cuid())
+  userId      String
+  lessonId    String
+  completedAt DateTime       @default(now())
+  user        Customer       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson      AdvancedLesson @relation(fields: [lessonId], references: [lessonId], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
 }

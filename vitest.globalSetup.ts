@@ -10,5 +10,5 @@ export default function setup(): void {
     process.env.TEST_DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5433/postgres";
   const env = { ...process.env, DATABASE_URL: url, DIRECT_URL: url };
   execSync("pnpm exec prisma db push --force-reset --skip-generate", { stdio: "inherit", env });
-  execSync("pnpm exec tsx scripts/seed-content.ts", { stdio: "inherit", env });
+  execSync("pnpm exec tsx scripts/seed-test-fixtures.ts", { stdio: "inherit", env });
 }

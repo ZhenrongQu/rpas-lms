@@ -11,27 +11,29 @@ export async function GET(req: Request): Promise<Response> {
   const moduleId = url.searchParams.get("moduleId") ?? undefined;
   const access = url.searchParams.get("access") ?? undefined;
 
-  const rows = await prisma.lesson.findMany({
-    where: {
-      ...(course ? { course } : {}),
-      ...(moduleId ? { moduleId } : {}),
-      ...(access ? { access } : {}),
-    },
-    select: {
-      id: true,
-      lessonId: true,
-      course: true,
-      moduleId: true,
-      slug: true,
-      order: true,
-      estMinutes: true,
-      certLevel: true,
-      access: true,
-      titleEN: true,
-      titleZH: true,
-    },
-    orderBy: [{ course: "asc" }, { moduleId: "asc" }, { order: "asc" }],
-  });
+  const where = {
+    ...(moduleId ? { moduleId } : {}),
+    ...(access ? { access } : {}),
+  };
+  const select = {
+    id: true,
+    lessonId: true,
+    course: true,
+    moduleId: true,
+    slug: true,
+    order: true,
+    estMinutes: true,
+    certLevel: true,
+    access: true,
+    titleEN: true,
+    titleZH: true,
+  };
+  const orderBy = [{ moduleId: "asc" as const }, { order: "asc" as const }];
 
-  return Response.json(rows, { status: 200 });
+  const [basic, advanced] = await Promise.all([
+    course === "advanced" ? [] : prisma.basicLesson.findMany({ where, select, orderBy }),
+    course === "basic" ? [] : prisma.advancedLesson.findMany({ where, select, orderBy }),
+  ]);
+
+  return Response.json([...basic, ...advanced], { status: 200 });
 }
