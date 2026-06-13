@@ -328,3 +328,7 @@ ADMIN_EMAIL=enoch@gmail.com ADMIN_PASSWORD=Enoch1234! ADMIN_USERNAME=testEnoch p
 # DEV_ADMIN_EMAIL=robbieqzr@gmail.com
 # DEV_ADMIN_USERNAME=devadmin
 # DEV_ADMIN_PASSWORD=20733be54ee96b129b69488f
+CUSTOMER_EMAIL=learner@rpas.test CUSTOMER_PASSWORD=learner12345 CUSTOMER_USERNAME=learner1 CUSTOMER_TIER=PAID pnpm exec tsx scripts/create-customer.ts
+# DEV_CUSTOMER_EMAIL=learner@rpas.test  (or username: learner1)
+# DEV_CUSTOMER_PASSWORD=learner12345
+# DEV_CUSTOMER_TIER=PAID
