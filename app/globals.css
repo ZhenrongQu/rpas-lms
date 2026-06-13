@@ -749,7 +749,7 @@ html, body {
 .home-h2 {
   font-family: var(--font-display); font-weight: 700;
   font-size: clamp(28px, 4vw, 44px); line-height: 1.06;
-  letter-spacing: -0.02em; color: var(--text-1); max-width: 20ch;
+  letter-spacing: -0.02em; color: var(--text-1); max-width: 28ch;
 }
 .home-h2 em { font-style: normal; color: var(--accent-text); }
 .home-lead { color: var(--text-2); font-size: 17px; line-height: 1.7; max-width: 60ch; margin-top: 18px; }
@@ -811,30 +811,40 @@ html, body {
   border: 1px solid var(--border);
 }
 
-/* ───── FLOW ───── */
-.flow-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 48px; border: 1px solid var(--border); border-radius: var(--r-card); overflow: hidden; background: var(--surface); }
-.flow-step { position: relative; padding: 28px 24px; border-right: 1px solid var(--border); }
-.flow-step:last-child { border-right: none; }
-.flow-no { font-family: var(--font-mono); font-weight: 500; font-size: 13px; color: var(--accent-text); line-height: 1; letter-spacing: 0.04em; }
-.flow-title { font-family: var(--font-display); font-weight: 700; font-size: 18px; color: var(--text-1); margin: 16px 0 8px; letter-spacing: -0.01em; }
-.flow-body { font-size: 14px; color: var(--text-2); line-height: 1.6; }
+/* ───── FLOW (learning path) ───── */
+.flow-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 36px 28px; margin-top: 52px; }
+.flow-step { position: relative; }
+.flow-step-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.flow-icon {
+  width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+  background: var(--accent-soft); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.flow-no { font-family: var(--font-display); font-weight: 800; font-size: 46px; line-height: 1; letter-spacing: -0.03em; color: rgba(20, 33, 61, 0.09); }
+.flow-title { font-family: var(--font-display); font-weight: 700; font-size: 19px; color: var(--text-1); margin: 0 0 8px; letter-spacing: -0.01em; }
+.flow-body { font-size: 14.5px; color: var(--text-2); line-height: 1.6; }
 
 /* ───── TRACKS ───── */
 .tracks-head { max-width: 720px; }
-.tracks-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px; }
+.tracks-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(5, auto); gap: 20px 24px; margin-top: 48px; }
+/* Each card spans the 5 shared rows as a subgrid, so title / description / lists /
+   exam box / CTA line up across all three cards regardless of content length. */
 .track-card {
-  position: relative; display: flex; flex-direction: column; gap: 18px;
+  position: relative; display: grid; grid-row: 1 / -1; grid-template-rows: subgrid;
   padding: 32px; border-radius: var(--r-card); border: 1px solid var(--border);
   background: var(--surface); box-shadow: var(--shadow-sm);
   transition: border-color 0.22s, box-shadow 0.22s, transform 0.22s;
 }
-.track-card:hover { transform: translateY(-3px); border-color: var(--border-strong); box-shadow: var(--shadow-md); }
+/* Hover lift via shadow only — these cards are Motion-revealed, so Motion owns their transform. */
+.track-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-md); }
 .track-card.advanced { border-top: 3px solid var(--amber); }
 .track-card.flight-review { border-top: 3px solid var(--accent); }
 .track-card.basic { border-top: 3px solid var(--green); }
 .fr-cta { }
 .track-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .track-name { font-family: var(--font-display); font-weight: 700; font-size: 24px; color: var(--text-1); letter-spacing: -0.02em; }
+/* English label drops to its own line, slightly smaller and muted (CJK names only). */
+.track-name-en { display: block; margin-top: 5px; font-size: 0.66em; font-weight: 600; color: var(--text-3); letter-spacing: 0; }
 .track-badge { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 11px; border-radius: 999px; white-space: nowrap; }
 .track-badge.free { color: var(--green); border: 1px solid var(--green); }
 .track-badge.paid { color: var(--amber); border: 1px solid var(--amber); }
@@ -848,7 +858,7 @@ html, body {
 .track-exam { font-family: var(--font-mono); font-size: 13px; color: var(--text-2); padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-ctl); background: var(--surface-2); }
 .track-exam b { color: var(--text-1); }
 .track-block { display: flex; flex-direction: column; gap: 12px; }
-.track-cta { margin-top: auto; align-self: flex-start; }
+.track-cta { justify-self: start; align-self: flex-start; }
 .hero-logo { }
 
 /* ───── PRIVILEGES COMPARE ───── */
@@ -910,10 +920,10 @@ html, body {
 @media (max-width: 900px) {
   .hero-grid { grid-template-columns: 1fr; gap: 36px; }
   .hero-media { order: -1; aspect-ratio: 16 / 10; }
-  .tracks-grid { grid-template-columns: 1fr; gap: 16px; }
-  .flow-grid { grid-template-columns: repeat(2, 1fr); }
-  .flow-step:nth-child(2) { border-right: none; }
-  .flow-step { border-bottom: 1px solid var(--border); }
+  /* Drop the subgrid on narrow screens: cards stack as plain flex columns. */
+  .tracks-grid { grid-template-columns: 1fr; grid-template-rows: none; gap: 16px; }
+  .track-card { display: flex; flex-direction: column; grid-row: auto; gap: 18px; }
+  .flow-grid { grid-template-columns: repeat(2, 1fr); gap: 32px 28px; }
   .reviews-grid { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
 }
@@ -921,7 +931,6 @@ html, body {
   .home-inner { padding: 0 20px; }
   .home-section { padding: 64px 0; }
   .flow-grid { grid-template-columns: 1fr; }
-  .flow-step { border-right: none; }
   .footer-grid { grid-template-columns: 1fr; }
   .hero-stats { gap: 28px; }
 }
@@ -1097,4 +1106,82 @@ html, body {
 @media (max-width: 600px) {
   .admin-main { padding: 20px 16px; }
   .admin-nav { gap: 16px; padding: 12px 16px; }
+}
+
+/* ═══════════════════════════════
+   MOTION & GRADIENTS (restrained, reduced-motion aware)
+═══════════════════════════════ */
+
+/* Hero: warm accent wash top-right + cool ink wash bottom-left (subtle, not AI-gradient slop). */
+.home-hero {
+  background:
+    radial-gradient(120% 90% at 88% -20%, rgba(184, 80, 30, 0.07), transparent 55%),
+    radial-gradient(90% 70% at -12% 120%, rgba(20, 33, 61, 0.05), transparent 55%),
+    var(--bg-deep);
+}
+.home-hero::after {
+  content: '';
+  position: absolute; top: -20%; right: -8%;
+  width: 58%; height: 72%;
+  background: radial-gradient(closest-side, rgba(184, 80, 30, 0.08), transparent 70%);
+  pointer-events: none; z-index: 0;
+}
+.home-hero > * { position: relative; z-index: 1; }
+
+/* Footer link underline (pure CSS, always available). */
+.footer-link { position: relative; }
+.footer-link::after {
+  content: ''; position: absolute; left: 0; bottom: -2px; height: 1px; width: 100%;
+  background: var(--accent); transform: scaleX(0); transform-origin: left;
+  transition: transform 0.25s ease;
+}
+.footer-link:hover::after { transform: scaleX(1); }
+.home-btn:active, .home-btn-ghost:active { transform: translateY(0); }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Slow drifting hero highlight. */
+  .home-hero::after { animation: heroDrift 22s ease-in-out infinite alternate; }
+
+  /* Staggered hero load-in. */
+  .home-hero .hero-grid > div > * { animation: heroRise 0.7s both cubic-bezier(0.16, 1, 0.3, 1); }
+  .home-hero .hero-grid > div > *:nth-child(1) { animation-delay: 0.05s; }
+  .home-hero .hero-grid > div > *:nth-child(2) { animation-delay: 0.12s; }
+  .home-hero .hero-grid > div > *:nth-child(3) { animation-delay: 0.19s; }
+  .home-hero .hero-grid > div > *:nth-child(4) { animation-delay: 0.26s; }
+  .home-hero .hero-grid > div > *:nth-child(5) { animation-delay: 0.33s; }
+  .home-hero .hero-grid > div > *:nth-child(6) { animation-delay: 0.40s; }
+  .home-hero .hero-media { animation: heroFade 0.9s 0.15s both ease-out; }
+}
+
+@keyframes heroRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes heroFade { from { opacity: 0; transform: scale(1.015); } to { opacity: 1; transform: none; } }
+@keyframes heroDrift { from { transform: translate(0, 0); } to { transform: translate(-6%, 4%); } }
+
+/* ═══════════════════════════════
+   TYPOGRAPHY — standardized line wrapping
+   Balance headings so multi-line titles split evenly (no lone-character
+   last line, CJK or Latin). Lead paragraphs avoid orphan last words.
+═══════════════════════════════ */
+.home-h2,
+.hero-name,
+.hero-slogan,
+.track-name,
+.flow-title,
+.footer-tagline,
+.dash-title,
+.lesson-h1 {
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+.home-lead,
+.hero-lede,
+.track-for,
+.footer-blurb {
+  text-wrap: pretty;
+}
+
+/* Give CJK headings a touch more line height so stacked lines breathe. */
+.home-h2,
+.track-name {
+  line-height: 1.18;
 }

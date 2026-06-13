@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import CountUp from './CountUp';
 
 export default async function Hero({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: 'home.hero' });
@@ -27,7 +28,9 @@ export default async function Hero({ locale }: { locale: string }) {
           <div className="hero-stats">
             {stats.map((s, i) => (
               <div key={i}>
-                <div className="hero-stat-v">{s.value}</div>
+                <div className="hero-stat-v">
+                  <CountUp value={s.value} />
+                </div>
                 <div className="hero-stat-l">{s.label}</div>
               </div>
             ))}
