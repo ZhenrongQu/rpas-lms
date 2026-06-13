@@ -59,12 +59,18 @@ export default async function LessonPage({ params }: Props) {
 
   let videoToken: string | null = null;
   if (lesson.meta.videoUid && lesson.meta.videoStatus === 'READY') {
-    const cfg = streamConfig();
-    videoToken = await signPlaybackToken({
-      videoUid: lesson.meta.videoUid,
-      keyId: cfg.signingKeyId,
-      privateKeyPem: cfg.signingKeyPem,
-    });
+    try {
+      const cfg = streamConfig();
+      videoToken = await signPlaybackToken({
+        videoUid: lesson.meta.videoUid,
+        keyId: cfg.signingKeyId,
+        privateKeyPem: cfg.signingKeyPem,
+      });
+    } catch (err) {
+      // Misconfigured CF env shouldn't take down the whole lesson — degrade to text-only.
+      console.error('Failed to sign video playback token', err);
+      videoToken = null;
+    }
   }
 
   return (

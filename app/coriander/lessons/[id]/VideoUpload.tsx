@@ -56,6 +56,20 @@ export default function VideoUpload({ lessonId, videoUid, videoStatus }: Props) 
     }
   }
 
+  async function handleRefresh() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${ADMIN_API_BASE}/lessons/${lessonId}/video`, { method: "GET" });
+      if (!res.ok) throw new Error("Failed to refresh status");
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Refresh failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="admin-form-row">
       <label>Video</label>
@@ -63,6 +77,9 @@ export default function VideoUpload({ lessonId, videoUid, videoStatus }: Props) 
         {videoUid ? (
           <p className="admin-readonly">
             {videoUid} — {videoStatus ?? "PROCESSING"}{" "}
+            {videoStatus !== "READY" && (
+              <button type="button" onClick={handleRefresh} disabled={busy}>Refresh status</button>
+            )}{" "}
             <button type="button" onClick={handleRemove} disabled={busy}>Remove</button>
           </p>
         ) : (

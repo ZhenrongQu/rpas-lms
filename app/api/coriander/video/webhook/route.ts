@@ -10,12 +10,13 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "bad signature" }, { status: 401 });
   }
 
-  const payload = JSON.parse(raw) as {
-    uid?: string;
-    status?: { state?: string };
-    duration?: number;
-    thumbnail?: string;
-  };
+  let payload: { uid?: string; status?: { state?: string }; duration?: number; thumbnail?: string };
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    // Signed but unparseable body — ack so CF doesn't retry forever.
+    return Response.json({ ok: true }, { status: 200 });
+  }
   if (!payload.uid) return Response.json({ ok: true }, { status: 200 });
 
   const state = payload.status?.state;
@@ -26,7 +27,9 @@ export async function POST(req: Request): Promise<Response> {
     videoThumbnailUrl: payload.thumbnail ?? null,
   };
 
-  await prisma.basicLesson.updateMany({ where: { videoUid: payload.uid }, data });
-  await prisma.advancedLesson.updateMany({ where: { videoUid: payload.uid }, data });
+  await Promise.all([
+    prisma.basicLesson.updateMany({ where: { videoUid: payload.uid }, data }),
+    prisma.advancedLesson.updateMany({ where: { videoUid: payload.uid }, data }),
+  ]);
   return Response.json({ ok: true }, { status: 200 });
 }
