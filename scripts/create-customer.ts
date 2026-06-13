@@ -18,7 +18,7 @@
  * - Tier defaults to FREE; pass CUSTOMER_TIER=PAID for the paid access tier.
  * - Idempotent on email: re-running resets the password / tier.
  *
- * Reads DATABASE_URL from .env (-> dev DB by default).
+ * Reads DATABASE_URL from .env (→ dev DB by default).
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";

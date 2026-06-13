@@ -340,3 +340,14 @@ ADMIN_USERNAME=rpasadmin ADMIN_PASSWORD='admin12345' ADMIN_EMAIL=admin@rpas.test
 # 顾客 → Customer 表，创建即可登录（CUSTOMER_TIER 可选 FREE/PAID）
 CUSTOMER_EMAIL=learner@rpas.test CUSTOMER_PASSWORD='learner12345' CUSTOMER_USERNAME=learner1 CUSTOMER_TIER=PAID pnpm exec tsx scripts/create-customer.ts
 ```
+
+ADMIN_EMAIL=enoch@gmail.com ADMIN_PASSWORD=Enoch1234! ADMIN_USERNAME=testEnoch pnpm exec tsx scripts/create-admin.ts
+# DEV_ADMIN_URL=https://dev.pacificdrone.ca/coriander
+# DEV_ADMIN_EMAIL=robbieqzr@gmail.com
+# DEV_ADMIN_USERNAME=devadmin
+# DEV_ADMIN_PASSWORD=20733be54ee96b129b69488f
+CUSTOMER_EMAIL=learner@rpas.test CUSTOMER_PASSWORD=learner12345 CUSTOMER_USERNAME=learner1 CUSTOMER_TIER=PAID pnpm exec tsx scripts/create-customer.ts
+# DEV_CUSTOMER_EMAIL=learner@rpas.test  (or username: learner1)
+# DEV_CUSTOMER_PASSWORD=learner12345
+# DEV_CUSTOMER_TIER=PAID
+

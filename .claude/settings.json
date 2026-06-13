@@ -96,7 +96,22 @@
       "Bash(git rev-list *)",
       "Bash(awk '{print \"main 领先 dev:\",$1,\"| dev 领先 main:\",$2}')",
       "Skill(code-review)",
-      "Skill(code-review:*)"
+      "Skill(code-review:*)",
+      "Bash(cat impeccable/.claude-plugin/*.json)",
+      "Bash(sed -n '1,80p' impeccable/README.md)",
+      "Bash(claude --version)",
+      "Bash(claude plugin *)",
+      "Bash(rm -rf ~/.claude/skills/darwin-skill)",
+      "Bash(cp -R /tmp/skill-install/darwin-skill ~/.claude/skills/darwin-skill)",
+      "Bash(rm -rf ~/.claude/skills/darwin-skill/.git)",
+      "Bash(npm i *)",
+      "Bash(codegraph --version)",
+      "Bash(codegraph install *)",
+      "Bash(npm view *)",
+      "Bash(claude mcp *)",
+      "WebFetch(domain:stitch.withgoogle.com)",
+      "WebFetch(domain:codelabs.developers.google.com)",
+      "Bash(npm search *)"
     ],
     "additionalDirectories": [
       "/tmp/rpas-sec-wt/docs/superpowers/specs",
