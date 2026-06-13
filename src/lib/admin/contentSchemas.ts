@@ -70,6 +70,7 @@ export type AdminQuestionInput = z.infer<typeof adminQuestionSchema>;
  * Validates an admin lesson-edit payload. `course`/`moduleId`/`slug`/`lessonId`
  * are read-only (changing them would break LessonProgress FKs) and are not part
  * of this payload. MDX body safety is checked separately by mdxValidation.
+ * Bodies may be empty so a lesson can be video-only.
  */
 export const adminLessonSchema = z.object({
   titleEN: z.string().min(1),
@@ -78,8 +79,20 @@ export const adminLessonSchema = z.object({
   estMinutes: z.number().int().min(1),
   certLevel: z.enum(["BASIC", "ADVANCED", "BOTH"]),
   access: z.enum(["FREE", "PAID"]),
-  bodyEN: z.string().min(1),
-  bodyZH: z.string().min(1),
+  bodyEN: z.string(),
+  bodyZH: z.string(),
 });
 
 export type AdminLessonInput = z.infer<typeof adminLessonSchema>;
+
+/**
+ * Create payload adds the identity fields that the edit form treats as
+ * read-only. `lessonId` is derived server-side as `${course}/${moduleId}/${slug}`.
+ */
+export const adminLessonCreateSchema = adminLessonSchema.extend({
+  course: z.enum(["basic", "advanced"]),
+  moduleId: z.enum(MODULE_IDS),
+  slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "slug must be kebab-case (a-z, 0-9, hyphens)"),
+});
+
+export type AdminLessonCreateInput = z.infer<typeof adminLessonCreateSchema>;
