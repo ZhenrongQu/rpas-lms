@@ -6,7 +6,7 @@ type Props = { params: Promise<{ locale: string }> };
 
 export default async function RefundPolicyPage({ params }: Props) {
   const { locale } = await params;
-  const content = getLegalPage('refund-policy');
+  const content = getLegalPage('refund-policy', locale);
 
   if (!content) notFound();
 

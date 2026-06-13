@@ -5,6 +5,7 @@ import DroneMark from './DroneMark';
 export default async function SiteFooter({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: 'home.footer' });
   const year = new Date().getFullYear();
+  const isChinese = locale === 'zh';
 
   return (
     <footer className="home-footer">
@@ -41,10 +42,10 @@ export default async function SiteFooter({ locale }: { locale: string }) {
           <div>
             <div className="footer-col-title">{t('resourcesTitle')}</div>
             <div className="footer-links">
-              <Link href={`/${locale}/terms`} className="footer-link">Terms of Service</Link>
-              <Link href={`/${locale}/privacy`} className="footer-link">Privacy Policy</Link>
-              <Link href={`/${locale}/refund-policy`} className="footer-link">Refund Policy</Link>
-              <Link href={`/${locale}/contact`} className="footer-link">Contact / Legal Notice</Link>
+              <Link href={`/${locale}/terms`} className="footer-link">{isChinese ? '使用条款' : 'Terms of Service'}</Link>
+              <Link href={`/${locale}/privacy`} className="footer-link">{isChinese ? '隐私政策' : 'Privacy Policy'}</Link>
+              <Link href={`/${locale}/refund-policy`} className="footer-link">{isChinese ? '退款政策' : 'Refund Policy'}</Link>
+              <Link href={`/${locale}/contact`} className="footer-link">{isChinese ? '联系与法律通知' : 'Contact / Legal Notice'}</Link>
             </div>
           </div>
 
@@ -52,7 +53,7 @@ export default async function SiteFooter({ locale }: { locale: string }) {
             <div className="footer-col-title">{t('contactTitle')}</div>
             <div className="footer-contact">
               <span>info@pacificdrone.ca</span>
-              <span>British Columbia, Canada</span>
+              <span>{isChinese ? '加拿大不列颠哥伦比亚省' : 'British Columbia, Canada'}</span>
             </div>
           </div>
         </div>

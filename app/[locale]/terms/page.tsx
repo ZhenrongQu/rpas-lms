@@ -6,7 +6,7 @@ type Props = { params: Promise<{ locale: string }> };
 
 export default async function TermsPage({ params }: Props) {
   const { locale } = await params;
-  const content = getLegalPage('terms');
+  const content = getLegalPage('terms', locale);
 
   if (!content) notFound();
 
