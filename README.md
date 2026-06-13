@@ -321,3 +321,10 @@ DATABASE_URL: "file:./test.db"
 4. 读 `src/lib/exam/serialize.ts`、`score.ts` 和 `review.ts`，理解安全边界。
 5. 读 `prisma/schema.prisma`，理解哪些数据被持久化。
 6. 修改题目前，先读 `content/question-bank-README.md`。
+
+
+ADMIN_EMAIL=enoch@gmail.com ADMIN_PASSWORD=Enoch1234! ADMIN_USERNAME=testEnoch pnpm exec tsx scripts/create-admin.ts
+# DEV_ADMIN_URL=https://dev.pacificdrone.ca/coriander
+# DEV_ADMIN_EMAIL=robbieqzr@gmail.com
+# DEV_ADMIN_USERNAME=devadmin
+# DEV_ADMIN_PASSWORD=20733be54ee96b129b69488f

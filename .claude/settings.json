@@ -58,7 +58,22 @@
       "Bash(export DATABASE_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\")",
       "Bash(export DIRECT_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\")",
       "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\" npx tsx /tmp/verify-rls.ts)",
-      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\" npx tsx scripts/_verify-rls.ts)"
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\" npx tsx scripts/_verify-rls.ts)",
+      "Bash(cat impeccable/.claude-plugin/*.json)",
+      "Bash(sed -n '1,80p' impeccable/README.md)",
+      "Bash(claude --version)",
+      "Bash(claude plugin *)",
+      "Bash(rm -rf ~/.claude/skills/darwin-skill)",
+      "Bash(cp -R /tmp/skill-install/darwin-skill ~/.claude/skills/darwin-skill)",
+      "Bash(rm -rf ~/.claude/skills/darwin-skill/.git)",
+      "Bash(npm i *)",
+      "Bash(codegraph --version)",
+      "Bash(codegraph install *)",
+      "Bash(npm view *)",
+      "Bash(claude mcp *)",
+      "WebFetch(domain:stitch.withgoogle.com)",
+      "WebFetch(domain:codelabs.developers.google.com)",
+      "Bash(npm search *)"
     ],
     "additionalDirectories": [
       "/tmp/rpas-sec-wt/docs/superpowers/specs",
