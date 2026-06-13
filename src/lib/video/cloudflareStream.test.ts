@@ -1,6 +1,7 @@
+import { createHmac } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { exportPKCS8, exportSPKI, generateKeyPair, importSPKI, jwtVerify } from "jose";
-import { streamConfig, signPlaybackToken } from "./cloudflareStream";
+import { streamConfig, signPlaybackToken, verifyWebhookSignature } from "./cloudflareStream";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -43,5 +44,32 @@ describe("signPlaybackToken", () => {
     expect(payload.sub).toBe("vid-123");
     expect(protectedHeader.kid).toBe("key-abc");
     expect(typeof payload.exp).toBe("number");
+  });
+});
+
+function sign(body: string, time: number, secret: string): string {
+  const sig = createHmac("sha256", secret).update(`${time}.${body}`).digest("hex");
+  return `time=${time},sig1=${sig}`;
+}
+
+describe("verifyWebhookSignature", () => {
+  const secret = "whsec";
+  const body = '{"uid":"v1"}';
+  const now = 1_000_000;
+
+  it("accepts a valid, fresh signature", () => {
+    const header = sign(body, now, secret);
+    expect(verifyWebhookSignature({ body, signatureHeader: header, secret, now: now * 1000 })).toBe(true);
+  });
+
+  it("rejects a tampered body", () => {
+    const header = sign(body, now, secret);
+    expect(verifyWebhookSignature({ body: '{"uid":"hacked"}', signatureHeader: header, secret, now: now * 1000 })).toBe(false);
+  });
+
+  it("rejects a stale signature beyond tolerance", () => {
+    const header = sign(body, now, secret);
+    const later = (now + 999) * 1000;
+    expect(verifyWebhookSignature({ body, signatureHeader: header, secret, now: later, toleranceSec: 300 })).toBe(false);
   });
 });
