@@ -116,7 +116,7 @@ export default function RegisterPage() {
   return (
     <div className="auth-view">
       <div className="hud-panel auth-card">
-        <div className="auth-title">// {t('register')}</div>
+        <div className="auth-title">{t('register')}</div>
 
         {(oauthStatus.google || oauthStatus.apple) && (
           <div className="auth-oauth">

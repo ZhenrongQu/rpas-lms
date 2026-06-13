@@ -16,7 +16,6 @@ export default async function PrivilegesCompare({ locale }: { locale: string }) 
     <section className="home-section" id="privileges">
       <div className="home-inner">
         <div className="compare-head">
-          <span className="home-kicker">{t('kicker')}</span>
           <h2 className="home-h2">{t('title')}</h2>
           <p className="home-lead">{t('subtitle')}</p>
         </div>

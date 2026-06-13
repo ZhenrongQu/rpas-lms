@@ -61,7 +61,7 @@ export default function SignInPage() {
   return (
     <div className="auth-view">
       <div className="hud-panel auth-card">
-        <div className="auth-title">// {t('signIn')}</div>
+        <div className="auth-title">{t('signIn')}</div>
 
         {(oauthStatus.google || oauthStatus.apple) && (
           <div className="auth-oauth">

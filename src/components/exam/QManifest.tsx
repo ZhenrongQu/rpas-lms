@@ -16,7 +16,7 @@ export default function QManifest({ questions, currentIdx, confirmed, flagged, o
 
   return (
     <div className="q-manifest">
-      <div className="section-label" style={{ fontSize: 8, marginBottom: 6 }}>// Q-MAP</div>
+      <div className="section-label" style={{ fontSize: 8, marginBottom: 6 }}>Q-MAP</div>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-3)', marginBottom: 8 }}>
         {Object.keys(confirmed).length}/{questions.length} {t('answered')}
       </div>

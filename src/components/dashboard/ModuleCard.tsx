@@ -25,7 +25,7 @@ export default function ModuleCard({ moduleId, index, progress = 0, href }: Prop
   const idx = String(index).padStart(2, '0');
   const content = (
     <>
-      <div className="card-id">// MODULE {idx}</div>
+      <div className="card-id">MODULE {idx}</div>
       <div className="card-icon">{MODULE_ICONS[moduleId] ?? '▹'}</div>
       <div className="card-name">{t(`modules.${moduleId}`)}</div>
       <div className="card-progress">

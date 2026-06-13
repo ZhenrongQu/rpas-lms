@@ -18,7 +18,7 @@ export default async function TrackSplit({ locale }: { locale: string }) {
 
         <div className="tracks-grid">
           {/* Basic */}
-          <article className="track-card">
+          <article className="track-card basic">
             <div className="track-top">
               <div className="track-name">{t('basic.name')}</div>
               <span className="track-badge free">{t('basic.badge')}</span>

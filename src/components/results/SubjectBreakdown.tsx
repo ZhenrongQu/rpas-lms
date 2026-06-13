@@ -21,7 +21,7 @@ export default async function SubjectBreakdown({ bySubject, locale }: Props) {
 
   return (
     <div className="hud-panel breakdown-card">
-      <div className="breakdown-title">// {t('results.perSubject')}</div>
+      <div className="breakdown-title">{t('results.perSubject')}</div>
       {bySubject.map((s) => {
         const pct = s.total === 0 ? 0 : Math.round((s.correct / s.total) * 100);
         const q = quality(s.correct, s.total);

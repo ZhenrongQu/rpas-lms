@@ -7,7 +7,6 @@ export default async function Flow({ locale }: { locale: string }) {
   return (
     <section className="home-section" id="how">
       <div className="home-inner">
-        <span className="home-kicker">{t('kicker')}</span>
         <h2 className="home-h2">{t('title')}</h2>
         <div className="flow-grid">
           {steps.map((s, i) => (

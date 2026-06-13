@@ -60,7 +60,7 @@ export default async function MyCoursePage({ params }: Props) {
         <div>
           <div className="dash-callsign">{t('dashboard.certification')}</div>
           <div className="dash-title">{t('dashboard.title')}</div>
-          <div className="dash-subtitle">// {t('dashboard.subtitle')}</div>
+          <div className="dash-subtitle">{t('dashboard.subtitle')}</div>
         </div>
 
         {/* ── Module grid ── */}
@@ -79,7 +79,7 @@ export default async function MyCoursePage({ params }: Props) {
             );
           })}
           <Link href={`/${locale}/learn/advanced`} className="mission-card advanced-track-card">
-            <div className="card-id">// COURSE · 🔒 {t('learn.paid')}</div>
+            <div className="card-id">COURSE · 🔒 {t('learn.paid')}</div>
             <div className="card-icon">🎖️</div>
             <div className="card-name">{t('learn.advancedCourse')}</div>
             <div className="card-progress">
@@ -109,7 +109,7 @@ export default async function MyCoursePage({ params }: Props) {
 
           <div className="hud-panel overall-card">
             <ProgressRing pct={overallPct} size={120} label={`${overallPct}%`} sublabel="COMPLETE" />
-            <div className="overall-label">// {t('dashboard.overallProgress')}<br />{t('dashboard.certification').toUpperCase()}</div>
+            <div className="overall-label">{t('dashboard.overallProgress')}<br />{t('dashboard.certification').toUpperCase()}</div>
           </div>
 
           <ExamHistory userId={userId!} locale={locale} />

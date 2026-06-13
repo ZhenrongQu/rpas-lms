@@ -19,9 +19,6 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <Providers>
       <NextIntlClientProvider messages={messages}>
-        <div className="bg-scene" />
-        <div className="scanlines" />
-        <div className="grid-overlay" />
         <div className="app">
           <HudHeader locale={locale} user={user} />
           <main className="main-content">{children}</main>

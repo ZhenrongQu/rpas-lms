@@ -58,7 +58,17 @@
       "Bash(export DATABASE_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\")",
       "Bash(export DIRECT_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\")",
       "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\" npx tsx /tmp/verify-rls.ts)",
-      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\" npx tsx scripts/_verify-rls.ts)"
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5433/postgres\" npx tsx scripts/_verify-rls.ts)",
+      "Bash(node -e \"const m=require\\('./messages/en.json'\\); console.log\\(JSON.stringify\\({nav:m.nav, home:m.home}, null, 1\\)\\)\")",
+      "Bash(pnpm typecheck *)",
+      "Bash(pnpm build *)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3000/en)",
+      "Bash(curl -s http://localhost:3000/en -o /tmp/home.html -w \"HTTP %{http_code} bytes=%{size_download}\\\\n\" --max-time 90)",
+      "Bash(lsof -iTCP:3000 -sTCP:LISTEN -n)",
+      "Bash(curl -s http://localhost:3001/en -o /tmp/home.html -w \"HTTP %{http_code} bytes=%{size_download}\\\\n\" --max-time 120)",
+      "Read(//Applications/Google Chrome.app/**)",
+      "Bash(CUSTOMER_EMAIL=learner@rpas.test CUSTOMER_PASSWORD='learner12345' CUSTOMER_USERNAME=learner1 CUSTOMER_NAME='Test Learner' pnpm exec tsx scripts/create-customer.ts)",
+      "Bash(CUSTOMER_EMAIL=learner@rpas.test CUSTOMER_PASSWORD='learner12345' CUSTOMER_TIER=PAID pnpm exec tsx scripts/create-customer.ts)"
     ],
     "additionalDirectories": [
       "/tmp/rpas-sec-wt/docs/superpowers/specs",
