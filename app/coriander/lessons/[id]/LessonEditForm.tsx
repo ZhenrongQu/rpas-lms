@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ADMIN_BASE, ADMIN_API_BASE } from "@/lib/admin/route";
+import VideoUpload from "./VideoUpload";
 
 type LessonRow = {
   id: string;
@@ -18,6 +19,8 @@ type LessonRow = {
   titleZH: string;
   bodyEN: string;
   bodyZH: string;
+  videoUid: string | null;
+  videoStatus: string | null;
 };
 
 type Props = { lesson: LessonRow };
@@ -115,6 +118,8 @@ export default function LessonEditForm({ lesson }: Props) {
             <option>PAID</option>
           </select>
         </div>
+
+        <VideoUpload lessonId={lesson.id} videoUid={lesson.videoUid} videoStatus={lesson.videoStatus} />
 
         {/* MDX bodies — D2/D3 note */}
         <p className="admin-hint">
