@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@cloudflare/stream-react':
+        specifier: ^1.9.3
+        version: 1.9.3(react@19.2.7)
       '@prisma/client':
         specifier: ^5.22.0
         version: 5.22.0(prisma@5.22.0)
@@ -20,6 +23,9 @@ importers:
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
+      jose:
+        specifier: ^6.2.3
+        version: 6.2.3
       motion:
         specifier: ^12.40.0
         version: 12.40.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -112,6 +118,12 @@ packages:
   '@babel/helper-validator-identifier@7.29.7':
     resolution: {integrity: sha512-qehxGkRj55h/ff8EMaJ+cYhyaKlHIxqYDn682wQD7RNp9UujOQsHog2uS0r2vzr4pW+sXf90NeeayjcNaX3fFg==}
     engines: {node: '>=6.9.0'}
+
+  '@cloudflare/stream-react@1.9.3':
+    resolution: {integrity: sha512-ocr7B+zHk/jq0r/wgtFeyoz7Hr+v3Qn0Ho6yUBkWT07ahr/0GU1dhliYJESwNXMuMYCU1sZ02sFH9pW5r1/BIA==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      react: '>=16'
 
   '@emnapi/runtime@1.10.0':
     resolution: {integrity: sha512-ewvYlk86xUoGI0zQRNq/mC+16R1QeDlKQy21Ki3oSYXNgLb45GV1P6A0M+/s6nyCuNDqe5VpaY84BzXGwVbwFA==}
@@ -1992,6 +2004,10 @@ snapshots:
       picocolors: 1.1.1
 
   '@babel/helper-validator-identifier@7.29.7': {}
+
+  '@cloudflare/stream-react@1.9.3(react@19.2.7)':
+    dependencies:
+      react: 19.2.7
 
   '@emnapi/runtime@1.10.0':
     dependencies:
