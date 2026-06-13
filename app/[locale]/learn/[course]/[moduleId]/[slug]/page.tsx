@@ -11,6 +11,8 @@ import LessonShell from '@/components/learn/LessonShell';
 import LessonSidebar from '@/components/learn/LessonSidebar';
 import PurchaseButton from '@/components/payments/PurchaseButton';
 import type { Course, RouteLocale } from '@/lib/lessons/types';
+import VideoPlayer from '@/components/learn/VideoPlayer';
+import { streamConfig, signPlaybackToken } from '@/lib/video/cloudflareStream';
 
 type Props = { params: Promise<{ locale: string; course: string; moduleId: string; slug: string }> };
 
@@ -55,6 +57,16 @@ export default async function LessonPage({ params }: Props) {
   const nextHref = next ? `/${locale}/learn/${course}/${moduleId}/${next.slug}` : null;
   const backHref = `/${locale}/learn/${course}/${moduleId}`;
 
+  let videoToken: string | null = null;
+  if (lesson.meta.videoUid && lesson.meta.videoStatus === 'READY') {
+    const cfg = streamConfig();
+    videoToken = await signPlaybackToken({
+      videoUid: lesson.meta.videoUid,
+      keyId: cfg.signingKeyId,
+      privateKeyPem: cfg.signingKeyPem,
+    });
+  }
+
   return (
     <div className="learn-layout">
       <LessonSidebar
@@ -67,6 +79,7 @@ export default async function LessonPage({ params }: Props) {
       <article className="lesson-main">
         <h1 className="lesson-h1">{lesson.meta.title}</h1>
         <LessonShell lessonId={lesson.meta.lessonId} nextHref={nextHref} backHref={backHref}>
+          {videoToken && <VideoPlayer token={videoToken} />}
           <MDXContent source={lesson.body} locale={locale} />
         </LessonShell>
       </article>
