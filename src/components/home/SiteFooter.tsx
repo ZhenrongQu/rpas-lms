@@ -17,7 +17,7 @@ export default async function SiteFooter({ locale }: { locale: string }) {
             </div>
             <div className="footer-tagline">{t('tagline')}</div>
             <p className="footer-blurb">{t('blurb')}</p>
-            {/* Social placeholders — clearly sample links */}
+            {/* Social placeholders - clearly sample links */}
             <div className="footer-socials">
               {['X', 'IG', 'YT'].map((s) => (
                 <a key={s} href="#" className="footer-social" aria-label={`${s} (sample)`}>
@@ -41,25 +41,24 @@ export default async function SiteFooter({ locale }: { locale: string }) {
           <div>
             <div className="footer-col-title">{t('resourcesTitle')}</div>
             <div className="footer-links">
-              <a href="#" className="footer-link">{t('resTP')}</a>
-              <a href="#" className="footer-link">{t('resFaq')}</a>
-              <a href="#" className="footer-link">{t('resPricing')}</a>
-              <a href="#" className="footer-link">{t('resContact')}</a>
+              <Link href={`/${locale}/terms`} className="footer-link">Terms of Service</Link>
+              <Link href={`/${locale}/privacy`} className="footer-link">Privacy Policy</Link>
+              <Link href={`/${locale}/refund-policy`} className="footer-link">Refund Policy</Link>
+              <Link href={`/${locale}/contact`} className="footer-link">Contact / Legal Notice</Link>
             </div>
           </div>
 
           <div>
             <div className="footer-col-title">{t('contactTitle')}</div>
             <div className="footer-contact">
-              <span>{t('email')}<span className="sample">{t('sampleTag')}</span></span>
-              <span>{t('phone')}<span className="sample">{t('sampleTag')}</span></span>
-              <span>{t('address')}<span className="sample">{t('sampleTag')}</span></span>
+              <span>info@pacificdrone.ca</span>
+              <span>British Columbia, Canada</span>
             </div>
           </div>
         </div>
 
         <div className="footer-bottom">
-          <span className="footer-copy">© {year} {t('rights')}</span>
+          <span className="footer-copy">(c) {year} {t('rights')}</span>
           <span className="footer-disclaimer">{t('disclaimer')}</span>
         </div>
       </div>

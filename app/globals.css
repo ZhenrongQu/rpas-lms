@@ -720,6 +720,141 @@ html, body {
 .checkpoint-feedback.bad { color: var(--red); }
 .checkpoint-feedback p { color: var(--text-2); margin-top: 6px; line-height: 1.5; }
 
+/* -------------------------------
+   LEGAL PAGES
+------------------------------- */
+.legal-page {
+  height: 100%;
+  overflow-y: auto;
+  background: var(--bg-base);
+  color: var(--text-1);
+}
+.legal-page::-webkit-scrollbar { width: 8px; }
+.legal-page::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
+
+.legal-shell {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 48px 32px 72px;
+}
+
+.legal-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+}
+.legal-breadcrumb a {
+  color: var(--accent-text);
+  text-decoration: none;
+}
+.legal-breadcrumb a:hover { text-decoration: underline; }
+.legal-breadcrumb span[aria-hidden="true"] { color: var(--border-strong); }
+
+.legal-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.legal-eyebrow,
+.legal-header > p:first-child {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+.legal-header h1 {
+  font-family: var(--font-display);
+  font-size: 40px;
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--text-1);
+  text-wrap: balance;
+}
+.legal-summary,
+.legal-header > p:nth-of-type(2) {
+  max-width: 68ch;
+  color: var(--text-2);
+  font-size: 17px;
+  line-height: 1.7;
+}
+.legal-updated,
+.legal-header > p:nth-of-type(3) {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.legal-notice {
+  margin-bottom: 28px;
+  padding: 16px 18px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-ctl);
+  background: var(--accent-soft);
+}
+.legal-notice p {
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.legal-sections {
+  display: grid;
+  gap: 16px;
+}
+.legal-section {
+  padding: 24px 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-sm);
+}
+.legal-section h2 {
+  margin-bottom: 12px;
+  font-family: var(--font-display);
+  font-size: 21px;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--text-1);
+}
+.legal-section p {
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 1.75;
+}
+.legal-section p + p { margin-top: 10px; }
+.legal-section ul {
+  margin-top: 14px;
+  padding-left: 20px;
+  color: var(--text-2);
+}
+.legal-section li {
+  padding-left: 4px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.legal-section li + li { margin-top: 6px; }
+
+@media (max-width: 760px) {
+  .legal-shell { padding: 32px 18px 52px; }
+  .legal-breadcrumb { margin-bottom: 18px; }
+  .legal-header { margin-bottom: 20px; }
+  .legal-header h1 { font-size: 30px; }
+  .legal-summary,
+  .legal-header > p:nth-of-type(2) { font-size: 16px; }
+  .legal-section { padding: 20px; }
+  .legal-section h2 { font-size: 19px; }
+}
+
 /* ═══════════════════════════════
    HOME — Institutional Light landing
 ═══════════════════════════════ */
