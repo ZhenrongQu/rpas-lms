@@ -69,3 +69,40 @@ export async function signPlaybackToken(opts: {
     .setExpirationTime(`${ttl}s`)
     .sign(key);
 }
+
+const CF_API = "https://api.cloudflare.com/client/v4";
+
+/** Creates a one-time direct-creator-upload URL (signed-URL video, ≤200MB single POST). */
+export async function createDirectUpload(opts: {
+  accountId: string;
+  apiToken: string;
+  maxDurationSeconds: number;
+}): Promise<{ uploadURL: string; uid: string }> {
+  const res = await fetch(`${CF_API}/accounts/${opts.accountId}/stream/direct_upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${opts.apiToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ maxDurationSeconds: opts.maxDurationSeconds, requireSignedURLs: true }),
+  });
+  const json = await res.json();
+  if (!res.ok || !json.success) throw new Error(`CF direct_upload failed: ${JSON.stringify(json.errors ?? json)}`);
+  return { uploadURL: json.result.uploadURL, uid: json.result.uid };
+}
+
+/** Reads a video's transcode status (fallback to webhook). */
+export async function fetchVideoStatus(opts: {
+  accountId: string;
+  apiToken: string;
+  uid: string;
+}): Promise<{ state: string; durationSec: number | null; thumbnail: string | null }> {
+  const res = await fetch(`${CF_API}/accounts/${opts.accountId}/stream/${opts.uid}`, {
+    headers: { Authorization: `Bearer ${opts.apiToken}` },
+  });
+  const json = await res.json();
+  if (!res.ok || !json.success) throw new Error(`CF status failed: ${JSON.stringify(json.errors ?? json)}`);
+  const r = json.result;
+  return {
+    state: r.status?.state ?? "unknown",
+    durationSec: typeof r.duration === "number" && r.duration > 0 ? Math.round(r.duration) : null,
+    thumbnail: r.thumbnail ?? null,
+  };
+}
