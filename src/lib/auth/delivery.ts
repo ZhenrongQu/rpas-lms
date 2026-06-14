@@ -25,9 +25,9 @@ export async function sendVerificationCode({
     await resend.emails.send({
       from: fromAddress,
       to: target,
-      subject: "Your RPAS Academy verification code",
+      subject: "Your PACIFIC DRONE verification code",
       text: `Your verification code is: ${code}\n\nThis code expires in 10 minutes.`,
-      html: `<p>Your RPAS Academy verification code is:</p><h2>${code}</h2><p>This code expires in 10 minutes.</p>`,
+      html: `<p>Your PACIFIC DRONE verification code is:</p><h2>${code}</h2><p>This code expires in 10 minutes.</p>`,
     });
     return;
   }

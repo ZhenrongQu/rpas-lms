@@ -12,7 +12,7 @@ export default async function IntroPage({ params }: Props) {
       <div>
         <div className="dash-callsign">{t('modules.intro')}</div>
         <div className="dash-title">{t('intro.title')}</div>
-        <div className="dash-subtitle">RPAS ACADEMY · INTRO MODULE</div>
+        <div className="dash-subtitle">PACIFIC DRONE · INTRO MODULE</div>
       </div>
 
       <div className="modules-grid" style={{ gridTemplateColumns: '1fr', marginTop: 24 }}>

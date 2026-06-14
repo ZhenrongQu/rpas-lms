@@ -507,7 +507,7 @@ export default async function LocaleLayout({ children, params }: Props) {
 
 ```typescript
 export default function DashboardPage() {
-  return <div style={{ color: '#00d4ff', padding: 32, fontFamily: 'monospace' }}>RPAS Academy — Plan 2 in progress</div>;
+  return <div style={{ color: '#00d4ff', padding: 32, fontFamily: 'monospace' }}>PACIFIC DRONE — Plan 2 in progress</div>;
 }
 ```
 
@@ -1218,7 +1218,7 @@ export default function HudHeader({ locale }: { locale: string }) {
   return (
     <header className="hud-header">
       <div className="logo-mark">
-        <div className="logo-text">RPAS ACADEMY</div>
+        <div className="logo-text">PACIFIC DRONE</div>
       </div>
       <div className="header-spacer" />
     </header>
@@ -1285,7 +1285,7 @@ export default function HudHeader({ locale }: { locale: string }) {
           <circle cx="20" cy="20" r="2" fill="#00d4ff"/>
         </svg>
         <div>
-          <div className="logo-text">RPAS ACADEMY</div>
+          <div className="logo-text">PACIFIC DRONE</div>
           <div className="logo-sub">Transport Canada · TP-15263</div>
         </div>
       </div>

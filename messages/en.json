@@ -3,7 +3,7 @@
   "home": {
     "hero": {
       "kicker": "Transport Canada · TP-15263",
-      "name": "RPAS ACADEMY",
+      "name": "PACIFIC DRONE",
       "slogan": "Fly legal. Fly certified.",
       "lede": "Canada's focused study platform for RPAS pilots. Clear lessons, a practice question bank, and realistic mock exams for both Basic and Advanced certification.",
       "ctaPrimary": "Start free with Basic",
@@ -120,7 +120,7 @@
       "email": "hello@rpasacademy.example",
       "phone": "+1 (555) 015-2630",
       "address": "123 Skyline Way, Calgary, AB",
-      "rights": "RPAS Academy. Demonstration site. All content is sample.",
+      "rights": "PACIFIC DRONE. Demonstration site. All content is sample.",
       "disclaimer": "Not affiliated with or endorsed by Transport Canada. Always consult the current Canadian Aviation Regulations."
     }
   },
@@ -206,7 +206,7 @@
     "theory-of-flight": "Theory of Flight"
   },
   "intro": {
-    "title": "RPAS Academy Introduction",
+    "title": "PACIFIC DRONE Introduction",
     "companyTitle": "Company",
     "companyBody": "We provide Canadian RPAS pilot study and mock-exam tools for Basic and Advanced certification prep.",
     "serviceTitle": "Services",

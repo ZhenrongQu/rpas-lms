@@ -109,7 +109,7 @@ export default function HudHeader({
           <circle cx="20" cy="20" r="2" fill="#B8501E"/>
         </svg>
         <div>
-          <div className="logo-text">RPAS ACADEMY</div>
+          <div className="logo-text">PACIFIC DRONE</div>
           <div className="logo-sub">Transport Canada · TP-15263</div>
         </div>
       </Link>

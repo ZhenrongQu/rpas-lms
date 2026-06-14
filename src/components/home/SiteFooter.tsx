@@ -14,7 +14,7 @@ export default async function SiteFooter({ locale }: { locale: string }) {
           <div>
             <div className="footer-brand-row">
               <DroneMark size={30} />
-              <span className="footer-logo-text">RPAS ACADEMY</span>
+              <span className="footer-logo-text">PACIFIC DRONE</span>
             </div>
             <div className="footer-tagline">{t('tagline')}</div>
             <p className="footer-blurb">{t('blurb')}</p>
