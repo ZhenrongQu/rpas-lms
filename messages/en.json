@@ -5,7 +5,7 @@
       "kicker": "Transport Canada · TP-15263",
       "name": "RPAS ACADEMY",
       "slogan": "Fly legal. Fly certified.",
-      "lede": "Canada's focused study platform for RPAS pilots — clear lessons, a practice question bank, and realistic mock exams for both Basic and Advanced certification.",
+      "lede": "Canada's focused study platform for RPAS pilots. Clear lessons, a practice question bank, and realistic mock exams for both Basic and Advanced certification.",
       "ctaPrimary": "Start free with Basic",
       "ctaSecondary": "Compare the tracks",
       "imageAlt": "Brand hero image",
@@ -69,7 +69,7 @@
           "Controlled airspace current practices",
           "Practical skills evaluation"
         ],
-        "duration": "Approx. 2 hrs · On-site or remote",
+        "duration": "Approx. 1 hr · On-site",
         "cta": "Book a review"
       }
     },
@@ -86,9 +86,9 @@
         { "feature": "Distance from bystanders", "basic": "Stay 30 m or more", "advanced": "Closer than 30 m allowed" },
         { "feature": "Fly over bystanders", "basic": "no", "advanced": "With a compliant drone" },
         { "feature": "Fly near airports & heliports", "basic": "no", "advanced": "With authorization" },
-        { "feature": "Drones 250 g – 25 kg", "basic": "yes", "advanced": "yes" }
+        { "feature": "Drones 250 g to 25 kg", "basic": "yes", "advanced": "yes" }
       ],
-      "footnote": "Sample summary for orientation only — not operational advice. Refer to the current Canadian Aviation Regulations (CARs)."
+      "footnote": "Sample summary for orientation only, not operational advice. Refer to the current Canadian Aviation Regulations (CARs)."
     },
     "reviews": {
       "kicker": "Reviews",
@@ -120,7 +120,7 @@
       "email": "hello@rpasacademy.example",
       "phone": "+1 (555) 015-2630",
       "address": "123 Skyline Way, Calgary, AB",
-      "rights": "RPAS Academy. Demonstration site — all content is sample.",
+      "rights": "RPAS Academy. Demonstration site. All content is sample.",
       "disclaimer": "Not affiliated with or endorsed by Transport Canada. Always consult the current Canadian Aviation Regulations."
     }
   },
@@ -242,8 +242,8 @@
     "selectN": "Select {count}",
     "loading": "Loading questions…",
     "loadError": "Could not load the exam. The session may have expired.",
-    "submitFailed": "Submission failed — please try again.",
-    "answerSaveFailed": "Could not save your answer — please try again.",
+    "submitFailed": "Submission failed. Please try again.",
+    "answerSaveFailed": "Could not save your answer. Please try again.",
     "backToLaunch": "Back to Launch"
   },
   "results": {
@@ -253,13 +253,14 @@
     "correct": "correct",
     "passStatus": "PASS",
     "failStatus": "FAIL",
+    "resultLabel": "Result",
     "perSubject": "Per-Subject Breakdown",
     "weakAreas": "Weak areas flagged",
     "reviewAnswers": "Review Answers",
     "newMission": "New Mission",
     "notFound": "Result not found. The session may have expired or not been submitted.",
     "incorrectReview": "Incorrect Answer Review",
-    "noIncorrect": "No incorrect answers."
+    "noIncorrect": "Good Job! You are ready to take the exam!"
   },
   "review": {
     "title": "Answer Review",
@@ -289,7 +290,7 @@
     "complete": "Mark Complete",
     "completeNext": "Complete & Next",
     "answerToContinue": "Answer the checkpoint to continue",
-    "lockedTitle": "Advanced lesson — paid access",
+    "lockedTitle": "Advanced lesson: paid access",
     "lockedBody": "This lesson is part of the paid Advanced Operations course. Upgrade your account to unlock it."
   },
   "checkpoint": {

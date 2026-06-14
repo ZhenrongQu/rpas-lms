@@ -1,32 +1,37 @@
 import type { ReactNode } from 'react';
+import type { Metadata } from 'next';
 import { headers } from 'next/headers';
-import { Orbitron, Rajdhani, Share_Tech_Mono, Fraunces } from 'next/font/google';
+import { Archivo, IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
+import { siteMetadata } from '@/lib/seo';
 import './globals.css';
 
-const orbitron = Orbitron({
+export const metadata: Metadata = siteMetadata;
+
+// Institutional grotesk display — headlines, brand, section titles.
+const archivo = Archivo({
   subsets: ['latin'],
   variable: '--font-display',
-  weight: ['400', '500', '600', '700', '900'],
+  weight: ['500', '600', '700', '800'],
 });
 
-// Editorial display serif — used by the marketing Home page (--font-editorial).
-const fraunces = Fraunces({
+// --font-editorial is kept as an alias so existing rules keep resolving;
+// it now points at the same grotesk display (no serif).
+const archivoEditorial = Archivo({
   subsets: ['latin'],
   variable: '--font-editorial',
-  weight: ['400', '500', '600', '700', '900'],
-  style: ['normal', 'italic'],
+  weight: ['500', '600', '700'],
 });
 
-const rajdhani = Rajdhani({
+const plexSans = IBM_Plex_Sans({
   subsets: ['latin'],
   variable: '--font-ui',
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700'],
 });
 
-const shareTechMono = Share_Tech_Mono({
+const plexMono = IBM_Plex_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
-  weight: '400',
+  weight: ['400', '500'],
 });
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
@@ -37,7 +42,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html
       lang={locale}
       suppressHydrationWarning
-      className={`${orbitron.variable} ${rajdhani.variable} ${shareTechMono.variable} ${fraunces.variable}`}
+      className={`${archivo.variable} ${plexSans.variable} ${plexMono.variable} ${archivoEditorial.variable}`}
     >
       <body>{children}</body>
     </html>

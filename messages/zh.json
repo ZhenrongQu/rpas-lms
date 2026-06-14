@@ -5,7 +5,7 @@
       "kicker": "加拿大交通部 · TP-15263",
       "name": "RPAS ACADEMY",
       "slogan": "合法飞行，持证起飞。",
-      "lede": "面向加拿大遥控驾驶航空器（RPAS）飞手的专注备考平台——清晰的课程、练习题库，以及贴近真实考试的模拟考，覆盖基础与高级两个等级。",
+      "lede": "面向加拿大遥控驾驶航空器（RPAS）飞手的专注备考平台。清晰的课程、练习题库，以及贴近真实考试的模拟考，覆盖基础与高级两个等级。",
       "ctaPrimary": "免费开始基础课程",
       "ctaSecondary": "对比两个等级",
       "imageAlt": "品牌主视觉图",
@@ -69,7 +69,7 @@
           "管制空域最新实操规范",
           "飞行技能综合评估"
         ],
-        "duration": "约2小时 · 现场或远程",
+        "duration": "约1小时 · 现场考试",
         "cta": "预约复查"
       }
     },
@@ -86,7 +86,7 @@
         { "feature": "与旁观者的距离", "basic": "需保持 30 米以上", "advanced": "可近于 30 米" },
         { "feature": "在旁观者上方飞行", "basic": "no", "advanced": "需使用合规无人机" },
         { "feature": "在机场与直升机场附近飞行", "basic": "no", "advanced": "需授权" },
-        { "feature": "250 克 – 25 公斤无人机", "basic": "yes", "advanced": "yes" }
+        { "feature": "250 克至 25 公斤无人机", "basic": "yes", "advanced": "yes" }
       ],
       "footnote": "此处仅为示意性概览，不构成操作建议。请以最新《加拿大航空条例》（CARs）为准。"
     },
@@ -120,7 +120,7 @@
       "email": "hello@rpasacademy.example",
       "phone": "+1 (555) 015-2630",
       "address": "123 Skyline Way, Calgary, AB",
-      "rights": "RPAS Academy。演示站点——所有内容均为示例。",
+      "rights": "Pacific Drone。演示站点。所有内容均为示例。",
       "disclaimer": "本站与加拿大交通部无任何隶属或背书关系。请始终以最新《加拿大航空条例》为准。"
     }
   },
@@ -253,6 +253,7 @@
     "correct": "答对",
     "passStatus": "通过",
     "failStatus": "未通过",
+    "resultLabel": "结果",
     "perSubject": "按科目拆分",
     "weakAreas": "薄弱科目",
     "reviewAnswers": "查看完整解析",
@@ -289,7 +290,7 @@
     "complete": "标记完成",
     "completeNext": "完成并继续",
     "answerToContinue": "答对检查点后继续",
-    "lockedTitle": "进阶课程 — 付费内容",
+    "lockedTitle": "进阶课程：付费内容",
     "lockedBody": "本课属于付费的进阶运行 (Advanced) 课程。升级账户即可解锁。"
   },
   "checkpoint": {

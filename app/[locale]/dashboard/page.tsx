@@ -38,7 +38,7 @@ export default async function DashboardPage({ params }: Props) {
         {/* ── My Profile ── */}
         <section className="hud-panel dash-section">
           <div className="hud-panel-glow" />
-          <div className="dash-section-title">// {t('dashboard.myProfile')}</div>
+          <div className="dash-section-title">{t('dashboard.myProfile')}</div>
 
           <div className="profile-row">
             <div className="profile-avatar">{avatarInitial}</div>
@@ -62,7 +62,7 @@ export default async function DashboardPage({ params }: Props) {
         {/* ── My Course ── */}
         <section className="hud-panel dash-section">
           <div className="hud-panel-glow" />
-          <div className="dash-section-title">// {t('dashboard.myCourse')}</div>
+          <div className="dash-section-title">{t('dashboard.myCourse')}</div>
 
           <div className="dash-course-cards">
             {/* Basic */}

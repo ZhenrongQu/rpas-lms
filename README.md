@@ -322,6 +322,24 @@ DATABASE_URL: "file:./test.db"
 5. 读 `prisma/schema.prisma`，理解哪些数据被持久化。
 6. 修改题目前，先读 `content/question-bank-README.md`。
 
+## 本地 / Dev 测试账号
+
+> ⚠️ **仅限本地 / dev 数据库的测试账号，弱口令，切勿用于生产。** 生产库用的是团队真实账号（`testrobbie` / `testenoch` / `robbietest`），密码各自保管，不在此列出。
+
+| 角色 | 登录方式 | 密码 | 说明 |
+| --- | --- | --- | --- |
+| Admin | 用户名 `rpasadmin`（或邮箱 `admin@rpas.test`） | `admin12345` | 登录后台 `/coriander` |
+| Customer | 邮箱 `learner@rpas.test`（或用户名 `learner1`） | `learner12345` | PAID 档，普通登录 |
+
+随时用脚本重建或改密（默认连 `.env` 的 dev 库）：
+
+```bash
+# 管理员 → Admin 表，登录 /coriander
+ADMIN_USERNAME=rpasadmin ADMIN_PASSWORD='admin12345' ADMIN_EMAIL=admin@rpas.test pnpm exec tsx scripts/create-admin.ts
+
+# 顾客 → Customer 表，创建即可登录（CUSTOMER_TIER 可选 FREE/PAID）
+CUSTOMER_EMAIL=learner@rpas.test CUSTOMER_PASSWORD='learner12345' CUSTOMER_USERNAME=learner1 CUSTOMER_TIER=PAID pnpm exec tsx scripts/create-customer.ts
+```
 
 ADMIN_EMAIL=enoch@gmail.com ADMIN_PASSWORD=Enoch1234! ADMIN_USERNAME=testEnoch pnpm exec tsx scripts/create-admin.ts
 # DEV_ADMIN_URL=https://dev.pacificdrone.ca/coriander
@@ -332,3 +350,4 @@ CUSTOMER_EMAIL=learner@rpas.test CUSTOMER_PASSWORD=learner12345 CUSTOMER_USERNAM
 # DEV_CUSTOMER_EMAIL=learner@rpas.test  (or username: learner1)
 # DEV_CUSTOMER_PASSWORD=learner12345
 # DEV_CUSTOMER_TIER=PAID
+

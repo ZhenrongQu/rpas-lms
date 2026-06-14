@@ -44,7 +44,7 @@ export default async function ResultsPage({ params }: Props) {
           {passed ? t('results.missionComplete') : t('results.missionFailed')}
         </div>
         <div className="result-code">
-          // {passed ? t('results.passStatus') : t('results.failStatus')} · {result.correct}/{result.total} · {now}
+          {passed ? t('results.passStatus') : t('results.failStatus')} · {result.correct}/{result.total} · {now}
         </div>
       </div>
 
@@ -64,7 +64,7 @@ export default async function ResultsPage({ params }: Props) {
             </span>
           </div>
           <div className="overall-label">
-            // RESULT: {passed ? t('results.passStatus') : t('results.failStatus')}
+            {t('results.resultLabel')}: {passed ? t('results.passStatus') : t('results.failStatus')}
           </div>
         </div>
 
@@ -81,7 +81,7 @@ export default async function ResultsPage({ params }: Props) {
       </div>
 
       <div className="review-list" style={{ width: '100%' }}>
-        <div className="review-title">// {t('results.incorrectReview')}</div>
+        <div className="review-title">{t('results.incorrectReview')}</div>
         {incorrect.length === 0 ? (
           <div className="hud-panel review-card ok">{t('results.noIncorrect')}</div>
         ) : (

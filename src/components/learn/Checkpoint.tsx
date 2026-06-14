@@ -55,7 +55,7 @@ export default function Checkpoint({ questionId, locale }: { questionId: string;
 
   return (
     <div className={`checkpoint${result ? (result.correct ? ' ok' : ' bad') : ''}`}>
-      <div className="checkpoint-tag">// {t('title')}</div>
+      <div className="checkpoint-tag">{t('title')}</div>
       <div className="checkpoint-stem">{q.stem}</div>
       {q.type === 'MULTI' && (
         <div className="checkpoint-hint">{t('selectN', { count: q.selectCount })}</div>

@@ -43,6 +43,10 @@ type LessonRow = {
   access: string;
   bodyEN: string;
   bodyZH: string;
+  videoUid: string | null;
+  videoStatus: string | null;
+  videoDurationSec: number | null;
+  videoThumbnailUrl: string | null;
 };
 
 /** Prisma Question (+ its options) → the in-app `Question` shape from types.ts. */
@@ -97,6 +101,10 @@ export function dbLessonToMeta(row: LessonRow, locale: RouteLocale): LessonMeta 
     estMinutes: row.estMinutes,
     certLevel: row.certLevel as "BASIC" | "ADVANCED" | "BOTH",
     access: row.access as "FREE" | "PAID",
+    videoUid: row.videoUid,
+    videoStatus: row.videoStatus,
+    videoDurationSec: row.videoDurationSec,
+    videoThumbnailUrl: row.videoThumbnailUrl,
   };
 }
 

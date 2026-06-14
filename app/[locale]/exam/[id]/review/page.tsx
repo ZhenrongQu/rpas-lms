@@ -23,7 +23,7 @@ export default async function ReviewPage({ params }: Props) {
   return (
     <div className="review-view">
       <div className="review-head">
-        <div className="review-title">// {t('review.title')}</div>
+        <div className="review-title">{t('review.title')}</div>
         <Link href={`/${locale}/exam/${id}/results`} className="btn-review">
           ↩ {t('review.backToResults')}
         </Link>

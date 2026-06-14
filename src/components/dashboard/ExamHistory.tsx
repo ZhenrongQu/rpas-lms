@@ -8,7 +8,7 @@ export default async function ExamHistory({ userId, locale }: { userId: string; 
 
   return (
     <div className="hud-panel history-card">
-      <div className="breakdown-title">// {t('dashboard.history')}</div>
+      <div className="breakdown-title">{t('dashboard.history')}</div>
       {items.length === 0 ? (
         <div className="history-empty">{t('dashboard.noHistory')}</div>
       ) : (

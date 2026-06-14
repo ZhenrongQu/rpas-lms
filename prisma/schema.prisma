@@ -233,9 +233,13 @@ model BasicLesson {
   titleZH    String
   bodyEN     String // raw MDX body (frontmatter stripped)
   bodyZH     String
-  createdAt  DateTime              @default(now())
-  updatedAt  DateTime              @updatedAt
-  progress   BasicLessonProgress[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  videoUid          String?
+  videoStatus       String?               // "PROCESSING" | "READY" | "ERROR"
+  videoDurationSec  Int?
+  videoThumbnailUrl String?
+  progress          BasicLessonProgress[]
 
   @@unique([course, moduleId, slug])
   @@index([course, moduleId])
@@ -255,9 +259,13 @@ model AdvancedLesson {
   titleZH    String
   bodyEN     String
   bodyZH     String
-  createdAt  DateTime                 @default(now())
-  updatedAt  DateTime                 @updatedAt
-  progress   AdvancedLessonProgress[]
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  videoUid          String?
+  videoStatus       String?                  // "PROCESSING" | "READY" | "ERROR"
+  videoDurationSec  Int?
+  videoThumbnailUrl String?
+  progress          AdvancedLessonProgress[]
 
   @@unique([course, moduleId, slug])
   @@index([course, moduleId])

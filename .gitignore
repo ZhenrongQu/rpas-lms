@@ -4,6 +4,7 @@ dist/
 *.log
 .DS_Store
 coverage/
+.worktrees/
 
 # Next.js generated
 next-env.d.ts

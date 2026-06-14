@@ -37,6 +37,9 @@ export default async function AdminLessonsPage({ searchParams }: Props) {
     <div className="admin-page">
       <div className="admin-page-header">
         <h1>Lessons</h1>
+        <Link href={`${ADMIN_BASE}/lessons/new`} className="btn-primary">
+          + New lesson
+        </Link>
       </div>
 
       {/* Filters */}

@@ -36,9 +36,11 @@ export async function PUT(req: Request, ctx: Ctx): Promise<Response> {
 
   const input = parsed.data;
 
-  // Only validate MDX when bodies changed.
+  // Validate MDX only when bodies changed AND are non-empty (video-only lessons
+  // may legitimately have empty bodies).
   const bodiesChanged = input.bodyEN !== existing.bodyEN || input.bodyZH !== existing.bodyZH;
-  if (bodiesChanged) {
+  const hasBody = input.bodyEN.trim().length > 0 || input.bodyZH.trim().length > 0;
+  if (bodiesChanged && hasBody) {
     const result = await validateLessonMdxBodies({
       bodyEN: input.bodyEN,
       bodyZH: input.bodyZH,

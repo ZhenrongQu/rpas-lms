@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server';
+import Reveal from './Reveal';
 
 type Row = { feature: string; basic: string; advanced: string };
 
@@ -15,13 +16,12 @@ export default async function PrivilegesCompare({ locale }: { locale: string }) 
   return (
     <section className="home-section" id="privileges">
       <div className="home-inner">
-        <div className="compare-head">
-          <span className="home-kicker">{t('kicker')}</span>
+        <Reveal className="compare-head">
           <h2 className="home-h2">{t('title')}</h2>
           <p className="home-lead">{t('subtitle')}</p>
-        </div>
+        </Reveal>
 
-        <div className="compare-wrap">
+        <Reveal className="compare-wrap">
           <table className="compare">
             <thead>
               <tr>
@@ -44,7 +44,7 @@ export default async function PrivilegesCompare({ locale }: { locale: string }) 
               ))}
             </tbody>
           </table>
-        </div>
+        </Reveal>
 
         <p className="compare-foot">{t('footnote')}</p>
       </div>

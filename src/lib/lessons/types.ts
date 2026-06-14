@@ -21,6 +21,10 @@ export interface LessonMeta {
   estMinutes: number;
   certLevel: "BASIC" | "ADVANCED" | "BOTH";
   access: "FREE" | "PAID";
+  videoUid: string | null;
+  videoStatus: string | null;
+  videoDurationSec: number | null;
+  videoThumbnailUrl: string | null;
 }
 
 export type RouteLocale = "en" | "zh";
