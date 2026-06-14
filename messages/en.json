@@ -69,7 +69,7 @@
           "Controlled airspace current practices",
           "Practical skills evaluation"
         ],
-        "duration": "Approx. 2 hrs · On-site or remote",
+        "duration": "Approx. 1 hr · On-site",
         "cta": "Book a review"
       }
     },
@@ -260,7 +260,7 @@
     "newMission": "New Mission",
     "notFound": "Result not found. The session may have expired or not been submitted.",
     "incorrectReview": "Incorrect Answer Review",
-    "noIncorrect": "No incorrect answers."
+    "noIncorrect": "Good Job! You are ready to take the exam!"
   },
   "review": {
     "title": "Answer Review",

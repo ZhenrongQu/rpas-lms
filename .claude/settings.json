@@ -111,7 +111,11 @@
       "Bash(claude mcp *)",
       "WebFetch(domain:stitch.withgoogle.com)",
       "WebFetch(domain:codelabs.developers.google.com)",
-      "Bash(npm search *)"
+      "Bash(npm search *)",
+      "Bash(awk '/model BasicLesson /,/^}/' prisma/schema.prisma)",
+      "Bash(awk '/generator/,/}/' prisma/schema.prisma)",
+      "Bash(git -C /Users/quzhenrong/rpas-lms add src/lib/admin/lessons.ts src/lib/admin/lessons.test.ts)",
+      "Bash(awk '/model AdvancedLesson /,/^}/' prisma/schema.prisma)"
     ],
     "additionalDirectories": [
       "/tmp/rpas-sec-wt/docs/superpowers/specs",
