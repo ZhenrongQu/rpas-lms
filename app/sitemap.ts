@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { SITE_URL } from '../src/lib/seo';
 
 const LOCALES = ['en', 'zh'] as const;
-const PUBLIC_PATHS = ['', '/terms', '/privacy', '/refund-policy', '/contact'] as const;
+const PUBLIC_PATHS = ['', '/about', '/faq', '/terms', '/privacy', '/refund-policy', '/contact'] as const;
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return LOCALES.flatMap((locale) =>

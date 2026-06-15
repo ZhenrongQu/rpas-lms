@@ -8,8 +8,8 @@
       "lede": "Canada's focused study platform for RPAS pilots. Clear lessons, a practice question bank, and realistic mock exams for both Basic and Advanced certification.",
       "ctaPrimary": "Start free with Basic",
       "ctaSecondary": "Compare the tracks",
-      "imageAlt": "Brand hero image",
-      "imageNote": "Drop your brand hero image here",
+      "imageAlt": "Drone flight preparation in open Canadian airspace",
+      "imageNote": "RPAS training and flight review preparation in British Columbia",
       "stats": [
         { "value": "8", "label": "Knowledge areas" },
         { "value": "13", "label": "Guided lessons" },
@@ -88,17 +88,23 @@
         { "feature": "Fly near airports & heliports", "basic": "no", "advanced": "With authorization" },
         { "feature": "Drones 250 g to 25 kg", "basic": "yes", "advanced": "yes" }
       ],
-      "footnote": "Sample summary for orientation only, not operational advice. Refer to the current Canadian Aviation Regulations (CARs)."
+      "footnote": "Operational privileges depend on the current Canadian Aviation Regulations, aircraft eligibility, authorization, and pilot decision-making."
     },
     "reviews": {
-      "kicker": "Reviews",
-      "title": "What pilots say",
-      "disclaimer": "Sample testimonials shown for demonstration.",
-      "items": [
-        { "name": "Jordan M.", "role": "Real-estate videographer · Calgary", "rating": 5, "quote": "The mock exams felt exactly like the real Basic test. Passed on my first try with room to spare." },
-        { "name": "Priya S.", "role": "Survey drone operator · Toronto", "rating": 5, "quote": "The Advanced airspace and comms lessons finally made controlled-airspace requests click for me." },
-        { "name": "Marc-André L.", "role": "Hobbyist pilot · Montréal", "rating": 4, "quote": "Clean, distraction-free lessons, and the question-bank explanations are genuinely useful." },
-        { "name": "Dana W.", "role": "Ag-tech field tech · Saskatoon", "rating": 5, "quote": "Studied on my phone between jobs and went from zero to Advanced-ready in a few weeks." }
+      "kicker": "Why Pacific Drone",
+      "title": "Why pilots choose Pacific Drone",
+      "quotesTitle": "What other pilots say",
+      "disclaimer": "Training content is educational and should be checked against current Transport Canada requirements before every flight.",
+      "proofItems": [
+        { "label": "TP-15263", "title": "Structured study path", "body": "Lessons follow the Canadian RPAS knowledge areas so you can move through air law, operations, weather, navigation, human factors, systems, and radiotelephony in order." },
+        { "label": "PRACTICE", "title": "Exam-style preparation", "body": "Mock exams and answer explanations help you identify weak areas before booking or sitting the official Transport Canada exam." },
+        { "label": "REVIEW", "title": "Flight Review readiness", "body": "Preparation focuses on planning, procedures, emergency actions, and operational judgment before a practical flight review." },
+        { "label": "BILINGUAL", "title": "English and Chinese access", "body": "Move between English and Chinese pages while keeping the same Canadian RPAS concepts, terminology, and course structure." }
+      ],
+      "quotes": [
+        { "name": "Alex Chen", "role": "Lower Mainland, BC", "quote": "The mock exams made the Basic test format feel familiar, so I knew which topics still needed work before the real exam." },
+        { "name": "Maya Thompson", "role": "Greater Vancouver", "quote": "The controlled-airspace and communication review helped me connect the rules with the decisions I need to make on site." },
+        { "name": "Ryan Patel", "role": "British Columbia", "quote": "Reviewing procedures and emergency scenarios before the appointment made the practical portion feel much more organized." }
       ]
     },
     "footer": {
@@ -116,11 +122,10 @@
       "resFaq": "FAQ",
       "resPricing": "Pricing",
       "resContact": "Contact us",
-      "sampleTag": "sample",
-      "email": "hello@rpasacademy.example",
-      "phone": "+1 (555) 015-2630",
-      "address": "123 Skyline Way, Calgary, AB",
-      "rights": "PACIFIC DRONE. Demonstration site. All content is sample.",
+      "email": "info@pacificdrone.ca",
+      "phone": "",
+      "address": "British Columbia, Canada",
+      "rights": "Pacific Drone. All rights reserved.",
       "disclaimer": "Not affiliated with or endorsed by Transport Canada. Always consult the current Canadian Aviation Regulations."
     }
   },

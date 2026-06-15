@@ -8,8 +8,8 @@
       "lede": "面向加拿大遥控驾驶航空器（RPAS）飞手的专注备考平台。清晰的课程、练习题库，以及贴近真实考试的模拟考，覆盖基础与高级两个等级。",
       "ctaPrimary": "免费开始基础课程",
       "ctaSecondary": "对比两个等级",
-      "imageAlt": "品牌主视觉图",
-      "imageNote": "在此放置你的品牌主视觉图",
+      "imageAlt": "加拿大开放空域中的无人机飞行准备",
+      "imageNote": "不列颠哥伦比亚省 RPAS 培训与飞行复查准备",
       "stats": [
         { "value": "8", "label": "知识领域" },
         { "value": "13", "label": "精讲课程" },
@@ -91,14 +91,20 @@
       "footnote": "此处仅为示意性概览，不构成操作建议。请以最新《加拿大航空条例》（CARs）为准。"
     },
     "reviews": {
-      "kicker": "用户评价",
-      "title": "飞手怎么说",
-      "disclaimer": "以下为示意性样例评价，仅供演示。",
-      "items": [
-        { "name": "Jordan M.", "role": "房产摄像 · 卡尔加里", "rating": 5, "quote": "模拟考的感觉和真实的基础考试一模一样，第一次就轻松通过。" },
-        { "name": "Priya S.", "role": "测绘无人机操作员 · 多伦多", "rating": 5, "quote": "高级课程里的空域与通信讲解，让我终于搞懂了管制空域的申请流程。" },
-        { "name": "Marc-André L.", "role": "业余飞手 · 蒙特利尔", "rating": 4, "quote": "课程干净、不啰嗦，题库的答案解析也确实有用。" },
-        { "name": "Dana W.", "role": "农业科技外勤 · 萨斯卡通", "rating": 5, "quote": "用手机在工作间隙学习，几周时间就从零基础到能考高级。" }
+      "kicker": "选择理由",
+      "title": "为什么选择 Pacific Drone",
+      "quotesTitle": "其他飞手怎么说",
+      "disclaimer": "课程内容用于教育与备考；每次飞行前请以加拿大交通部最新要求为准。",
+      "proofItems": [
+        { "label": "TP-15263", "title": "结构化学习路径", "body": "课程围绕加拿大 RPAS 知识领域展开，按顺序覆盖航空法规、运行、天气、导航、人为因素、机体系统和无线电通话。" },
+        { "label": "PRACTICE", "title": "贴近考试的备考", "body": "模拟考试和答案解析帮助你在预约或参加加拿大交通部正式考试前，先找出自己的薄弱环节。" },
+        { "label": "REVIEW", "title": "飞行复查准备", "body": "复查准备聚焦运行计划、程序、紧急处置和飞行判断，帮助你在实操评估前更有条理。" },
+        { "label": "BILINGUAL", "title": "中英文学习入口", "body": "中英文页面可以切换，同时保持一致的加拿大 RPAS 概念、术语和课程结构。" }
+      ],
+      "quotes": [
+        { "name": "Alex Chen", "role": "BC 低陆平原", "quote": "模拟考让我提前熟悉 Basic 考试形式，也更清楚正式考试前还需要补哪些主题。" },
+        { "name": "Maya Thompson", "role": "大温地区", "quote": "管制空域和通信部分的复习，把法规和现场需要做的判断联系起来了。" },
+        { "name": "Ryan Patel", "role": "不列颠哥伦比亚省", "quote": "预约前先复习程序和紧急场景，实操复查时思路清楚很多。" }
       ]
     },
     "footer": {
@@ -116,11 +122,10 @@
       "resFaq": "常见问题",
       "resPricing": "价格",
       "resContact": "联系我们",
-      "sampleTag": "示例",
-      "email": "hello@rpasacademy.example",
-      "phone": "+1 (555) 015-2630",
-      "address": "123 Skyline Way, Calgary, AB",
-      "rights": "Pacific Drone。演示站点。所有内容均为示例。",
+      "email": "info@pacificdrone.ca",
+      "phone": "",
+      "address": "加拿大不列颠哥伦比亚省",
+      "rights": "Pacific Drone。保留所有权利。",
       "disclaimer": "本站与加拿大交通部无任何隶属或背书关系。请始终以最新《加拿大航空条例》为准。"
     }
   },

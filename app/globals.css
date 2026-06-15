@@ -1019,16 +1019,47 @@ html, body {
 .cmp-note { color: var(--amber); font-family: var(--font-mono); font-size: 12px; }
 .compare-foot { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); margin-top: 16px; line-height: 1.6; }
 
-/* ───── REVIEWS ───── */
-.reviews-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 44px; }
-/* NOTE: .review-card is shared with the answer-review surface; home values win via cascade order. */
-.reviews-grid .review-card { padding: 28px; border: 1px solid var(--border); border-left: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 16px; }
-.review-stars { color: var(--amber); letter-spacing: 3px; font-size: 14px; }
-.review-stars .dim { color: var(--border-strong); }
-.review-quote { font-family: var(--font-ui); font-weight: 400; font-style: normal; font-size: 17px; line-height: 1.55; color: var(--text-1); }
-.review-who { display: flex; flex-direction: column; gap: 3px; margin-top: auto; }
-.review-name { font-weight: 600; font-size: 14px; color: var(--text-1); }
-.review-role { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); }
+/* ───── PROOF + PILOT VOICES ───── */
+.proof-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 44px; }
+.proof-card {
+  min-height: 252px; padding: 26px; border: 1px solid var(--border);
+  border-top: 3px solid var(--accent); border-radius: var(--r-card);
+  background: var(--surface); box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 18px;
+}
+.proof-card:nth-child(2) { border-top-color: var(--amber); }
+.proof-card:nth-child(3) { border-top-color: var(--green); }
+.proof-card:nth-child(4) { border-top-color: var(--border-strong); }
+.proof-label {
+  align-self: flex-start; font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 0.08em; color: var(--accent-text);
+  padding: 6px 9px; border: 1px solid var(--border); border-radius: var(--r-chip);
+  background: var(--surface-2);
+}
+.proof-card h3 {
+  font-family: var(--font-display); font-size: 21px; font-weight: 700;
+  line-height: 1.15; letter-spacing: -0.01em; color: var(--text-1);
+}
+.proof-card p { font-size: 15px; line-height: 1.65; color: var(--text-2); margin-top: auto; }
+.pilot-voices { margin-top: 64px; padding-top: 42px; border-top: 1px solid var(--border); }
+.pilot-voices-title {
+  font-family: var(--font-display); font-size: clamp(26px, 3vw, 36px);
+  line-height: 1.08; letter-spacing: -0.02em; color: var(--text-1);
+}
+.quotes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 28px; }
+.pilot-quote-card {
+  padding: 26px; border: 1px solid var(--border); border-radius: var(--r-card);
+  background: var(--surface); box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 20px; min-height: 224px;
+}
+.pilot-quote-card::before {
+  content: '"'; font-family: var(--font-display); font-size: 42px;
+  line-height: 0.8; color: var(--accent-text);
+}
+.pilot-quote { font-family: var(--font-ui); font-size: 16px; line-height: 1.6; color: var(--text-1); }
+.pilot-who { display: flex; flex-direction: column; gap: 3px; margin-top: auto; }
+.pilot-name { font-weight: 600; font-size: 14px; color: var(--text-1); }
+.pilot-role { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); }
 .reviews-disclaimer { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); margin-top: 22px; }
 
 /* ───── FOOTER (home only) ───── */
@@ -1043,7 +1074,6 @@ html, body {
 .footer-link { color: var(--text-2); font-size: 14px; transition: color 0.18s; }
 .footer-link:hover { color: var(--accent-text); }
 .footer-contact { display: flex; flex-direction: column; gap: 11px; font-size: 14px; color: var(--text-2); }
-.footer-contact .sample { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; margin-left: 8px; }
 .footer-socials { display: flex; gap: 10px; margin-top: 18px; }
 .footer-social { width: 36px; height: 36px; border: 1px solid var(--border); border-radius: var(--r-ctl); display: flex; align-items: center; justify-content: center; color: var(--text-3); transition: border-color 0.2s, color 0.2s; font-family: var(--font-mono); font-size: 11px; }
 .footer-social:hover { border-color: var(--text-3); color: var(--text-1); }
@@ -1059,13 +1089,15 @@ html, body {
   .tracks-grid { grid-template-columns: 1fr; grid-template-rows: none; gap: 16px; }
   .track-card { display: flex; flex-direction: column; grid-row: auto; gap: 18px; }
   .flow-grid { grid-template-columns: repeat(2, 1fr); gap: 32px 28px; }
-  .reviews-grid { grid-template-columns: 1fr; }
+  .proof-grid { grid-template-columns: repeat(2, 1fr); }
+  .quotes-grid { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
 }
 @media (max-width: 560px) {
   .home-inner { padding: 0 20px; }
   .home-section { padding: 64px 0; }
   .flow-grid { grid-template-columns: 1fr; }
+  .proof-grid { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr; }
   .hero-stats { gap: 28px; }
 }

@@ -100,9 +100,9 @@ export default async function TrackSplit({ locale }: { locale: string }) {
               <div className="track-sub">Format</div>
               <div className="track-exam">{t('flightReview.duration')}</div>
             </div>
-            <a href="#" className="home-btn-ghost track-cta fr-cta">
+            <Link href={`/${locale}/faq#flight-review`} className="home-btn-ghost track-cta fr-cta">
               {t('flightReview.cta')} →
-            </a>
+            </Link>
           </Reveal>
         </div>
       </div>
