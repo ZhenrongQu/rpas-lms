@@ -1,7 +1,14 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../../src/lib/db";
-import { PAID_ACCESS_PRODUCT, getPaymentConfig } from "../../../../src/lib/payments/config";
-import { grantPaidAccessFromCheckout } from "../../../../src/lib/payments/entitlements";
+import {
+  PAID_ACCESS_PRODUCT,
+  FLIGHT_REVIEW_PRODUCT,
+  getPaymentConfig,
+} from "../../../../src/lib/payments/config";
+import {
+  grantPaidAccessFromCheckout,
+  grantFlightReviewFromCheckout,
+} from "../../../../src/lib/payments/entitlements";
 import { getStripeClient } from "../../../../src/lib/payments/stripeClient";
 
 type CheckoutSessionLike = {
@@ -51,18 +58,24 @@ export async function POST(req: Request): Promise<Response> {
   const session = event.data.object as CheckoutSessionLike;
   const userId = session.metadata?.userId;
   const product = session.metadata?.product;
-  if (!userId || product !== PAID_ACCESS_PRODUCT || session.payment_status !== "paid") {
+  if (!userId || session.payment_status !== "paid") {
     return Response.json({ received: true }, { status: 200 });
   }
 
-  await grantPaidAccessFromCheckout({
+  const grant = {
     id: session.id,
     userId,
     paymentIntentId: idOf(session.payment_intent),
     customerId: idOf(session.customer),
     amountTotal: session.amount_total ?? null,
     currency: session.currency ?? null,
-  });
+  };
+
+  if (product === PAID_ACCESS_PRODUCT) {
+    await grantPaidAccessFromCheckout(grant);
+  } else if (product === FLIGHT_REVIEW_PRODUCT) {
+    await grantFlightReviewFromCheckout(grant);
+  }
 
   return Response.json({ received: true }, { status: 200 });
 }

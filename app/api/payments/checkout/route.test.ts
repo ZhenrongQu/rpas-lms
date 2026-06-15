@@ -53,4 +53,37 @@ describe("POST /api/payments/checkout", () => {
       }),
     ]);
   });
+
+  it("creates a Flight Review checkout session with its own price and metadata", async () => {
+    const calls: unknown[] = [];
+    __setStripeClientForTests({
+      checkout: {
+        sessions: {
+          create: async (params: unknown) => {
+            calls.push(params);
+            return { url: "https://checkout.stripe.test/fr" };
+          },
+        },
+      },
+      webhooks: { constructEvent: () => { throw new Error("not used"); } },
+    });
+
+    const res = await POST(
+      new Request("http://test/api/payments/checkout", {
+        method: "POST",
+        headers: { "x-test-user-id": "u1" },
+        body: JSON.stringify({ locale: "en", product: "flight_review" }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ url: "https://checkout.stripe.test/fr" });
+    expect(calls).toEqual([
+      expect.objectContaining({
+        metadata: { userId: "u1", product: "flight_review" },
+        line_items: [{ price: "price_flight_review_unit", quantity: 1 }],
+        success_url: "https://rpas.test/en/billing/success?session_id={CHECKOUT_SESSION_ID}",
+      }),
+    ]);
+  });
 });

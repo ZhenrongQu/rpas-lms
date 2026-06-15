@@ -18,6 +18,7 @@ export default defineConfig({
       STRIPE_SECRET_KEY: "sk_test_unit",
       STRIPE_WEBHOOK_SECRET: "whsec_unit",
       STRIPE_PAID_ACCESS_PRICE_ID: "price_paid_access_unit",
+      STRIPE_FLIGHT_REVIEW_PRICE_ID: "price_flight_review_unit",
     },
     globalSetup: ["./vitest.globalSetup.ts"],
     // All test files share one Postgres database; run them sequentially so

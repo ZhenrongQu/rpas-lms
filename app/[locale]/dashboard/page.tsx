@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '../../../auth';
 import { getCourseLessonCount } from '@/lib/lessons/catalog';
 import { listCompletedLessonIds } from '@/lib/lessons/progress';
+import FlightReviewPanel from '@/components/dashboard/FlightReviewPanel';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -104,6 +105,9 @@ export default async function DashboardPage({ params }: Props) {
             </Link>
           </div>
         </section>
+
+        {/* ── Flight Review ── */}
+        {userId && <FlightReviewPanel userId={userId} locale={locale} />}
 
       </div>
     </div>

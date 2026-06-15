@@ -44,6 +44,7 @@ model Customer {
   advancedProgress AdvancedLessonProgress[]
   payments         Payment[]
   entitlements     Entitlement[]
+  flightReviewBooking FlightReviewBooking?
 }
 
 model UserIdentity {
@@ -126,6 +127,39 @@ model WebhookEvent {
   id          String   @id
   type        String
   processedAt DateTime @default(now())
+}
+
+// ─── Flight Review booking ───────────────────────────────────────────────────
+// Admins publish discrete dated slots (each carrying its own location + examiner);
+// an eligible student books exactly one. A booking row's existence == an active
+// booking: cancelling deletes the row (slot reopens), rescheduling moves slotId.
+// `slotId @unique` makes double-booking impossible at the DB level.
+
+model FlightReviewSlot {
+  id            String               @id @default(cuid())
+  startsAt      DateTime // stored UTC
+  durationMin   Int                  @default(60)
+  location      String
+  examinerName  String
+  examinerEmail String?
+  examinerPhone String?
+  notes         String?
+  status        String               @default("ACTIVE") // "ACTIVE" | "ARCHIVED"
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  booking       FlightReviewBooking?
+
+  @@index([startsAt])
+}
+
+model FlightReviewBooking {
+  id         String           @id @default(cuid())
+  slotId     String           @unique // one booking per slot → blocks double-booking
+  slot       FlightReviewSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  customerId String           @unique // one active booking per student
+  customer   Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
 }
 
 // ─── Question banks (split by certification level) ───────────────────────────

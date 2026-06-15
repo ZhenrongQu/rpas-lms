@@ -2,7 +2,17 @@
 
 import { useState } from "react";
 
-export default function PurchaseButton({ locale }: { locale: string }) {
+export default function PurchaseButton({
+  locale,
+  product,
+  label,
+  className,
+}: {
+  locale: string;
+  product?: string;
+  label?: string;
+  className?: string;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -13,7 +23,7 @@ export default function PurchaseButton({ locale }: { locale: string }) {
       const res = await fetch("/api/payments/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ locale }),
+        body: JSON.stringify(product ? { locale, product } : { locale }),
       });
       const data = (await res.json()) as { url?: string; error?: string };
       if (!res.ok) {
@@ -30,8 +40,8 @@ export default function PurchaseButton({ locale }: { locale: string }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <button type="button" className="btn-review" onClick={startCheckout} disabled={loading}>
-        {loading ? "Opening checkout…" : "Unlock paid lessons"}
+      <button type="button" className={className ?? "btn-review"} onClick={startCheckout} disabled={loading}>
+        {loading ? "Opening checkout…" : (label ?? "Unlock paid lessons")}
       </button>
       {error && (
         <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--amber)", maxWidth: 320 }}>

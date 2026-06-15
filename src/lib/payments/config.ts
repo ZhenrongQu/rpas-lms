@@ -1,9 +1,16 @@
 export const PAID_ACCESS_PRODUCT = "paid_access";
+export const FLIGHT_REVIEW_PRODUCT = "flight_review";
+
+export type CheckoutProduct = typeof PAID_ACCESS_PRODUCT | typeof FLIGHT_REVIEW_PRODUCT;
 
 export type PaymentConfig = {
   stripeSecretKey: string;
   webhookSecret: string;
   paidAccessPriceId: string;
+  // Optional: only required to actually sell the Flight Review add-on. Kept
+  // optional so paid-access checkout still works in deployments that haven't
+  // configured the Flight Review price yet.
+  flightReviewPriceId: string | null;
   appUrl: string;
 };
 
@@ -18,8 +25,16 @@ export function getPaymentConfig(): PaymentConfig {
     stripeSecretKey: requiredEnv("STRIPE_SECRET_KEY"),
     webhookSecret: requiredEnv("STRIPE_WEBHOOK_SECRET"),
     paidAccessPriceId: requiredEnv("STRIPE_PAID_ACCESS_PRICE_ID"),
+    flightReviewPriceId: process.env.STRIPE_FLIGHT_REVIEW_PRICE_ID ?? null,
     appUrl: requiredEnv("APP_URL").replace(/\/$/, ""),
   };
+}
+
+/** Resolves the Stripe price id for a product, throwing if it isn't configured. */
+export function priceIdForProduct(product: CheckoutProduct, config: PaymentConfig): string {
+  const id = product === FLIGHT_REVIEW_PRODUCT ? config.flightReviewPriceId : config.paidAccessPriceId;
+  if (!id) throw new Error(`Stripe price for ${product} is not configured`);
+  return id;
 }
 
 export function normalizeCheckoutLocale(locale: unknown): "en" | "zh" {
