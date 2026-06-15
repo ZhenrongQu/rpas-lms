@@ -199,6 +199,27 @@
     "upgradeToPay": "Upgrade to Access",
     "profileName": "Name"
   },
+  "flightReview": {
+    "panelTitle": "Flight Review",
+    "description": "Schedule your in-person flight review with a Transport Canada examiner.",
+    "purchaseDescription": "Purchase the Flight Review to book your in-person exam with a Transport Canada examiner.",
+    "book": "Book Flight Review",
+    "dateTime": "Date & time",
+    "location": "Location",
+    "examiner": "Examiner",
+    "reschedule": "Reschedule",
+    "cancel": "Cancel",
+    "cancelConfirm": "Cancel this flight review appointment?",
+    "pageTitle": "Book your Flight Review",
+    "pageSubtitle": "Choose an available time. All times are shown in Pacific time.",
+    "selectSlot": "Book this slot",
+    "noSlots": "No slots are available right now. Please check back later.",
+    "currentlyBooked": "Currently booked",
+    "booking": "Booking…",
+    "bookingError": "That slot was just taken. Please pick another.",
+    "genericError": "Something went wrong. Please try again.",
+    "minutes": "min"
+  },
   "modules": {
     "intro": "Intro",
     "air-law": "Air Law & Regs",

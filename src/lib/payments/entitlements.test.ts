@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "../db";
-import { grantPaidAccessFromCheckout, hasPaidAccess } from "./entitlements";
+import {
+  canBookFlightReview,
+  grantFlightReviewEntitlement,
+  grantPaidAccessFromCheckout,
+  hasPaidAccess,
+  revokeFlightReviewEntitlement,
+} from "./entitlements";
 
 describe("payment entitlements", () => {
   beforeEach(async () => {
@@ -34,5 +40,34 @@ describe("payment entitlements", () => {
     expect(user.stripeCustomerId).toBe("cus_1");
     expect(await prisma.payment.count()).toBe(1);
     expect(await prisma.entitlement.count()).toBe(1);
+  });
+});
+
+describe("flight review eligibility", () => {
+  beforeEach(async () => {
+    await prisma.entitlement.deleteMany();
+    await prisma.customer.deleteMany();
+  });
+
+  it("is eligible with the flight_review entitlement, regardless of tier", async () => {
+    await prisma.customer.create({ data: { id: "free", email: "free@test.local", accessTier: "FREE" } });
+    await prisma.customer.create({ data: { id: "paid", email: "paid@test.local", accessTier: "PAID" } });
+
+    // No flight_review entitlement → not eligible, even for a PAID user.
+    expect(await canBookFlightReview("free")).toBe(false);
+    expect(await canBookFlightReview("paid")).toBe(false);
+
+    // The flight_review entitlement alone unlocks booking (it's its own product).
+    await grantFlightReviewEntitlement("free");
+    expect(await canBookFlightReview("free")).toBe(true);
+  });
+
+  it("revoking flight_review removes eligibility", async () => {
+    await prisma.customer.create({ data: { id: "paid", email: "paid@test.local", accessTier: "PAID" } });
+    await grantFlightReviewEntitlement("paid");
+    expect(await canBookFlightReview("paid")).toBe(true);
+
+    await revokeFlightReviewEntitlement("paid");
+    expect(await canBookFlightReview("paid")).toBe(false);
   });
 });

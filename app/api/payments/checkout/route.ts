@@ -2,41 +2,56 @@ import { currentAccount } from "../../exam/sessionAuth";
 import {
   getPaymentConfig,
   paidAccessCheckoutUrls,
+  priceIdForProduct,
   PAID_ACCESS_PRODUCT,
+  FLIGHT_REVIEW_PRODUCT,
+  type CheckoutProduct,
 } from "../../../../src/lib/payments/config";
-import { hasPaidAccess } from "../../../../src/lib/payments/entitlements";
+import {
+  hasPaidAccess,
+  hasFlightReviewEntitlement,
+} from "../../../../src/lib/payments/entitlements";
 import { getStripeClient } from "../../../../src/lib/payments/stripeClient";
 
 export async function POST(req: Request): Promise<Response> {
   const account = await currentAccount(req);
   if (!account.userId) return Response.json({ error: "auth required" }, { status: 401 });
 
-  let body: { locale?: unknown } = {};
+  let body: { locale?: unknown; product?: unknown } = {};
   try {
-    body = (await req.json()) as { locale?: unknown };
+    body = (await req.json()) as { locale?: unknown; product?: unknown };
   } catch {
     body = {};
   }
 
+  // Default to paid access for backward compatibility (the lesson paywall sends no product).
+  const product: CheckoutProduct =
+    body.product === FLIGHT_REVIEW_PRODUCT ? FLIGHT_REVIEW_PRODUCT : PAID_ACCESS_PRODUCT;
+
   let successUrl: string;
   let cancelUrl: string;
-  let config: ReturnType<typeof getPaymentConfig>;
+  let priceId: string;
   try {
     const urls = paidAccessCheckoutUrls(body.locale);
     successUrl = urls.successUrl;
     cancelUrl = urls.cancelUrl;
-    config = getPaymentConfig();
+    priceId = priceIdForProduct(product, getPaymentConfig());
   } catch {
     return Response.json({ error: "payments not configured" }, { status: 503 });
   }
 
-  if (await hasPaidAccess(account.userId)) return Response.json({ url: successUrl }, { status: 200 });
+  // Already entitled → skip checkout and send them to the success page.
+  const alreadyEntitled =
+    product === FLIGHT_REVIEW_PRODUCT
+      ? await hasFlightReviewEntitlement(account.userId)
+      : await hasPaidAccess(account.userId);
+  if (alreadyEntitled) return Response.json({ url: successUrl }, { status: 200 });
 
   const session = await getStripeClient().checkout.sessions.create({
     mode: "payment",
-    line_items: [{ price: config.paidAccessPriceId, quantity: 1 }],
+    line_items: [{ price: priceId, quantity: 1 }],
     client_reference_id: account.userId,
-    metadata: { userId: account.userId, product: PAID_ACCESS_PRODUCT },
+    metadata: { userId: account.userId, product },
     success_url: successUrl,
     cancel_url: cancelUrl,
   });

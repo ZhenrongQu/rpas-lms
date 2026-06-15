@@ -14,6 +14,10 @@ export default function AdminPage() {
           <h2>Lessons</h2>
           <p>Edit lesson content, titles, and MDX bodies</p>
         </Link>
+        <Link href={`${ADMIN_BASE}/flight-review`} className="admin-card">
+          <h2>Flight Reviews</h2>
+          <p>Manage bookable slots and student eligibility</p>
+        </Link>
       </div>
     </div>
   );

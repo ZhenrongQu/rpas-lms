@@ -1152,6 +1152,38 @@ html, body {
   .dash-page { padding: 28px 16px; }
 }
 
+/* ── Flight Review (dashboard panel + booking page) ── */
+.fr-panel-cta { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+.fr-description { color: var(--text-2); font-size: 14px; line-height: 1.6; }
+.fr-appointment { display: flex; flex-direction: column; gap: 12px; }
+.fr-appointment-detail { display: flex; flex-direction: column; gap: 2px; }
+.fr-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; color: var(--text-3); text-transform: uppercase; }
+.fr-value { font-family: var(--font-ui); font-size: 15px; color: var(--text-1); }
+.fr-actions { display: flex; gap: 12px; margin-top: 8px; }
+.btn-cancel {
+  font-family: var(--font-ui); font-size: 14px; font-weight: 600; padding: 11px 24px;
+  background: transparent; border: 1px solid var(--border-strong); color: var(--text-2);
+  cursor: pointer; border-radius: var(--r-ctl); transition: border-color 0.2s, color 0.2s;
+}
+.btn-cancel:hover { border-color: var(--amber); color: var(--amber); }
+.btn-cancel:disabled { opacity: 0.5; cursor: default; }
+.fr-booking { display: flex; flex-direction: column; gap: 16px; }
+.fr-error { font-family: var(--font-mono); font-size: 13px; color: var(--amber); }
+.fr-current {
+  display: flex; flex-direction: column; gap: 4px; padding: 16px;
+  border: 1px solid var(--accent-line); border-radius: var(--r-card); background: var(--accent-soft);
+}
+.fr-current-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-text); }
+.fr-slot-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.fr-slot {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface);
+}
+.fr-slot-info { display: flex; flex-direction: column; gap: 4px; }
+.fr-slot-when { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--text-1); }
+.fr-slot-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+.fr-empty { color: var(--text-3); font-size: 14px; }
+
 /* ═══════════════════════════════ Admin CMS (light, self-contained) ═══════════════════════════════ */
 /* The admin tool keeps its own plain light surface for content legibility. */
 .admin-layout {

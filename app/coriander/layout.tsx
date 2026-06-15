@@ -32,6 +32,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         <Link href={`${ADMIN_BASE}/lessons`} className="admin-nav-link">
           Lessons
         </Link>
+        <Link href={`${ADMIN_BASE}/flight-review`} className="admin-nav-link">
+          Flight Reviews
+        </Link>
         <Link href={`/${routing.defaultLocale}/dashboard`} className="admin-nav-back">
           ← Back to site
         </Link>

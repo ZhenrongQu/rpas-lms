@@ -199,6 +199,27 @@
     "upgradeToPay": "升级解锁",
     "profileName": "姓名"
   },
+  "flightReview": {
+    "panelTitle": "飞行考核",
+    "description": "预约与加拿大交通部考官的线下飞行考核。",
+    "purchaseDescription": "购买飞行考核服务，即可预约与加拿大交通部考官的线下考核。",
+    "book": "预约飞行考核",
+    "dateTime": "时间",
+    "location": "地点",
+    "examiner": "考官",
+    "reschedule": "改期",
+    "cancel": "取消预约",
+    "cancelConfirm": "确定取消本次飞行考核预约吗？",
+    "pageTitle": "预约您的飞行考核",
+    "pageSubtitle": "请选择一个可用时间。以下时间均为太平洋时间。",
+    "selectSlot": "预约该时段",
+    "noSlots": "暂无可预约时段，请稍后再来查看。",
+    "currentlyBooked": "当前已预约",
+    "booking": "预约中…",
+    "bookingError": "该时段刚被预约。请选择其他时段。",
+    "genericError": "出现错误，请重试。",
+    "minutes": "分钟"
+  },
   "modules": {
     "intro": "平台介绍",
     "air-law": "航空法规",
