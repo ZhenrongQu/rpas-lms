@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { signOut } from 'next-auth/react';
+import { getHudNavState } from './navState';
 
 function UserMenu({
   user,
@@ -79,8 +80,21 @@ export default function HudHeader({
   const t = useTranslations('nav');
   const tAuth = useTranslations('auth');
   const pathname = usePathname();
+  const [hash, setHash] = useState('');
 
   const isHome = pathname === `/${locale}` || pathname === `/${locale}/`;
+  const navState = getHudNavState({ locale, pathname, hash });
+
+  useEffect(() => {
+    const updateHash = () => setHash(window.location.hash);
+    updateHash();
+    window.addEventListener('hashchange', updateHash);
+    window.addEventListener('popstate', updateHash);
+    return () => {
+      window.removeEventListener('hashchange', updateHash);
+      window.removeEventListener('popstate', updateHash);
+    };
+  }, [pathname]);
 
   const localeHref = (target: string) =>
     pathname.replace(new RegExp(`^/${locale}`), `/${target}`);
@@ -88,6 +102,8 @@ export default function HudHeader({
   const handleHashNav = (hash: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (isHome) {
       e.preventDefault();
+      window.history.pushState(null, '', `#${hash}`);
+      setHash(`#${hash}`);
       document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' });
     }
   };
@@ -118,21 +134,17 @@ export default function HudHeader({
 
       {/* Nav tabs */}
       <nav className="nav-tabs">
-        <Link href={`/${locale}`} className={`nav-tab${isHome ? ' active' : ''}`}>
+        <Link href={`/${locale}`} className={`nav-tab${navState.home ? ' active' : ''}`}>
           {t('home')}
         </Link>
         <Link
           href={`/${locale}#tracks`}
-          className="nav-tab"
+          className={`nav-tab${navState.services ? ' active' : ''}`}
           onClick={handleHashNav('tracks')}
         >
           {t('services')}
         </Link>
-        <Link
-          href={`/${locale}#how`}
-          className="nav-tab"
-          onClick={handleHashNav('how')}
-        >
+        <Link href={`/${locale}/about`} className={`nav-tab${navState.about ? ' active' : ''}`}>
           {t('about')}
         </Link>
       </nav>

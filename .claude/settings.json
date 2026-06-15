@@ -115,7 +115,20 @@
       "Bash(awk '/model BasicLesson /,/^}/' prisma/schema.prisma)",
       "Bash(awk '/generator/,/}/' prisma/schema.prisma)",
       "Bash(git -C /Users/quzhenrong/rpas-lms add src/lib/admin/lessons.ts src/lib/admin/lessons.test.ts)",
-      "Bash(awk '/model AdvancedLesson /,/^}/' prisma/schema.prisma)"
+      "Bash(awk '/model AdvancedLesson /,/^}/' prisma/schema.prisma)",
+      "Bash(pnpm db:generate)",
+      "Bash(node -e \"const m=require\\('./messages/en.json'\\); console.log\\(JSON.stringify\\(m.dashboard,null,2\\)\\); console.log\\('--- learn ---'\\); console.log\\(JSON.stringify\\(m.learn,null,2\\)\\);\")",
+      "Bash(node -e \"console.log\\(Object.keys\\(require\\('./messages/en.json'\\)\\).join\\('\\\\n'\\)\\)\")",
+      "Bash(node -e \"const m=require\\('./messages/zh.json'\\); console.log\\(JSON.stringify\\(m.dashboard,null,2\\)\\)\")",
+      "Bash(node --env-file=/Users/quzhenrong/rpas-lms/.env /tmp/rls-check.cjs)",
+      "Bash(npm root *)",
+      "Bash(echo \"GLOBAL_ROOT=$\\(npm root -g\\)\")",
+      "Bash(pip3 install *)",
+      "Read(//Applications/LibreOffice.app/Contents/MacOS/**)",
+      "Bash(python3 /Users/quzhenrong/.claude/plugins/cache/anthropic-agent-skills/document-skills/575462609294/skills/docx/scripts/office/validate.py /Users/quzhenrong/Resume_ZhenrongQu.docx)",
+      "Bash(node /tmp/build_cover.js)",
+      "Bash(python3 __TRACKED_VAR__/scripts/office/validate.py /Users/quzhenrong/CoverLetter_ZhenrongQu.docx)",
+      "Bash(git stash *)"
     ],
     "additionalDirectories": [
       "/tmp/rpas-sec-wt/docs/superpowers/specs",

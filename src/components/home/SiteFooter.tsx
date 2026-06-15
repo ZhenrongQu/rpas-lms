@@ -18,20 +18,14 @@ export default async function SiteFooter({ locale }: { locale: string }) {
             </div>
             <div className="footer-tagline">{t('tagline')}</div>
             <p className="footer-blurb">{t('blurb')}</p>
-            {/* Social placeholders - clearly sample links */}
-            <div className="footer-socials">
-              {['X', 'IG', 'YT'].map((s) => (
-                <a key={s} href="#" className="footer-social" aria-label={`${s} (sample)`}>
-                  {s}
-                </a>
-              ))}
-            </div>
           </div>
 
           <div>
             <div className="footer-col-title">{t('exploreTitle')}</div>
             <div className="footer-links">
               <Link href={`/${locale}`} className="footer-link">{t('linkHome')}</Link>
+              <Link href={`/${locale}/about`} className="footer-link">{isChinese ? '关于 Pacific Drone' : 'About Pacific Drone'}</Link>
+              <Link href={`/${locale}/faq`} className="footer-link">{t('resFaq')}</Link>
               <Link href={`/${locale}/learn/basic`} className="footer-link">{t('linkBasic')}</Link>
               <Link href={`/${locale}/learn/advanced`} className="footer-link">{t('linkAdvanced')}</Link>
               <Link href={`/${locale}/exam`} className="footer-link">{t('linkExam')}</Link>

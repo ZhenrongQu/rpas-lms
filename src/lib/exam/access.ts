@@ -21,7 +21,7 @@ export function canViewLesson(tier: AccessTier, access: "FREE" | "PAID"): boolea
 /**
  * Scopes the question pool by access tier for a Basic exam:
  * - PAID  → all eligible questions (every difficulty)
- * - FREE  → Basic, difficulty 1 (a full registered-but-unpaid sample)
+ * - FREE  → Basic, difficulty 1 (a full registered-but-unpaid preview)
  * - GUEST → Basic, difficulty 0 (anonymous taster)
  * Advanced is PAID-only, so FREE/GUEST get an empty Advanced pool.
  */

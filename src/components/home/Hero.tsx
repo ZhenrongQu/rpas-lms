@@ -37,10 +37,9 @@ export default async function Hero({ locale }: { locale: string }) {
           </div>
         </div>
 
-        {/* Placeholder aerial photo. Replace the src with brand drone photography. */}
         <figure className="hero-media">
           <img
-            src="https://picsum.photos/seed/rpas-academy-aerial-canada/1200/900"
+            src="https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=1200&q=80"
             alt={t('imageAlt')}
             loading="eager"
           />
