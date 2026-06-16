@@ -38,6 +38,19 @@
 - 开发时对 **dev 库** 跑 `prisma migrate dev` 生成迁移并提交。
 - 上线时对 **prod 库** 手动 `prisma migrate deploy`（我们没把 migrate 塞进 build，避免 preview 误迁生产）。
 
+### ⚠️ 迁移纪律（2026-06-16 漂移事故复盘）
+**事故**：lesson 视频字段 + Flight Review 两张表当初只 `prisma db push` 到了 dev，**没生成迁移**。prod 只跑 `migrate deploy`，于是一直缺这些表/列。用户用新开的 Google 登录进 `/dashboard` → 查 `FlightReviewBooking` → 500。
+**已修**：从 prod→schema diff 生成迁移 `20260616154112_add_lesson_video_and_flight_review`（纯新增 ADD COLUMN / CREATE TABLE），`migrate deploy` 到 prod、dev `migrate resolve --applied`。
+
+**铁律**：
+- 任何会上生产的 schema 改动，**必须** `prisma migrate dev --name xxx` 生成迁移并提交。**禁止**只用 `db push`（它只配本地一次性试验）。
+- **上线前自查漂移**（只读，exit code 2 = 有漂移，先补迁移再上）：
+  ```bash
+  PROD='<prod session-pooler URL :5432>'
+  pnpm exec prisma migrate diff --from-url "$PROD" --to-schema-datamodel prisma/schema.prisma --exit-code
+  ```
+- 备注：对 prod/dev 跑 migrate/diff 用 **session pooler 端口 `:5432`**（`:6543` 是 transaction 模式，migrate 会卡住）。
+
 ## 待定 / 后续
 - ~~dev 暴露方式~~：已选 **固定 `dev` 分支** + **`dev.pacificdrone.ca`** 自定义子域名（2026-06-11 加，灰云 DNS-only）。
 - ~~dev 的 Stripe~~：已决定 **test 支付只在本地跑**（部署态 dev 不配 Stripe，维持 Vercel 保护）。若将来要让部署态 dev 也跑支付，需让 Stripe webhook 穿过 Vercel Preview Protection（关保护变公开，或用 Protection Bypass token），再注册 dev test webhook + 配 3 个 `STRIPE_*` 到 Preview@dev。
