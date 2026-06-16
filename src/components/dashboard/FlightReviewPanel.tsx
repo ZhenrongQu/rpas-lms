@@ -5,6 +5,7 @@ import { FLIGHT_REVIEW_PRODUCT } from '@/lib/payments/config';
 import { getUserBooking } from '@/lib/flightReview/booking';
 import { formatSlotDateTime } from '@/lib/flightReview/format';
 import PurchaseButton from '@/components/payments/PurchaseButton';
+import { isNativeRequest } from '@/lib/platform.server';
 import FlightReviewActions from './FlightReviewActions';
 
 export default async function FlightReviewPanel({ userId, locale }: { userId: string; locale: string }) {
@@ -13,6 +14,7 @@ export default async function FlightReviewPanel({ userId, locale }: { userId: st
     canBookFlightReview(userId),
     getUserBooking(userId),
   ]);
+  const native = await isNativeRequest();
 
   return (
     <section className="hud-panel dash-section">
@@ -41,6 +43,11 @@ export default async function FlightReviewPanel({ userId, locale }: { userId: st
           <Link href={`/${locale}/flight-review`} className="btn-launch">
             {t('flightReview.book')} →
           </Link>
+        </div>
+      ) : native ? (
+        /* Reader-app compliance: no purchase entry inside the native shell. */
+        <div className="fr-panel-cta">
+          <p className="fr-description">{t('flightReview.lockedNative')}</p>
         </div>
       ) : (
         <div className="fr-panel-cta">

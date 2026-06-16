@@ -1,0 +1,28 @@
+{
+  "name": "rpas-lms-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capacitor native shell (iOS/Android) for the Pacific Drone RPAS LMS. Loads the live site in a WebView. See README.md.",
+  "scripts": {
+    "sync": "cap sync",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android",
+    "run:ios": "cap run ios",
+    "run:android": "cap run android",
+    "assets": "capacitor-assets generate --iconBackgroundColor '#FBFBF9' --splashBackgroundColor '#FBFBF9'"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.6",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/browser": "^7.0.5",
+    "@capacitor/core": "^7.6.6",
+    "@capacitor/ios": "^7.6.6",
+    "@capacitor/keyboard": "^7.0.6",
+    "@capacitor/splash-screen": "^7.0.5",
+    "@capacitor/status-bar": "^7.0.6"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.6.6"
+  }
+}

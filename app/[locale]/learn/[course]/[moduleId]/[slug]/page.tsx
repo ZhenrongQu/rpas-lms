@@ -10,6 +10,7 @@ import MDXContent from '@/components/learn/MDXContent';
 import LessonShell from '@/components/learn/LessonShell';
 import LessonSidebar from '@/components/learn/LessonSidebar';
 import PurchaseButton from '@/components/payments/PurchaseButton';
+import { isNativeRequest } from '@/lib/platform.server';
 import type { Course, RouteLocale } from '@/lib/lessons/types';
 import VideoPlayer from '@/components/learn/VideoPlayer';
 import { streamConfig, signPlaybackToken } from '@/lib/video/cloudflareStream';
@@ -29,6 +30,7 @@ export default async function LessonPage({ params }: Props) {
 
   if (!canViewLesson(tier, lesson.meta.access)) {
     const t = await getTranslations({ locale });
+    const native = await isNativeRequest();
     return (
       <div className="module-landing">
         <Link href={`/${locale}/learn/${course}/${moduleId}`} className="btn-review">
@@ -37,9 +39,10 @@ export default async function LessonPage({ params }: Props) {
         <div className="hud-panel locked-gate">
           <div className="locked-icon">🔒</div>
           <div className="locked-title">{t('learn.lockedTitle')}</div>
-          <div className="locked-body">{t('learn.lockedBody')}</div>
+          <div className="locked-body">{t(native ? 'learn.lockedBodyNative' : 'learn.lockedBody')}</div>
+          {/* Reader-app compliance: no purchase entry inside the native shell. */}
           {userId ? (
-            <PurchaseButton locale={locale} />
+            native ? null : <PurchaseButton locale={locale} />
           ) : (
             <Link href={`/${locale}/signin`} className="btn-review">
               {t('auth.signIn')}

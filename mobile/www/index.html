@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Pacific Drone</title>
+    <style>
+      :root { color-scheme: light; }
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: #fbfbf9;
+        color: #14213d;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      main {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+        text-align: center;
+      }
+      h1 { font-size: 20px; letter-spacing: 0.06em; margin: 0; }
+      p { font-size: 14px; color: #5b6472; max-width: 28ch; margin: 0; }
+    </style>
+  </head>
+  <body>
+    <!-- Offline fallback. The app normally loads the live site via server.url;
+         this is only shown when the network is unavailable. -->
+    <main>
+      <h1>PACIFIC DRONE</h1>
+      <p>You appear to be offline. Reconnect to continue your training.</p>
+    </main>
+  </body>
+</html>
