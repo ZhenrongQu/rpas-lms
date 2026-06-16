@@ -48,6 +48,9 @@ npx cap add ios
 npm run assets            # regenerate icons/splash (also fills the new ios/ project)
 ```
 
+> **iOS:** full step-by-step (Xcode, CocoaPods, signing, run, submit) is in
+> [IOS_SETUP.md](IOS_SETUP.md).
+
 ## Day-to-day
 
 ```bash
