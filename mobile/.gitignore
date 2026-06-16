@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# iOS (CocoaPods + generated web assets)
+ios/App/Pods/
+ios/App/App/public/
+ios/App/Podfile.lock
+DerivedData/
+
+# Android (Gradle build output + generated web assets)
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/public/
+android/local.properties
+android/capacitor-cordova-android-plugins/
+*.keystore
+!debug.keystore
+
+# Misc
+*.log
+.DS_Store
