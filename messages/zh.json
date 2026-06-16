@@ -203,6 +203,7 @@
     "panelTitle": "飞行考核",
     "description": "预约与加拿大交通部考官的线下飞行考核。",
     "purchaseDescription": "购买飞行考核服务，即可预约与加拿大交通部考官的线下考核。",
+    "lockedNative": "您的账户尚未开通飞行考核服务。",
     "book": "预约飞行考核",
     "dateTime": "时间",
     "location": "地点",
@@ -317,7 +318,8 @@
     "completeNext": "完成并继续",
     "answerToContinue": "答对检查点后继续",
     "lockedTitle": "进阶课程：付费内容",
-    "lockedBody": "本课属于付费的进阶运行 (Advanced) 课程。升级账户即可解锁。"
+    "lockedBody": "本课属于付费的进阶运行 (Advanced) 课程。升级账户即可解锁。",
+    "lockedBodyNative": "本课属于完整的进阶运行 (Advanced) 课程，当前账户暂无访问权限。"
   },
   "checkpoint": {
     "title": "应用你的知识",

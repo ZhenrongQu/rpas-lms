@@ -203,6 +203,7 @@
     "panelTitle": "Flight Review",
     "description": "Schedule your in-person flight review with a Transport Canada examiner.",
     "purchaseDescription": "Purchase the Flight Review to book your in-person exam with a Transport Canada examiner.",
+    "lockedNative": "The Flight Review isn't enabled on your account yet.",
     "book": "Book Flight Review",
     "dateTime": "Date & time",
     "location": "Location",
@@ -317,7 +318,8 @@
     "completeNext": "Complete & Next",
     "answerToContinue": "Answer the checkpoint to continue",
     "lockedTitle": "Advanced lesson: paid access",
-    "lockedBody": "This lesson is part of the paid Advanced Operations course. Upgrade your account to unlock it."
+    "lockedBody": "This lesson is part of the paid Advanced Operations course. Upgrade your account to unlock it.",
+    "lockedBodyNative": "This lesson is part of the full Advanced Operations course, which isn't included in your current access."
   },
   "checkpoint": {
     "title": "Apply Your Knowledge",

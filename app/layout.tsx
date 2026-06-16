@@ -1,11 +1,19 @@
 import type { ReactNode } from 'react';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import { Archivo, IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
 import { siteMetadata } from '@/lib/seo';
 import './globals.css';
 
 export const metadata: Metadata = siteMetadata;
+
+// viewport-fit=cover lets the native WebView render edge-to-edge so the
+// env(safe-area-inset-*) values become available for notch/home-indicator padding.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
 
 // Institutional grotesk display — headlines, brand, section titles.
 const archivo = Archivo({

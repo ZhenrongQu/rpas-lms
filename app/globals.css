@@ -1384,3 +1384,14 @@ html, body {
 .track-name {
   line-height: 1.18;
 }
+
+/* ───────────────────────────────
+   Native app (Capacitor) safe areas.
+   env(safe-area-inset-*) resolves to 0 on the web, so these rules are no-ops
+   in the browser and only take effect inside the native WebView, where
+   viewport-fit=cover exposes the device's notch / status-bar insets.
+   ─────────────────────────────── */
+.hud-header {
+  height: calc(64px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+}
