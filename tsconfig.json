@@ -23,10 +23,9 @@
     "types": [
       "node"
     ],
-    "baseUrl": ".",
     "paths": {
       "@/*": [
-        "src/*"
+        "./src/*"
       ]
     },
     "allowJs": true,
