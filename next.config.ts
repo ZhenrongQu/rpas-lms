@@ -14,8 +14,12 @@ export default withSentryConfig(withNextIntl(nextConfig), {
   silent: !process.env.CI,
   // Upload a wider set of client bundles for better stack traces.
   widenClientFileUpload: true,
-  // Tree-shake Sentry's internal logger from the client bundle.
-  disableLogger: true,
+  // Tree-shake Sentry's internal logger from the bundle (replaces deprecated disableLogger).
+  webpack: {
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
   // tunnelRoute intentionally NOT set: a tunnel path (e.g. /monitoring) would be
   // caught by the next-intl middleware matcher and redirected to /en/monitoring,
   // breaking it. See spec "已知交互".
