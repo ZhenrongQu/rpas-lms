@@ -49,7 +49,7 @@ describe("POST /api/payments/checkout", () => {
         success_url: "https://rpas.test/zh/billing/success?session_id={CHECKOUT_SESSION_ID}",
         cancel_url: "https://rpas.test/zh/billing/cancelled",
         metadata: { userId: "u1", product: "paid_access" },
-        line_items: [{ price: "price_paid_access_unit", quantity: 1 }],
+        line_items: [{ price: "price_advanced_bundle_unit", quantity: 1 }],
       }),
     ]);
   });

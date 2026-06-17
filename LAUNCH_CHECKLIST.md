@@ -20,7 +20,7 @@ Status key: ✅ done · ⚠️ partial · ❌ not started
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 6 | Stripe live-mode keys | ❌ | Replace `sk_test_*` with `sk_live_*`. Create a live Price in the Stripe dashboard and update `STRIPE_PAID_ACCESS_PRICE_ID`. |
+| 6 | Stripe live-mode keys | ❌ | Replace `sk_test_*` with `sk_live_*`. Create a live Price in the Stripe dashboard and update `STRIPE_ADVANCED_BUNDLE_PRICE_ID`. |
 | 7 | Stripe webhook endpoint | ❌ | Register `https://yourdomain.com/api/payments/webhook` in Stripe dashboard → Webhooks. Event: `checkout.session.completed`. Copy the signing secret to `STRIPE_WEBHOOK_SECRET`. |
 | 8 | End-to-end payment test | ❌ | Use Stripe test mode + card `4242 4242 4242 4242` to confirm: checkout opens → webhook fires → `Entitlement` row created → session refresh shows PAID tier. |
 | 9 | Pricing page | ❌ | No dedicated `/pricing` page exists. Users discover the purchase button only when they hit a locked lesson. Add a pricing page linked from the Services section. |
@@ -93,7 +93,7 @@ stripe login
 
 # 3. Add to .env:
 STRIPE_SECRET_KEY=sk_test_...
-STRIPE_PAID_ACCESS_PRICE_ID=price_...
+STRIPE_ADVANCED_BUNDLE_PRICE_ID=price_...
 APP_URL=http://localhost:3000
 
 # 4. Forward webhooks and copy the signing secret it prints

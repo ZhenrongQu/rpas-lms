@@ -1,5 +1,5 @@
 import { prisma } from "../db";
-import { PAID_ACCESS_PRODUCT, FLIGHT_REVIEW_PRODUCT } from "./config";
+import { ADVANCED_BUNDLE_PRODUCT, FLIGHT_REVIEW_PRODUCT } from "./config";
 
 export type CheckoutGrant = {
   id: string;
@@ -12,7 +12,7 @@ export type CheckoutGrant = {
 
 export async function hasPaidAccess(userId: string): Promise<boolean> {
   const entitlement = await prisma.entitlement.findUnique({
-    where: { userId_product: { userId, product: PAID_ACCESS_PRODUCT } },
+    where: { userId_product: { userId, product: ADVANCED_BUNDLE_PRODUCT } },
     select: { revokedAt: true },
   });
   if (entitlement && !entitlement.revokedAt) return true;
@@ -105,7 +105,7 @@ export async function grantPaidAccessFromCheckout(grant: CheckoutGrant): Promise
         stripeCheckoutSessionId: grant.id,
         stripePaymentIntentId: grant.paymentIntentId ?? null,
         stripeCustomerId: grant.customerId ?? null,
-        product: PAID_ACCESS_PRODUCT,
+        product: ADVANCED_BUNDLE_PRODUCT,
         amountTotal: grant.amountTotal ?? null,
         currency: grant.currency ?? null,
         status: "paid",
@@ -120,10 +120,10 @@ export async function grantPaidAccessFromCheckout(grant: CheckoutGrant): Promise
     });
 
     await tx.entitlement.upsert({
-      where: { userId_product: { userId: grant.userId, product: PAID_ACCESS_PRODUCT } },
+      where: { userId_product: { userId: grant.userId, product: ADVANCED_BUNDLE_PRODUCT } },
       create: {
         userId: grant.userId,
-        product: PAID_ACCESS_PRODUCT,
+        product: ADVANCED_BUNDLE_PRODUCT,
         source: "stripe_checkout",
       },
       update: {

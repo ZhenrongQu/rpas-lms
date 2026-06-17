@@ -57,23 +57,23 @@ Create `src/lib/payments/config.test.ts`:
 ```ts
 import { describe, expect, it } from "vitest";
 import {
-  PAID_ACCESS_PRODUCT,
+  ADVANCED_BUNDLE_PRODUCT,
   getPaymentConfig,
-  paidAccessCheckoutUrls,
+  advancedBundleCheckoutUrls,
 } from "./config";
 
 describe("payment config", () => {
   it("reads Stripe checkout settings from env", () => {
     const config = getPaymentConfig();
-    expect(PAID_ACCESS_PRODUCT).toBe("paid_access");
+    expect(ADVANCED_BUNDLE_PRODUCT).toBe("paid_access");
     expect(config.stripeSecretKey).toBe("sk_test_unit");
     expect(config.webhookSecret).toBe("whsec_unit");
-    expect(config.paidAccessPriceId).toBe("price_paid_access_unit");
+    expect(config.advancedBundlePriceId).toBe("price_advanced_bundle_unit");
     expect(config.appUrl).toBe("https://rpas.test");
   });
 
   it("builds localized success and cancel URLs", () => {
-    expect(paidAccessCheckoutUrls("zh")).toEqual({
+    expect(advancedBundleCheckoutUrls("zh")).toEqual({
       successUrl: "https://rpas.test/zh/billing/success?session_id={CHECKOUT_SESSION_ID}",
       cancelUrl: "https://rpas.test/zh/billing/cancelled",
     });
@@ -99,7 +99,7 @@ Add to `.env.example`:
 APP_URL="http://localhost:3000"
 STRIPE_SECRET_KEY="sk_test_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."
-STRIPE_PAID_ACCESS_PRICE_ID="price_..."
+STRIPE_ADVANCED_BUNDLE_PRICE_ID="price_..."
 ```
 
 - [ ] **Step 5: Add Stripe env to Vitest**
@@ -113,7 +113,7 @@ In `vitest.config.ts`, extend `test.env`:
       APP_URL: "https://rpas.test",
       STRIPE_SECRET_KEY: "sk_test_unit",
       STRIPE_WEBHOOK_SECRET: "whsec_unit",
-      STRIPE_PAID_ACCESS_PRICE_ID: "price_paid_access_unit",
+      STRIPE_ADVANCED_BUNDLE_PRICE_ID: "price_advanced_bundle_unit",
     },
 ```
 
@@ -122,12 +122,12 @@ In `vitest.config.ts`, extend `test.env`:
 Create `src/lib/payments/config.ts`:
 
 ```ts
-export const PAID_ACCESS_PRODUCT = "paid_access";
+export const ADVANCED_BUNDLE_PRODUCT = "paid_access";
 
 export type PaymentConfig = {
   stripeSecretKey: string;
   webhookSecret: string;
-  paidAccessPriceId: string;
+  advancedBundlePriceId: string;
   appUrl: string;
 };
 
@@ -141,7 +141,7 @@ export function getPaymentConfig(): PaymentConfig {
   return {
     stripeSecretKey: requiredEnv("STRIPE_SECRET_KEY"),
     webhookSecret: requiredEnv("STRIPE_WEBHOOK_SECRET"),
-    paidAccessPriceId: requiredEnv("STRIPE_PAID_ACCESS_PRICE_ID"),
+    advancedBundlePriceId: requiredEnv("STRIPE_ADVANCED_BUNDLE_PRICE_ID"),
     appUrl: requiredEnv("APP_URL").replace(/\/$/, ""),
   };
 }
@@ -150,7 +150,7 @@ export function normalizeCheckoutLocale(locale: unknown): "en" | "zh" {
   return locale === "zh" ? "zh" : "en";
 }
 
-export function paidAccessCheckoutUrls(locale: unknown): {
+export function advancedBundleCheckoutUrls(locale: unknown): {
   successUrl: string;
   cancelUrl: string;
 } {
@@ -326,7 +326,7 @@ Create `src/lib/payments/entitlements.ts`:
 
 ```ts
 import { prisma } from "../db";
-import { PAID_ACCESS_PRODUCT } from "./config";
+import { ADVANCED_BUNDLE_PRODUCT } from "./config";
 
 export type CheckoutGrant = {
   id: string;
@@ -339,7 +339,7 @@ export type CheckoutGrant = {
 
 export async function hasPaidAccess(userId: string): Promise<boolean> {
   const entitlement = await prisma.entitlement.findUnique({
-    where: { userId_product: { userId, product: PAID_ACCESS_PRODUCT } },
+    where: { userId_product: { userId, product: ADVANCED_BUNDLE_PRODUCT } },
     select: { revokedAt: true },
   });
   if (entitlement && !entitlement.revokedAt) return true;
@@ -360,7 +360,7 @@ export async function grantPaidAccessFromCheckout(grant: CheckoutGrant): Promise
         stripeCheckoutSessionId: grant.id,
         stripePaymentIntentId: grant.paymentIntentId ?? null,
         stripeCustomerId: grant.customerId ?? null,
-        product: PAID_ACCESS_PRODUCT,
+        product: ADVANCED_BUNDLE_PRODUCT,
         amountTotal: grant.amountTotal ?? null,
         currency: grant.currency ?? null,
         status: "paid",
@@ -375,10 +375,10 @@ export async function grantPaidAccessFromCheckout(grant: CheckoutGrant): Promise
     });
 
     await tx.entitlement.upsert({
-      where: { userId_product: { userId: grant.userId, product: PAID_ACCESS_PRODUCT } },
+      where: { userId_product: { userId: grant.userId, product: ADVANCED_BUNDLE_PRODUCT } },
       create: {
         userId: grant.userId,
-        product: PAID_ACCESS_PRODUCT,
+        product: ADVANCED_BUNDLE_PRODUCT,
         source: "stripe_checkout",
       },
       update: {
@@ -479,7 +479,7 @@ describe("POST /api/payments/checkout", () => {
         success_url: "https://rpas.test/zh/billing/success?session_id={CHECKOUT_SESSION_ID}",
         cancel_url: "https://rpas.test/zh/billing/cancelled",
         metadata: { userId: "u1", product: "paid_access" },
-        line_items: [{ price: "price_paid_access_unit", quantity: 1 }],
+        line_items: [{ price: "price_advanced_bundle_unit", quantity: 1 }],
       }),
     ]);
   });
@@ -525,7 +525,7 @@ Create `app/api/payments/checkout/route.ts`:
 
 ```ts
 import { currentAccount } from "../../exam/sessionAuth";
-import { getPaymentConfig, paidAccessCheckoutUrls, PAID_ACCESS_PRODUCT } from "../../../../src/lib/payments/config";
+import { getPaymentConfig, advancedBundleCheckoutUrls, ADVANCED_BUNDLE_PRODUCT } from "../../../../src/lib/payments/config";
 import { hasPaidAccess } from "../../../../src/lib/payments/entitlements";
 import { getStripeClient } from "../../../../src/lib/payments/stripeClient";
 
@@ -540,15 +540,15 @@ export async function POST(req: Request): Promise<Response> {
     body = {};
   }
 
-  const { successUrl, cancelUrl } = paidAccessCheckoutUrls(body.locale);
+  const { successUrl, cancelUrl } = advancedBundleCheckoutUrls(body.locale);
   if (await hasPaidAccess(account.userId)) return Response.json({ url: successUrl }, { status: 200 });
 
   const config = getPaymentConfig();
   const session = await getStripeClient().checkout.sessions.create({
     mode: "payment",
-    line_items: [{ price: config.paidAccessPriceId, quantity: 1 }],
+    line_items: [{ price: config.advancedBundlePriceId, quantity: 1 }],
     client_reference_id: account.userId,
-    metadata: { userId: account.userId, product: PAID_ACCESS_PRODUCT },
+    metadata: { userId: account.userId, product: ADVANCED_BUNDLE_PRODUCT },
     success_url: successUrl,
     cancel_url: cancelUrl,
   });
@@ -673,7 +673,7 @@ Create `app/api/payments/webhook/route.ts`:
 ```ts
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../../src/lib/db";
-import { PAID_ACCESS_PRODUCT, getPaymentConfig } from "../../../../src/lib/payments/config";
+import { ADVANCED_BUNDLE_PRODUCT, getPaymentConfig } from "../../../../src/lib/payments/config";
 import { grantPaidAccessFromCheckout } from "../../../../src/lib/payments/entitlements";
 import { getStripeClient } from "../../../../src/lib/payments/stripeClient";
 
@@ -724,7 +724,7 @@ export async function POST(req: Request): Promise<Response> {
   const session = event.data.object as CheckoutSessionLike;
   const userId = session.metadata?.userId;
   const product = session.metadata?.product;
-  if (!userId || product !== PAID_ACCESS_PRODUCT || session.payment_status !== "paid") {
+  if (!userId || product !== ADVANCED_BUNDLE_PRODUCT || session.payment_status !== "paid") {
     return Response.json({ received: true }, { status: 200 });
   }
 

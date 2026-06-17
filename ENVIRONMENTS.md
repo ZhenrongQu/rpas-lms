@@ -8,7 +8,7 @@
 - **dev 库已就绪**：`prisma migrate deploy`（init + RLS 触发器）+ `seed:content`（150 题 / 13 课）+ dev 管理员（`devadmin` / robbieqzr@gmail.com，密码在 `.env` 注释 `DEV_ADMIN_PASSWORD`）。
 - **`dev` 分支** 已建并推到 origin，作为 dev 部署环境。dev URL = **`https://dev.pacificdrone.ca`**（Cloudflare CNAME `dev`→`cname.vercel-dns.com`，**灰云 DNS-only**；Vercel 域名绑 `dev` 分支；cert = Let's Encrypt 已签发）。备用别名 `rpas-lms-git-dev-rpas-lms-projects.vercel.app`。**Vercel Deployment Protection 开启**（`ssoProtection: all_except_custom_domains`）→ 访问 dev 需先在浏览器登录 Vercel 账号（登一次 cookie 记住）；他人无法访问，除非加入 Vercel team。Hobby 套餐下只有「公开」或「Vercel 登录」两选项（密码/IP 保护是 Pro）。
 - **Vercel Preview scope（绑 `dev` 分支）已设 6 个变量**：`DATABASE_URL`/`DIRECT_URL`（dev 库）、独立 `AUTH_SECRET`、`APP_URL`（= 上面别名）、`RESEND_API_KEY`/`EMAIL_FROM`（复用生产）。生产 scope 未动。
-- **本地 Stripe 已切 test**（修了第二个隐患：本地原本是 `rk_live_` + 生产 price，点购买会创建真实 LIVE checkout）。现本地 `STRIPE_SECRET_KEY`→`sk_test_`、`STRIPE_PAID_ACCESS_PRICE_ID`→ test price `price_1ThJC49PdDm7daK3QuPUu3aE`（test product `prod_UggZCstvebuXOx`，占位 199 CAD）；live 值备份为注释 `PROD_STRIPE_*`。本地测支付：`stripe listen --forward-to localhost:3000/api/payments/webhook`（whsec 以它打印的为准）。
+- **本地 Stripe 已切 test**（修了第二个隐患：本地原本是 `rk_live_` + 生产 price，点购买会创建真实 LIVE checkout）。现本地 `STRIPE_SECRET_KEY`→`sk_test_`、`STRIPE_ADVANCED_BUNDLE_PRICE_ID`→ test price `price_1ThJC49PdDm7daK3QuPUu3aE`（test product `prod_UggZCstvebuXOx`，占位 199 CAD）；live 值备份为注释 `PROD_STRIPE_*`。本地测支付：`stripe listen --forward-to localhost:3000/api/payments/webhook`（whsec 以它打印的为准）。
 - **部署态 dev 不跑支付（已决定）**：test 支付一律在本地跑；部署态 dev preview 维持 Vercel 保护、Preview scope 不配 Stripe（点购买会报错，其余正常）。
 
 ## 推荐架构（Vercel 原生三环境）
