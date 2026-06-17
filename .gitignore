@@ -20,3 +20,7 @@ prisma/*.db-journal
 !.env.example
 
 .vercel
+
+# Sentry
+.sentryclirc
+.env.sentry-build-plugin

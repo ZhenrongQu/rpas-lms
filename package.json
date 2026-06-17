@@ -33,12 +33,14 @@
       "@prisma/client",
       "prisma",
       "esbuild",
-      "sharp"
+      "sharp",
+      "@sentry/cli"
     ]
   },
   "dependencies": {
     "@cloudflare/stream-react": "^1.9.3",
     "@prisma/client": "^5.22.0",
+    "@sentry/nextjs": "^10.58.0",
     "@tabler/icons-react": "^3.44.0",
     "bcryptjs": "^3.0.3",
     "gray-matter": "^4.0.3",
