@@ -1,9 +1,9 @@
 import { currentAccount } from "../../exam/sessionAuth";
 import {
   getPaymentConfig,
-  paidAccessCheckoutUrls,
+  advancedBundleCheckoutUrls,
   priceIdForProduct,
-  PAID_ACCESS_PRODUCT,
+  ADVANCED_BUNDLE_PRODUCT,
   FLIGHT_REVIEW_PRODUCT,
   type CheckoutProduct,
 } from "../../../../src/lib/payments/config";
@@ -26,13 +26,13 @@ export async function POST(req: Request): Promise<Response> {
 
   // Default to paid access for backward compatibility (the lesson paywall sends no product).
   const product: CheckoutProduct =
-    body.product === FLIGHT_REVIEW_PRODUCT ? FLIGHT_REVIEW_PRODUCT : PAID_ACCESS_PRODUCT;
+    body.product === FLIGHT_REVIEW_PRODUCT ? FLIGHT_REVIEW_PRODUCT : ADVANCED_BUNDLE_PRODUCT;
 
   let successUrl: string;
   let cancelUrl: string;
   let priceId: string;
   try {
-    const urls = paidAccessCheckoutUrls(body.locale);
+    const urls = advancedBundleCheckoutUrls(body.locale);
     successUrl = urls.successUrl;
     cancelUrl = urls.cancelUrl;
     priceId = priceIdForProduct(product, getPaymentConfig());

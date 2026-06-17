@@ -13,12 +13,12 @@
 
 ## D1. Stripe（支付）
 - [ ] 开通 **live 模式**（需完成商家验证，可能要审核时间）
-- [ ] 建/确认正式 **Product + Price**（一次性付费解锁）→ 记下 **`STRIPE_PAID_ACCESS_PRICE_ID`（live, `price_...`）**
+- [ ] 建/确认正式 **Product + Price**（一次性付费解锁）→ 记下 **`STRIPE_ADVANCED_BUNDLE_PRICE_ID`（live, `price_...`）**
 - [ ] 拿 **`STRIPE_SECRET_KEY`（live, `sk_live_...`）**
 - [ ] 注册 **Webhook endpoint**：`https://pacificdrone.ca/api/payments/webhook`
       - 事件：`checkout.session.completed`
       - 创建后拿 **`STRIPE_WEBHOOK_SECRET`（`whsec_...`）**
-- [ ] （我做）Vercel 生产环境设：`STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PAID_ACCESS_PRICE_ID`
+- [ ] （我做）Vercel 生产环境设：`STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_ADVANCED_BUNDLE_PRICE_ID`
 - [ ] （我做）Cloudflare WAF **Skip 规则放行** `/api/payments/webhook`（防 bot 设置拦 Stripe 的服务器 POST）
 - 代码现状：webhook 验签 + `WebhookEvent` 幂等已实现（LAUNCH #25/#26 ✅），**无需改代码**。
 
@@ -42,7 +42,7 @@
 |---|---|---|
 | `STRIPE_SECRET_KEY` | Stripe live | 我（读 .env）|
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook 注册后 | 我 |
-| `STRIPE_PAID_ACCESS_PRICE_ID` | Stripe Price | 我 |
+| `STRIPE_ADVANCED_BUNDLE_PRICE_ID` | Stripe Price | 我 |
 | `RESEND_API_KEY` | Resend | 我 |
 | `EMAIL_FROM` | 你定（noreply@pacificdrone.ca）| 我 |
 | `GOOGLE_*` / `APPLE_*` | OAuth 控制台（可选）| 我 |

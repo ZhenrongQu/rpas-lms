@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../../src/lib/db";
 import {
-  PAID_ACCESS_PRODUCT,
+  ADVANCED_BUNDLE_PRODUCT,
   FLIGHT_REVIEW_PRODUCT,
   getPaymentConfig,
 } from "../../../../src/lib/payments/config";
@@ -71,7 +71,7 @@ export async function POST(req: Request): Promise<Response> {
     currency: session.currency ?? null,
   };
 
-  if (product === PAID_ACCESS_PRODUCT) {
+  if (product === ADVANCED_BUNDLE_PRODUCT) {
     await grantPaidAccessFromCheckout(grant);
   } else if (product === FLIGHT_REVIEW_PRODUCT) {
     await grantFlightReviewFromCheckout(grant);

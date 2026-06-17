@@ -40,7 +40,7 @@ There is one purchasable product: full paid access for the LMS.
 
 - Product key: `paid_access`
 - Purchase mode: one-time payment
-- Stripe price: `STRIPE_PAID_ACCESS_PRICE_ID`
+- Stripe price: `STRIPE_ADVANCED_BUNDLE_PRICE_ID`
 - Resulting user state: `User.accessTier = "PAID"`
 - Resulting entitlement: active `Entitlement(product = "paid_access")`
 
@@ -82,7 +82,7 @@ Behavior:
 - If the user is already paid, returns a redirect URL to the success page or an idempotent success response.
 - Otherwise creates a Stripe Checkout Session:
   - `mode: "payment"`
-  - `line_items[0].price: STRIPE_PAID_ACCESS_PRICE_ID`
+  - `line_items[0].price: STRIPE_ADVANCED_BUNDLE_PRICE_ID`
   - `line_items[0].quantity: 1`
   - `client_reference_id: user.id`
   - `metadata.userId: user.id`
@@ -190,7 +190,7 @@ Required environment variables:
 
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PAID_ACCESS_PRICE_ID`
+- `STRIPE_ADVANCED_BUNDLE_PRICE_ID`
 - `APP_URL`
 
 Optional:
