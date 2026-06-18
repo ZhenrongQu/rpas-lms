@@ -7,6 +7,8 @@ import { canViewLesson, type AccessTier } from '@/lib/exam/access';
 import { hasPaidAccess } from '@/lib/payments/entitlements';
 import { auth } from '../../../../../../auth';
 import MDXContent from '@/components/learn/MDXContent';
+import LessonCheckpoints from '@/components/learn/LessonCheckpoints';
+import { getLessonCheckpointIds } from '@/lib/content/loadBank';
 import LessonShell from '@/components/learn/LessonShell';
 import LessonSidebar from '@/components/learn/LessonSidebar';
 import PurchaseButton from '@/components/payments/PurchaseButton';
@@ -54,6 +56,7 @@ export default async function LessonPage({ params }: Props) {
   }
 
   const completed = new Set(userId ? await listCompletedLessonIds(userId) : []);
+  const checkpointIds = await getLessonCheckpointIds(lesson.meta.lessonId);
   const lessons = await getModuleLessons(locale as RouteLocale, course as Course, moduleId);
   const idx = lessons.findIndex((l) => l.slug === slug);
   const next = idx >= 0 && idx < lessons.length - 1 ? lessons[idx + 1] : null;
@@ -89,7 +92,8 @@ export default async function LessonPage({ params }: Props) {
         <h1 className="lesson-h1">{lesson.meta.title}</h1>
         <LessonShell lessonId={lesson.meta.lessonId} nextHref={nextHref} backHref={backHref}>
           {videoToken && <VideoPlayer token={videoToken} />}
-          <MDXContent source={lesson.body} locale={locale} />
+          <MDXContent source={lesson.body} />
+          <LessonCheckpoints ids={checkpointIds} locale={locale} />
         </LessonShell>
       </article>
     </div>

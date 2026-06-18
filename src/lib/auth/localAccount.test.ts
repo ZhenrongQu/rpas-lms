@@ -73,6 +73,15 @@ describe("local password accounts", () => {
     ).rejects.toThrow("phone_unavailable");
   });
 
+  it("rejects passwords shorter than 8 chars or longer than 72 bytes (SEC-08)", async () => {
+    await expect(
+      registerLocalAccount({ email: "short@example.com", password: "short12" }),
+    ).rejects.toThrow("invalid_password");
+    await expect(
+      registerLocalAccount({ email: "long@example.com", password: "a".repeat(73) }),
+    ).rejects.toThrow("invalid_password");
+  });
+
   it("verifies registration email and then allows email, phone, and username login", async () => {
     await registerLocalAccount({
       email: "pilot@example.com",

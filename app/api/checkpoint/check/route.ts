@@ -1,7 +1,9 @@
 import { z } from "zod";
-import { findActiveQuestion } from "../../../../src/lib/content/loadBank";
+import { findActiveCheckpoint } from "../../../../src/lib/content/loadBank";
 import { correctOptionIds, isAnswerCorrect } from "../../../../src/lib/exam/grade";
 
+// Reads the dedicated CheckpointQuestion bank only (SEC-04) — exam ids never
+// resolve here, so this endpoint cannot expose exam answers.
 const CheckBody = z.object({
   questionId: z.string().min(1),
   selectedOptionIds: z.array(z.string()),
@@ -18,7 +20,7 @@ export async function POST(req: Request): Promise<Response> {
   const parsed = CheckBody.safeParse(raw);
   if (!parsed.success) return Response.json({ error: "invalid body" }, { status: 400 });
   const { questionId, selectedOptionIds, locale } = parsed.data;
-  const q = await findActiveQuestion(questionId);
+  const q = await findActiveCheckpoint(questionId);
   if (!q) return Response.json({ error: "not found" }, { status: 404 });
   const L = locale === "zh" ? "ZH" : "EN";
   return Response.json(

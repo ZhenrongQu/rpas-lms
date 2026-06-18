@@ -1,5 +1,5 @@
 import { prisma } from "../db";
-import { dbQuestionToQuestion, dbQuestionsToQuestionBank } from "./dbMappers";
+import { dbCheckpointToQuestion, dbQuestionToQuestion, dbQuestionsToQuestionBank } from "./dbMappers";
 import type { ExamCertLevel, Question, QuestionBank } from "./types";
 
 /** Loads the ACTIVE question bank for a certification level from the database
@@ -33,4 +33,26 @@ export async function findActiveQuestion(id: string): Promise<Question | null> {
   });
   if (advanced) return dbQuestionToQuestion(advanced);
   return null;
+}
+
+/** Finds a single ACTIVE checkpoint question by id, or null. Reads the dedicated
+ *  CheckpointQuestion table — never the exam banks — so checkpoint endpoints can
+ *  never expose exam answers (SEC-04). */
+export async function findActiveCheckpoint(id: string): Promise<Question | null> {
+  const row = await prisma.checkpointQuestion.findFirst({
+    where: { id, status: "ACTIVE" },
+    include: { options: true },
+  });
+  return row ? dbCheckpointToQuestion(row) : null;
+}
+
+/** Ordered ACTIVE checkpoint question ids assigned to a lesson; rendered at the
+ *  bottom of that lesson. */
+export async function getLessonCheckpointIds(lessonId: string): Promise<string[]> {
+  const rows = await prisma.checkpointQuestion.findMany({
+    where: { lessonId, status: "ACTIVE" },
+    orderBy: [{ order: "asc" }, { id: "asc" }],
+    select: { id: true },
+  });
+  return rows.map((r) => r.id);
 }

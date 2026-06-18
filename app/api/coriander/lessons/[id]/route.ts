@@ -44,8 +44,6 @@ export async function PUT(req: Request, ctx: Ctx): Promise<Response> {
     const result = await validateLessonMdxBodies({
       bodyEN: input.bodyEN,
       bodyZH: input.bodyZH,
-      moduleId: existing.moduleId,
-      course,
     });
     if (!result.ok) {
       return Response.json({ error: "MDX validation failed", details: result.errors }, { status: 422 });

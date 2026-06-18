@@ -26,6 +26,13 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  // SEC-06: this helper mints a fully email-verified (and optionally PAID)
+  // account, bypassing the normal verification flow. It is dev-only and must
+  // never run against a production database.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("create-customer is a dev-only helper; refusing to run with NODE_ENV=production.");
+  }
+
   const rawEmail = process.env.CUSTOMER_EMAIL;
   const password = process.env.CUSTOMER_PASSWORD;
 

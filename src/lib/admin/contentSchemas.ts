@@ -96,3 +96,75 @@ export const adminLessonCreateSchema = adminLessonSchema.extend({
 });
 
 export type AdminLessonCreateInput = z.infer<typeof adminLessonCreateSchema>;
+
+/**
+ * Validates an admin checkpoint-question payload. Like adminQuestionSchema
+ * (SINGLE/MULTI correctness, unique option ids, module whitelist, media
+ * completeness) but assigned to a lesson (`lessonId` + `course` + `order`)
+ * instead of an exam level/difficulty. The lesson's existence is checked in the
+ * route; here we only enforce that lessonId matches the chosen course/module.
+ */
+export const adminCheckpointSchema = z
+  .object({
+    course: z.enum(["basic", "advanced"]),
+    moduleId: z.enum(MODULE_IDS),
+    lessonId: z.string().min(1),
+    order: z.number().int().min(0).default(0),
+    type: z.enum(["SINGLE", "MULTI"]),
+    selectCount: z.number().int().min(1),
+    stemEN: z.string().min(1),
+    stemZH: z.string().min(1),
+    explEN: z.string().min(1),
+    explZH: z.string().min(1),
+    refEN: z.string().min(1),
+    refZH: z.string().min(1),
+    tags: z.array(z.string()),
+    mediaKind: z.enum(["image", "video"]).nullish(),
+    mediaUrl: z.string().url().nullish(),
+    mediaAltEN: z.string().nullish(),
+    mediaAltZH: z.string().nullish(),
+    options: z
+      .array(
+        z.object({
+          optionId: z.string().min(1),
+          labelEN: z.string().min(1),
+          labelZH: z.string().min(1),
+          isCorrect: z.boolean(),
+        }),
+      )
+      .min(2),
+  })
+  .superRefine((q, ctx) => {
+    const correct = q.options.filter((o) => o.isCorrect).length;
+    if (q.type === "SINGLE" && (correct !== 1 || q.selectCount !== 1)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "SINGLE questions need exactly 1 correct option and selectCount 1",
+      });
+    }
+    if (q.type === "MULTI" && (correct !== q.selectCount || q.selectCount < 2)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "MULTI questions need selectCount ≥ 2 matching the number of correct options",
+      });
+    }
+    const optionIds = new Set(q.options.map((o) => o.optionId));
+    if (optionIds.size !== q.options.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Option ids must be unique" });
+    }
+    if (Boolean(q.mediaKind) !== Boolean(q.mediaUrl)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Media needs both a kind and a URL, or neither",
+      });
+    }
+    const prefix = `${q.course}/${q.moduleId}/`;
+    if (!q.lessonId.startsWith(prefix)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `lessonId must belong to the chosen course/module ("${prefix}…")`,
+      });
+    }
+  });
+
+export type AdminCheckpointInput = z.infer<typeof adminCheckpointSchema>;

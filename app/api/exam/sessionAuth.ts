@@ -2,7 +2,10 @@ import { examService } from "../../../src/lib/exam/instance";
 import type { AccessTier } from "../../../src/lib/exam/access";
 
 export async function currentAccount(req: Request): Promise<{ userId: string | null; accessTier: AccessTier }> {
-  if (process.env.NODE_ENV === "test") {
+  // SEC-05: the x-test-user-id impersonation header is gated on BOTH the test
+  // NODE_ENV AND an explicit opt-in flag (set only in vitest.config.ts), so a
+  // misconfigured NODE_ENV in production can never re-enable this backdoor.
+  if (process.env.NODE_ENV === "test" && process.env.ALLOW_TEST_AUTH === "1") {
     const userId = req.headers.get("x-test-user-id");
     const tier = req.headers.get("x-test-access-tier");
     if (userId) {

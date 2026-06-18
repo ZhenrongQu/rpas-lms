@@ -4,6 +4,7 @@ import { requireAdminApi } from "../../../../src/lib/auth/adminGuard";
 import { adminLessonCreateSchema } from "../../../../src/lib/admin/contentSchemas";
 import { validateLessonMdxBodies } from "../../../../src/lib/admin/mdxValidation";
 import { createLesson } from "../../../../src/lib/admin/lessons";
+import { MODULE_IDS } from "../../../../src/lib/content/types";
 
 /** GET /api/<admin>/lessons?course=&moduleId=&access= */
 export async function GET(req: Request): Promise<Response> {
@@ -12,8 +13,11 @@ export async function GET(req: Request): Promise<Response> {
 
   const url = new URL(req.url);
   const course = url.searchParams.get("course") ?? undefined;
-  const moduleId = url.searchParams.get("moduleId") ?? undefined;
-  const access = url.searchParams.get("access") ?? undefined;
+  const rawModuleId = url.searchParams.get("moduleId");
+  const moduleId =
+    rawModuleId && (MODULE_IDS as readonly string[]).includes(rawModuleId) ? rawModuleId : undefined;
+  const accessParam = url.searchParams.get("access");
+  const access = accessParam === "FREE" || accessParam === "PAID" ? accessParam : undefined;
 
   const where = {
     ...(moduleId ? { moduleId } : {}),
@@ -58,8 +62,6 @@ export async function POST(req: Request): Promise<Response> {
     const result = await validateLessonMdxBodies({
       bodyEN: input.bodyEN,
       bodyZH: input.bodyZH,
-      moduleId: input.moduleId,
-      course: input.course,
     });
     if (!result.ok) {
       return Response.json({ error: "MDX validation failed", details: result.errors }, { status: 422 });

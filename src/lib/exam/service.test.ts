@@ -39,7 +39,7 @@ function newService() {
 describe("ExamService", () => {
   it("creates a Basic mock with 35 questions and a 90-minute expiry", async () => {
     const svc = newService();
-    const created = await svc.createMock("BASIC", "EN", 42);
+    const created = await svc.createMock("BASIC", "EN", 42, null, "PAID");
     expect(created.total).toBe(35);
     expect(created.expiresAt).toBe(1_000 + 90 * 60_000);
     expect(typeof created.sessionId).toBe("string");
@@ -84,7 +84,7 @@ describe("ExamService", () => {
 
   it("serves public questions without leaking isCorrect", async () => {
     const svc = newService();
-    const { sessionId } = await svc.createMock("BASIC", "EN", 42);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 42, null, "PAID");
     const questions = await svc.getPublicQuestions(sessionId);
     expect(questions).not.toBeNull();
     expect(questions!.length).toBe(35);
@@ -100,7 +100,7 @@ describe("ExamService", () => {
 
   it("grades a fully-correct submission as 100% and passed", async () => {
     const svc = newService();
-    const { sessionId } = await svc.createMock("BASIC", "EN", 42);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 42, null, "PAID");
     const questions = await svc.getPublicQuestions(sessionId);
     for (const pub of questions!) {
       const full = bank.questions.find((q) => q.id === pub.id)!;
@@ -201,6 +201,14 @@ describe("ExamService", () => {
     expect(session?.userId).toBeNull();
   });
 
+  it("createMock defaults to the GUEST taster (least privilege) when tier omitted", async () => {
+    // SEC-02: an omitted accessTier must fail to the smallest pool (10-question
+    // difficulty-0 Basic taster), never the full paid bank.
+    const svc = newService();
+    const created = await svc.createMock("BASIC", "EN", 42);
+    expect(created.total).toBe(10);
+  });
+
   it("getReview() is null before submit", async () => {
     const svc = newService();
     const { sessionId } = await svc.createMock("BASIC", "EN", 42);
@@ -209,7 +217,7 @@ describe("ExamService", () => {
 
   it("getReview() returns one item per question after submit", async () => {
     const svc = newService();
-    const { sessionId } = await svc.createMock("BASIC", "EN", 42);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 42, null, "PAID");
     await svc.submit(sessionId);
     const review = await svc.getReview(sessionId);
     expect(review).not.toBeNull();
@@ -220,7 +228,7 @@ describe("ExamService", () => {
 
   it("submitWithIncorrectReview() returns only incorrect questions with explanations", async () => {
     const svc = newService();
-    const { sessionId } = await svc.createMock("BASIC", "EN", 42);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 42, null, "PAID");
     const questions = await svc.getPublicQuestions(sessionId);
     const first = questions![0];
     await svc.answer(sessionId, first.id, ["not-a-real-option"]);
@@ -242,7 +250,7 @@ describe("ExamService", () => {
   it("grades an in-flight exam from its snapshot even after the bank's correct answer changes", async () => {
     const liveBank = oneQuestionBank("a"); // correct answer is "a" at creation time
     const svc = new ExamService(new InMemorySessionStore(), () => 1_000, liveBank);
-    const { sessionId } = await svc.createMock("BASIC", "EN", 1);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 1, null, "PAID");
     await svc.answer(sessionId, "air-law-0001", ["a"]);
 
     // Admin edits the live bank mid-exam: correct answer becomes "b".
@@ -256,7 +264,7 @@ describe("ExamService", () => {
 
     // A brand-new exam built from the edited bank reflects the change: "a" is now wrong.
     const svc2 = new ExamService(new InMemorySessionStore(), () => 1_000, liveBank);
-    const created2 = await svc2.createMock("BASIC", "EN", 1);
+    const created2 = await svc2.createMock("BASIC", "EN", 1, null, "PAID");
     await svc2.answer(created2.sessionId, "air-law-0001", ["a"]);
     const result2 = await svc2.submit(created2.sessionId);
     expect(result2!.correct).toBe(0);

@@ -2,6 +2,17 @@ import type { FlightReviewSlot } from "@prisma/client";
 import { sendEmail } from "../email/send";
 import { formatSlotDateTime } from "./format";
 
+/** Escapes HTML so user-controlled text (e.g. a student's display name) cannot
+ *  inject markup/links into the notification emails. SEC-01. */
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 type Slot = Pick<
   FlightReviewSlot,
   "startsAt" | "durationMin" | "location" | "examinerName" | "examinerEmail" | "examinerPhone"
@@ -64,7 +75,7 @@ export async function notifyBookingChange(opts: {
     to: student.email,
     subject: studentSubject,
     text: studentBody,
-    html: `<p>${studentBody.replace(/\n/g, "<br>")}</p>`,
+    html: `<p>${escapeHtml(studentBody).replace(/\n/g, "<br>")}</p>`,
   });
 
   const admin = adminEmail();
@@ -77,7 +88,7 @@ export async function notifyBookingChange(opts: {
       to: admin,
       subject: `[Flight Review] ${student.name} ${kind} — ${formatSlotDateTime(slot.startsAt, "en")}`,
       text: adminBody,
-      html: `<p>${adminBody.replace(/\n/g, "<br>")}</p>`,
+      html: `<p>${escapeHtml(adminBody).replace(/\n/g, "<br>")}</p>`,
     });
   }
 }
@@ -100,7 +111,7 @@ export async function notifyCancellation(opts: {
     to: student.email,
     subject: isZh ? "您的飞行考核预约已取消" : "Your Flight Review has been cancelled",
     text: studentBody,
-    html: `<p>${studentBody.replace(/\n/g, "<br>")}</p>`,
+    html: `<p>${escapeHtml(studentBody).replace(/\n/g, "<br>")}</p>`,
   });
 
   const admin = adminEmail();
@@ -110,7 +121,7 @@ export async function notifyCancellation(opts: {
       to: admin,
       subject: `[Flight Review] ${student.name} cancelled — ${formatSlotDateTime(slot.startsAt, "en")}`,
       text: adminBody,
-      html: `<p>${adminBody.replace(/\n/g, "<br>")}</p>`,
+      html: `<p>${escapeHtml(adminBody).replace(/\n/g, "<br>")}</p>`,
     });
   }
 }
