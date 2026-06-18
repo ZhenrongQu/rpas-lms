@@ -24,3 +24,6 @@ prisma/*.db-journal
 # Sentry
 .sentryclirc
 .env.sentry-build-plugin
+
+# Database dumps — may contain user/payment data, never commit
+*.dump
