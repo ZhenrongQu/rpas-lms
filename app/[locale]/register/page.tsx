@@ -44,7 +44,15 @@ export default function RegisterPage() {
   const [verificationRequested, setVerificationRequested] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
   const [oauthStatus, setOauthStatus] = useState<OAuthStatus>({ google: false, apple: false });
+
+  // Resend cooldown: tick down one second at a time until it reaches 0.
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const id = setTimeout(() => setResendIn(resendIn - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendIn]);
 
   useEffect(() => {
     let active = true;
@@ -61,14 +69,10 @@ export default function RegisterPage() {
     return () => { active = false; };
   }, []);
 
-  async function register(e: React.FormEvent) {
-    e.preventDefault();
-    if (!isPasswordValid(password)) {
-      setError(t('pwInvalid'));
-      return;
-    }
-    setBusy(true);
-    setError(null);
+  // Re-requesting /api/auth/register for an unverified account re-issues the
+  // email code (it invalidates the old one), so both the initial request and
+  // the resend hit the same endpoint.
+  async function requestCode(): Promise<boolean> {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -79,12 +83,38 @@ export default function RegisterPage() {
         username: username.trim() || undefined,
       }),
     });
+    return res.ok;
+  }
+
+  async function register(e: React.FormEvent) {
+    e.preventDefault();
+    if (!isPasswordValid(password)) {
+      setError(t('pwInvalid'));
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const ok = await requestCode();
     setBusy(false);
-    if (!res.ok) {
+    if (!ok) {
       setError(t('registerFailed'));
       return;
     }
     setVerificationRequested(true);
+    setResendIn(60);
+  }
+
+  async function resendCode() {
+    if (resendIn > 0 || busy) return;
+    setBusy(true);
+    setError(null);
+    const ok = await requestCode();
+    setBusy(false);
+    if (!ok) {
+      setError(t('registerFailed'));
+      return;
+    }
+    setResendIn(60);
   }
 
   async function verifyEmail(e: React.FormEvent) {
@@ -191,6 +221,10 @@ export default function RegisterPage() {
                 <input className="auth-input" type="text" inputMode="numeric"
                   value={code} required onChange={(e) => setCode(e.target.value)} />
               </label>
+              <button type="button" className="auth-link"
+                onClick={resendCode} disabled={resendIn > 0 || busy}>
+                {resendIn > 0 ? t('resendCodeIn', { seconds: resendIn }) : t('resendCode')}
+              </button>
             </>
           )}
 

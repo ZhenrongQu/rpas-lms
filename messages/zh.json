@@ -155,6 +155,8 @@
     "usernameUnavailable": "用户名不可用。",
     "verificationFailed": "验证码无效或已过期。",
     "emailVerificationRequired": "请查看邮箱中的验证码。",
+    "resendCode": "重新发送验证码",
+    "resendCodeIn": "{seconds} 秒后可重新发送验证码",
     "verifyEmail": "验证邮箱",
     "identifierType": "登录方式",
     "loginWithEmail": "邮箱",

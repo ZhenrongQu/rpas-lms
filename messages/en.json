@@ -155,6 +155,8 @@
     "usernameUnavailable": "Username is unavailable.",
     "verificationFailed": "Invalid or expired code.",
     "emailVerificationRequired": "Check your email for the verification code.",
+    "resendCode": "Resend verification code",
+    "resendCodeIn": "You can resend verification code in {seconds}s",
     "verifyEmail": "Verify email",
     "identifierType": "Login with",
     "loginWithEmail": "Email",
