@@ -111,6 +111,7 @@ export default function SignInPage() {
           </button>
         </form>
 
+        <Link href={`/${locale}/forgot-password`} className="auth-link">{t('forgotPassword')}</Link>
         <Link href={`/${locale}/register`} className="auth-link">{t('needAccount')}</Link>
       </div>
     </div>

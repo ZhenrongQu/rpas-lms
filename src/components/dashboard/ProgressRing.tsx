@@ -6,34 +6,36 @@ interface Props {
 }
 
 export default function ProgressRing({ pct, size = 96, label, sublabel }: Props) {
-  const r = (size / 2) - 8;
+  const stroke = 8;
+  const r = size / 2 - stroke;
   const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - pct / 100);
+  const clamped = Math.max(0, Math.min(100, pct));
+  const offset = circ * (1 - clamped / 100);
 
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
         <circle
           cx={size / 2} cy={size / 2} r={r}
-          fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="5"
+          fill="none" stroke="var(--surface-2)" strokeWidth={stroke}
         />
         <circle
           cx={size / 2} cy={size / 2} r={r}
-          fill="none" stroke="#00d4ff" strokeWidth="5"
+          fill="none" stroke="var(--accent)" strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circ}
           strokeDashoffset={offset}
-          style={{ filter: 'drop-shadow(0 0 6px #00d4ff)', transition: 'stroke-dashoffset 1s ease' }}
+          style={{ transition: 'stroke-dashoffset 0.8s ease' }}
         />
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         {label && (
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: size > 100 ? 26 : 18, fontWeight: 900, color: 'var(--cyan)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: size > 100 ? 24 : 18, fontWeight: 700, color: 'var(--accent-text)' }}>
             {label}
           </div>
         )}
         {sublabel && (
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-3)' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-3)', marginTop: 2 }}>
             {sublabel}
           </div>
         )}

@@ -5,31 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useTranslations, useLocale } from 'next-intl';
+import { PASSWORD_RULES, isPasswordValid } from '@/lib/auth/passwordPolicy';
 
 type OAuthStatus = { google: boolean; apple: boolean };
-
-interface PasswordCheck {
-  label: string;
-  ok: boolean;
-}
-
-function getPasswordChecks(pw: string, t: (k: string) => string): PasswordCheck[] {
-  return [
-    { label: t('pwLength'), ok: pw.length >= 8 && pw.length <= 20 },
-    { label: t('pwUpper'), ok: /[A-Z]/.test(pw) },
-    { label: t('pwLower'), ok: /[a-z]/.test(pw) },
-    { label: t('pwDigit'), ok: /[0-9]/.test(pw) },
-    { label: t('pwSpecial'), ok: /[!@#$%^&*()\-_=+[\]{};':",.<>/?\\|`~]/.test(pw) },
-  ];
-}
-
-function isPasswordValid(pw: string): boolean {
-  return (
-    pw.length >= 8 && pw.length <= 20 &&
-    /[A-Z]/.test(pw) && /[a-z]/.test(pw) &&
-    /[0-9]/.test(pw) && /[!@#$%^&*()\-_=+[\]{};':",.<>/?\\|`~]/.test(pw)
-  );
-}
 
 export default function RegisterPage() {
   const t = useTranslations('auth');
@@ -39,12 +17,21 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [pwFocused, setPwFocused] = useState(false);
   const [code, setCode] = useState('');
   const [verificationRequested, setVerificationRequested] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
   const [oauthStatus, setOauthStatus] = useState<OAuthStatus>({ google: false, apple: false });
+
+  // Resend cooldown: tick down one second at a time until it reaches 0.
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const id = setTimeout(() => setResendIn(resendIn - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendIn]);
 
   useEffect(() => {
     let active = true;
@@ -61,14 +48,10 @@ export default function RegisterPage() {
     return () => { active = false; };
   }, []);
 
-  async function register(e: React.FormEvent) {
-    e.preventDefault();
-    if (!isPasswordValid(password)) {
-      setError(t('pwInvalid'));
-      return;
-    }
-    setBusy(true);
-    setError(null);
+  // Re-requesting /api/auth/register for an unverified account re-issues the
+  // email code (it invalidates the old one), so both the initial request and
+  // the resend hit the same endpoint.
+  async function requestCode(): Promise<boolean> {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -79,12 +62,42 @@ export default function RegisterPage() {
         username: username.trim() || undefined,
       }),
     });
+    return res.ok;
+  }
+
+  async function register(e: React.FormEvent) {
+    e.preventDefault();
+    if (!isPasswordValid(password)) {
+      setError(t('pwInvalid'));
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError(t('pwMismatch'));
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const ok = await requestCode();
     setBusy(false);
-    if (!res.ok) {
+    if (!ok) {
       setError(t('registerFailed'));
       return;
     }
     setVerificationRequested(true);
+    setResendIn(60);
+  }
+
+  async function resendCode() {
+    if (resendIn > 0 || busy) return;
+    setBusy(true);
+    setError(null);
+    const ok = await requestCode();
+    setBusy(false);
+    if (!ok) {
+      setError(t('registerFailed'));
+      return;
+    }
+    setResendIn(60);
   }
 
   async function verifyEmail(e: React.FormEvent) {
@@ -111,7 +124,7 @@ export default function RegisterPage() {
     router.refresh();
   }
 
-  const pwChecks = getPasswordChecks(password, t);
+  const pwChecks = PASSWORD_RULES.map((r) => ({ label: t(r.key), ok: r.test(password) }));
 
   return (
     <div className="auth-view">
@@ -183,6 +196,14 @@ export default function RegisterPage() {
             </ul>
           )}
 
+          {/* Confirm password — required */}
+          <label className="auth-label">
+            <span>{t('confirmPassword')} <span className="auth-required">*</span></span>
+            <input className="auth-input" type="password" autoComplete="new-password"
+              value={confirmPassword} required disabled={verificationRequested}
+              onChange={(e) => setConfirmPassword(e.target.value)} />
+          </label>
+
           {verificationRequested && (
             <>
               <div className="auth-info">{t('emailVerificationRequired')}</div>
@@ -191,6 +212,10 @@ export default function RegisterPage() {
                 <input className="auth-input" type="text" inputMode="numeric"
                   value={code} required onChange={(e) => setCode(e.target.value)} />
               </label>
+              <button type="button" className="auth-link"
+                onClick={resendCode} disabled={resendIn > 0 || busy}>
+                {resendIn > 0 ? t('resendCodeIn', { seconds: resendIn }) : t('resendCode')}
+              </button>
             </>
           )}
 

@@ -9,7 +9,7 @@ const MAX_ATTEMPTS = 5;
 export function normalizeTarget(channel: VerificationChannel, target: string): string {
   const trimmed = target.trim();
 
-  if (channel === "email") {
+  if (channel === "email" || channel === "email_reset") {
     return trimmed.toLowerCase();
   }
 
