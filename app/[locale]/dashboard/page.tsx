@@ -5,6 +5,7 @@ import { auth } from '../../../auth';
 import { getCourseLessonCount } from '@/lib/lessons/catalog';
 import { listCompletedLessonIds } from '@/lib/lessons/progress';
 import FlightReviewPanel from '@/components/dashboard/FlightReviewPanel';
+import ChangePasswordForm from '@/components/dashboard/ChangePasswordForm';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -108,6 +109,13 @@ export default async function DashboardPage({ params }: Props) {
 
         {/* ── Flight Review ── */}
         {userId && <FlightReviewPanel userId={userId} locale={locale} />}
+
+        {/* ── Account security ── */}
+        <section className="hud-panel dash-section">
+          <div className="hud-panel-glow" />
+          <div className="dash-section-title">{t('dashboard.accountSecurity')}</div>
+          <ChangePasswordForm />
+        </section>
 
       </div>
     </div>

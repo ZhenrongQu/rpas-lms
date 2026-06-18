@@ -175,7 +175,27 @@
     "pwDigit": "At least one number (0–9)",
     "pwSpecial": "At least one special character (!@#$%…)",
     "pwInvalid": "Password does not meet the requirements.",
-    "authRequired": "Sign in to continue"
+    "authRequired": "Sign in to continue",
+    "confirmPassword": "Confirm password",
+    "pwMismatch": "Passwords do not match.",
+    "forgotPassword": "Forgot password?",
+    "forgotPasswordTitle": "Reset password",
+    "forgotPasswordInstruction": "Enter the email you registered with and we'll send a reset link.",
+    "sendResetLink": "Send reset link",
+    "resetLinkSent": "If an account exists for that email, a reset link is on its way. Check your inbox.",
+    "backToSignIn": "Back to sign in",
+    "resetPasswordTitle": "Set a new password",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm new password",
+    "resetPassword": "Reset password",
+    "resetSuccess": "Your password has been updated. You can now sign in.",
+    "resetLinkInvalid": "This reset link is invalid or has expired.",
+    "currentPassword": "Current password",
+    "updatePassword": "Update password",
+    "passwordUpdated": "Password updated.",
+    "changePasswordFailed": "Couldn't update your password. Please try again.",
+    "wrongCurrentPassword": "Your current password is incorrect.",
+    "noPasswordSet": "This account signs in with Google/Apple and has no password to change."
   },
   "dashboard": {
     "title": "Mission Modules",
@@ -199,7 +219,8 @@
     "myCourse": "My Course",
     "goToCourse": "Go to Course",
     "upgradeToPay": "Upgrade to Access",
-    "profileName": "Name"
+    "profileName": "Name",
+    "accountSecurity": "Account Security"
   },
   "flightReview": {
     "panelTitle": "Flight Review",

@@ -5,31 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useTranslations, useLocale } from 'next-intl';
+import { PASSWORD_RULES, isPasswordValid } from '@/lib/auth/passwordPolicy';
 
 type OAuthStatus = { google: boolean; apple: boolean };
-
-interface PasswordCheck {
-  label: string;
-  ok: boolean;
-}
-
-function getPasswordChecks(pw: string, t: (k: string) => string): PasswordCheck[] {
-  return [
-    { label: t('pwLength'), ok: pw.length >= 8 && pw.length <= 20 },
-    { label: t('pwUpper'), ok: /[A-Z]/.test(pw) },
-    { label: t('pwLower'), ok: /[a-z]/.test(pw) },
-    { label: t('pwDigit'), ok: /[0-9]/.test(pw) },
-    { label: t('pwSpecial'), ok: /[!@#$%^&*()\-_=+[\]{};':",.<>/?\\|`~]/.test(pw) },
-  ];
-}
-
-function isPasswordValid(pw: string): boolean {
-  return (
-    pw.length >= 8 && pw.length <= 20 &&
-    /[A-Z]/.test(pw) && /[a-z]/.test(pw) &&
-    /[0-9]/.test(pw) && /[!@#$%^&*()\-_=+[\]{};':",.<>/?\\|`~]/.test(pw)
-  );
-}
 
 export default function RegisterPage() {
   const t = useTranslations('auth');
@@ -39,6 +17,7 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [pwFocused, setPwFocused] = useState(false);
   const [code, setCode] = useState('');
   const [verificationRequested, setVerificationRequested] = useState(false);
@@ -92,6 +71,10 @@ export default function RegisterPage() {
       setError(t('pwInvalid'));
       return;
     }
+    if (password !== confirmPassword) {
+      setError(t('pwMismatch'));
+      return;
+    }
     setBusy(true);
     setError(null);
     const ok = await requestCode();
@@ -141,7 +124,7 @@ export default function RegisterPage() {
     router.refresh();
   }
 
-  const pwChecks = getPasswordChecks(password, t);
+  const pwChecks = PASSWORD_RULES.map((r) => ({ label: t(r.key), ok: r.test(password) }));
 
   return (
     <div className="auth-view">
@@ -212,6 +195,14 @@ export default function RegisterPage() {
               ))}
             </ul>
           )}
+
+          {/* Confirm password — required */}
+          <label className="auth-label">
+            <span>{t('confirmPassword')} <span className="auth-required">*</span></span>
+            <input className="auth-input" type="password" autoComplete="new-password"
+              value={confirmPassword} required disabled={verificationRequested}
+              onChange={(e) => setConfirmPassword(e.target.value)} />
+          </label>
 
           {verificationRequested && (
             <>

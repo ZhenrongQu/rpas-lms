@@ -1,9 +1,17 @@
+import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
 // NOTE: `prisma.customer` is the former `User` table (renamed in the
 // Admin/Customer split). This module only deals with customer (learner) login.
 import { prisma } from "../db";
 import { hashPassword, verifyPassword } from "./password";
-import { normalizeTarget, verifyCode } from "./verificationCode";
+import { normalizeTarget, requestVerificationCode, verifyCode } from "./verificationCode";
+
+// Length bounds shared by register / reset / change. The 72-byte ceiling matches
+// bcrypt (bytes beyond it are silently ignored, so accepting longer passwords
+// would overstate their strength).
+function passwordWithinBounds(password: string): boolean {
+  return password.length >= 8 && Buffer.byteLength(password, "utf8") <= 72;
+}
 
 type LocalIdentifier = {
   email?: string;
@@ -89,9 +97,7 @@ async function assertAliasAvailable({
 
 export async function registerLocalAccount(input: RegisterLocalAccountInput) {
   // SEC-08: enforce password bounds in the service, not only the route's zod.
-  // The 72-byte ceiling matches bcrypt (bytes beyond it are silently ignored,
-  // so accepting longer passwords would overstate their strength).
-  if (input.password.length < 8 || Buffer.byteLength(input.password, "utf8") > 72) {
+  if (!passwordWithinBounds(input.password)) {
     throw new Error("invalid_password");
   }
   const email = normalizeEmail(input.email);
@@ -202,4 +208,105 @@ export async function authorizeLocalPasswordLogin(input: LoginInput) {
 
   const ok = await verifyPassword(input.password, user.hashedPassword);
   return ok ? user : null;
+}
+
+// ── Password reset (forgot password) ────────────────────────────────────────
+
+/**
+ * Issue a single-use reset token for `email` if a customer with that email
+ * exists. Returns the token (to embed in a link) only when an account is found;
+ * the caller emails it. Callers MUST respond identically whether or not an
+ * account exists, so this never reveals enumeration to the client.
+ */
+export async function createPasswordResetToken({
+  email,
+  now = () => new Date(),
+}: {
+  email: string;
+  now?: () => Date;
+}): Promise<{ ok: true; token: string; target: string } | { ok: false }> {
+  const normalizedEmail = normalizeEmail(email);
+  const user = await prisma.customer.findUnique({ where: { email: normalizedEmail } });
+  if (!user) return { ok: false };
+
+  // URL-safe, high-entropy token; the table stores only its bcrypt hash.
+  const token = randomBytes(32).toString("base64url");
+  const requested = await requestVerificationCode({
+    channel: "email_reset",
+    target: normalizedEmail,
+    now,
+    codeFactory: () => token,
+  });
+
+  return { ok: true, token, target: requested.target };
+}
+
+/**
+ * Consume a reset token and set a new password. Completing this proves the user
+ * controls the inbox, so an unverified email is marked verified.
+ */
+export async function resetLocalPassword({
+  email,
+  token,
+  newPassword,
+  now = () => new Date(),
+}: {
+  email: string;
+  token: string;
+  newPassword: string;
+  now?: () => Date;
+}): Promise<{ ok: true } | { ok: false; reason: "invalid_password" | "invalid_or_expired" | "too_many_attempts" }> {
+  if (!passwordWithinBounds(newPassword)) {
+    return { ok: false, reason: "invalid_password" };
+  }
+  const normalizedEmail = normalizeEmail(email);
+  const verified = await verifyCode({ channel: "email_reset", target: normalizedEmail, code: token, now });
+  if (!verified.ok) return verified;
+
+  const hashedPassword = await hashPassword(newPassword);
+  try {
+    await prisma.customer.update({
+      where: { email: normalizedEmail },
+      data: { hashedPassword },
+    });
+  } catch (error) {
+    // Token matched but the account vanished between issue and use.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return { ok: false, reason: "invalid_or_expired" };
+    }
+    throw error;
+  }
+
+  // Mark verified only if it wasn't already (avoid clobbering the original time).
+  await prisma.customer.updateMany({
+    where: { email: normalizedEmail, emailVerifiedAt: null },
+    data: { emailVerifiedAt: now() },
+  });
+
+  return { ok: true };
+}
+
+// ── Change password (authenticated, from dashboard) ─────────────────────────
+
+export async function changeLocalPassword({
+  userId,
+  oldPassword,
+  newPassword,
+}: {
+  userId: string;
+  oldPassword: string;
+  newPassword: string;
+}): Promise<{ ok: true } | { ok: false; reason: "no_password_set" | "wrong_password" | "invalid_password" }> {
+  if (!passwordWithinBounds(newPassword)) {
+    return { ok: false, reason: "invalid_password" };
+  }
+  const user = await prisma.customer.findUnique({ where: { id: userId } });
+  if (!user?.hashedPassword) return { ok: false, reason: "no_password_set" };
+
+  const ok = await verifyPassword(oldPassword, user.hashedPassword);
+  if (!ok) return { ok: false, reason: "wrong_password" };
+
+  const hashedPassword = await hashPassword(newPassword);
+  await prisma.customer.update({ where: { id: userId }, data: { hashedPassword } });
+  return { ok: true };
 }
