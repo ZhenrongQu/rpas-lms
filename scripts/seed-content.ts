@@ -67,7 +67,8 @@ function placeholderQuestions(level: ExamCertLevel): SeedQuestion[] {
 
 function placeholderLessons(course: "basic" | "advanced"): SeedLesson[] {
   const certLevel: ExamCertLevel = course === "basic" ? "BASIC" : "ADVANCED";
-  const qPrefix = questionBankPrefix(certLevel);
+  // Checkpoints are no longer inline (SEC-04); they are seeded separately into
+  // the CheckpointQuestion bank and assigned to these lessons.
   return [1, 2].map((n) => ({
     slug: `intro-${n}`,
     moduleId: "air-law",
@@ -77,9 +78,38 @@ function placeholderLessons(course: "basic" | "advanced"): SeedLesson[] {
     access: "FREE",
     titleEN: `${course} placeholder lesson ${n}`,
     titleZH: `${course} 占位课 ${n}`,
-    bodyEN: `Placeholder ${course} lesson ${n}.\n\n<Checkpoint questionId="${qPrefix}-air-law-000${n}" />\n`,
-    bodyZH: `占位 ${course} 课程 ${n}。\n\n<Checkpoint questionId="${qPrefix}-air-law-000${n}" />\n`,
+    bodyEN: `Placeholder ${course} lesson ${n}.\n`,
+    bodyZH: `占位 ${course} 课程 ${n}。\n`,
   }));
+}
+
+type SeedCheckpoint = {
+  id: string;
+  lessonId: string;
+  course: string;
+  moduleId: string;
+  order: number;
+  stemEN: string;
+  stemZH: string;
+};
+
+/** One placeholder checkpoint per placeholder lesson, assigned by lessonId. */
+function placeholderCheckpoints(): SeedCheckpoint[] {
+  const make = (id: string, course: "basic" | "advanced", n: number): SeedCheckpoint => ({
+    id,
+    lessonId: `${course}/air-law/intro-${n}`,
+    course,
+    moduleId: "air-law",
+    order: 0,
+    stemEN: `Checkpoint for ${course} lesson ${n}: which option is correct?`,
+    stemZH: `${course} 课 ${n} 练习：哪个选项正确？`,
+  });
+  return [
+    make("cp-air-law-0001", "basic", 1),
+    make("cp-air-law-0002", "basic", 2),
+    make("cp-air-law-0003", "advanced", 1),
+    make("cp-air-law-0004", "advanced", 2),
+  ];
 }
 
 async function seedBasicQuestions(): Promise<number> {
@@ -128,13 +158,36 @@ async function seedAdvancedLessons(): Promise<number> {
   return 2;
 }
 
+async function seedCheckpoints(): Promise<number> {
+  for (const { id, stemEN, stemZH, ...rest } of placeholderCheckpoints()) {
+    const scalar = {
+      ...rest,
+      type: "SINGLE",
+      selectCount: 1,
+      stemEN,
+      stemZH,
+      explEN: "Option A is correct (placeholder explanation).",
+      explZH: "选项 A 正确（占位解析）。",
+      refEN: "Placeholder reference",
+      refZH: "占位出处",
+    };
+    await prisma.checkpointQuestion.upsert({
+      where: { id },
+      create: { id, ...scalar, options: { create: OPTIONS } },
+      update: { ...scalar, options: { deleteMany: {}, create: OPTIONS } },
+    });
+  }
+  return placeholderCheckpoints().length;
+}
+
 async function main() {
   const bq = await seedBasicQuestions();
   const aq = await seedAdvancedQuestions();
   const bl = await seedBasicLessons();
   const al = await seedAdvancedLessons();
+  const cp = await seedCheckpoints();
   console.log(
-    `✓ seeded placeholders — questions: ${bq} basic / ${aq} advanced, lessons: ${bl} basic / ${al} advanced`,
+    `✓ seeded placeholders — questions: ${bq} basic / ${aq} advanced, lessons: ${bl} basic / ${al} advanced, checkpoints: ${cp}`,
   );
 }
 

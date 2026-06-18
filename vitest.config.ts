@@ -13,6 +13,9 @@ export default defineConfig({
     env: {
       DATABASE_URL: TEST_DATABASE_URL,
       DIRECT_URL: TEST_DATABASE_URL,
+      // SEC-05: opt-in flag that, together with NODE_ENV=test, enables the
+      // x-test-user-id auth header in sessionAuth.ts. Never set in production.
+      ALLOW_TEST_AUTH: "1",
       AUTH_SECRET: "test-secret-test-secret-test-secret-0000",
       APP_URL: "https://rpas.test",
       STRIPE_SECRET_KEY: "sk_test_unit",

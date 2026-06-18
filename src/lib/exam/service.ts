@@ -34,7 +34,9 @@ export class ExamService {
     locale: Locale,
     seed: number = Math.floor(Math.random() * 1e9),
     userId: string | null = null,
-    accessTier: AccessTier = "PAID",
+    // Defaults to the least-privileged tier (SEC-02): a caller that forgets to
+    // pass accessTier gets the anonymous taster, never the full paid bank.
+    accessTier: AccessTier = "GUEST",
   ): Promise<CreatedExam> {
     const spec = EXAM_SPECS[certLevel];
     const bank = this.bankOverride ?? (await loadQuestionBankFromDB(certLevel));

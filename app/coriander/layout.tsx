@@ -32,6 +32,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         <Link href={`${ADMIN_BASE}/lessons`} className="admin-nav-link">
           Lessons
         </Link>
+        <Link href={`${ADMIN_BASE}/checkpoints`} className="admin-nav-link">
+          Checkpoints
+        </Link>
         <Link href={`${ADMIN_BASE}/flight-review`} className="admin-nav-link">
           Flight Reviews
         </Link>

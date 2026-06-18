@@ -247,6 +247,52 @@ model AdvancedQuestionOption {
   @@index([questionId])
 }
 
+// ─── Checkpoint questions (lesson practice, separate from the exam banks) ─────
+// Physically separate from BasicQuestionBank/AdvancedQuestionBank so the public
+// checkpoint endpoints can never reach exam answers (SEC-04). Each checkpoint is
+// assigned to one lesson via `lessonId` and renders at the bottom of that lesson.
+model CheckpointQuestion {
+  id          String                     @id // "cp-air-law-0001"
+  lessonId    String // assignment target: "${course}/${moduleId}/${slug}"
+  course      String // "basic" | "advanced" (denormalized for filtering)
+  moduleId    String // denormalized for CMS list filtering
+  order       Int                        @default(0) // position among a lesson's checkpoints
+  type        String // "SINGLE" | "MULTI"
+  selectCount Int
+  stemEN      String
+  stemZH      String
+  explEN      String
+  explZH      String
+  refEN       String
+  refZH       String
+  tags        String                     @default("[]") // JSON: string[]
+  mediaKind   String?
+  mediaUrl    String?
+  mediaAltEN  String?
+  mediaAltZH  String?
+  status      String                     @default("ACTIVE") // "ACTIVE" | "ARCHIVED"
+  archivedAt  DateTime?
+  options     CheckpointQuestionOption[]
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+
+  @@index([lessonId])
+  @@index([course, moduleId])
+}
+
+model CheckpointQuestionOption {
+  id         String             @id @default(cuid())
+  questionId String
+  optionId   String
+  labelEN    String
+  labelZH    String
+  isCorrect  Boolean
+  question   CheckpointQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, optionId])
+  @@index([questionId])
+}
+
 // ─── Lessons (split by course) ───────────────────────────────────────────────
 // Basic and advanced lessons live in physically separate tables. The `course`
 // column is retained for app/mapper compatibility and is always equal to the

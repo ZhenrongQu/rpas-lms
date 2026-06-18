@@ -88,6 +88,12 @@ async function assertAliasAvailable({
 }
 
 export async function registerLocalAccount(input: RegisterLocalAccountInput) {
+  // SEC-08: enforce password bounds in the service, not only the route's zod.
+  // The 72-byte ceiling matches bcrypt (bytes beyond it are silently ignored,
+  // so accepting longer passwords would overstate their strength).
+  if (input.password.length < 8 || Buffer.byteLength(input.password, "utf8") > 72) {
+    throw new Error("invalid_password");
+  }
   const email = normalizeEmail(input.email);
   const username = input.username ? normalizeUsername(input.username) : undefined;
   const phone = input.phone ? normalizePhone(input.phone) : undefined;

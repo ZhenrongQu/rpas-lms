@@ -89,6 +89,21 @@ export function dbQuestionsToQuestionBank(rows: QuestionRow[]): QuestionBank {
   return { schemaVersion: 1, questions: rows.map(dbQuestionToQuestion) };
 }
 
+// Checkpoint rows mirror question rows but have no certLevel/difficulty (they are
+// never drawn into an exam); `course` stands in for the level.
+type CheckpointRow = Omit<QuestionRow, "certLevel" | "difficulty"> & { course: string };
+
+/** Prisma CheckpointQuestion (+ options) → the in-app `Question` shape, so the
+ *  existing serialize/grade helpers are reused. certLevel/difficulty are filled
+ *  from `course` / a constant since checkpoints are practice-only. */
+export function dbCheckpointToQuestion(row: CheckpointRow): Question {
+  return dbQuestionToQuestion({
+    ...row,
+    certLevel: row.course === "basic" ? "BASIC" : "ADVANCED",
+    difficulty: 0,
+  });
+}
+
 /** Prisma Lesson row → `LessonMeta`, selecting locale-specific title. */
 export function dbLessonToMeta(row: LessonRow, locale: RouteLocale): LessonMeta {
   return {

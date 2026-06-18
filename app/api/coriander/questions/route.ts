@@ -1,5 +1,6 @@
 import { prisma } from "../../../../src/lib/db";
 import { requireAdminApi } from "../../../../src/lib/auth/adminGuard";
+import { MODULE_IDS } from "../../../../src/lib/content/types";
 import { adminQuestionSchema } from "../../../../src/lib/admin/contentSchemas";
 import {
   questionScalarData,
@@ -14,13 +15,17 @@ export async function GET(req: Request): Promise<Response> {
 
   const url = new URL(req.url);
   const level = url.searchParams.get("level") === "ADVANCED" ? "ADVANCED" : "BASIC";
-  const moduleId = url.searchParams.get("moduleId") ?? undefined;
-  const difficulty = url.searchParams.get("difficulty");
+  const rawModuleId = url.searchParams.get("moduleId");
+  const moduleId =
+    rawModuleId && (MODULE_IDS as readonly string[]).includes(rawModuleId) ? rawModuleId : undefined;
+  const rawDifficulty = url.searchParams.get("difficulty");
+  const difficulty =
+    rawDifficulty !== null && /^[0-3]$/.test(rawDifficulty) ? Number(rawDifficulty) : null;
   const q = url.searchParams.get("q") ?? undefined;
 
   const where = {
     ...(moduleId ? { moduleId } : {}),
-    ...(difficulty !== null ? { difficulty: Number(difficulty) } : {}),
+    ...(difficulty !== null ? { difficulty } : {}),
     ...(q
       ? {
           OR: [

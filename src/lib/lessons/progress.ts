@@ -6,6 +6,16 @@ function isBasic(lessonId: string): boolean {
   return lessonId.startsWith("basic/");
 }
 
+/** True if the lessonId resolves to a real lesson in its course table (SEC-03).
+ *  Lets the route reject unknown lessonIds with a clean 404 instead of letting
+ *  the progress→lesson foreign key throw an unhandled 500. */
+export async function lessonExists(lessonId: string): Promise<boolean> {
+  const row = isBasic(lessonId)
+    ? await prisma.basicLesson.findUnique({ where: { lessonId }, select: { lessonId: true } })
+    : await prisma.advancedLesson.findUnique({ where: { lessonId }, select: { lessonId: true } });
+  return row !== null;
+}
+
 /** Upsert a completed lesson for a user (idempotent on [userId, lessonId]). */
 export async function markLessonComplete(userId: string, lessonId: string): Promise<void> {
   if (isBasic(lessonId)) {
