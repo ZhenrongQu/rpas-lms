@@ -9,8 +9,16 @@ import { PASSWORD_RULES, isPasswordValid } from '@/lib/auth/passwordPolicy';
 
 type OAuthStatus = { google: boolean; apple: boolean };
 
+// Error codes the register API can return per field (see app/api/auth/register/route.ts),
+// each mapped to a localized hint under the `auth.err.*` i18n keys.
+const FIELD_ERR_CODES = new Set([
+  'email_required', 'email_invalid', 'password_required',
+  'password_length', 'username_length', 'username_charset', 'phone_length',
+]);
+
 export default function RegisterPage() {
   const t = useTranslations('auth');
+  const tErr = useTranslations('auth.err');
   const locale = useLocale();
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -22,6 +30,7 @@ export default function RegisterPage() {
   const [code, setCode] = useState('');
   const [verificationRequested, setVerificationRequested] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [resendIn, setResendIn] = useState(0);
   const [oauthStatus, setOauthStatus] = useState<OAuthStatus>({ google: false, apple: false });
@@ -51,7 +60,7 @@ export default function RegisterPage() {
   // Re-requesting /api/auth/register for an unverified account re-issues the
   // email code (it invalidates the old one), so both the initial request and
   // the resend hit the same endpoint.
-  async function requestCode(): Promise<boolean> {
+  async function requestCode(): Promise<{ ok: boolean; fields?: Record<string, string> }> {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -62,11 +71,32 @@ export default function RegisterPage() {
         username: username.trim() || undefined,
       }),
     });
-    return res.ok;
+    if (res.ok) return { ok: true };
+    const data = await res.json().catch(() => null);
+    return { ok: false, fields: data?.fields };
+  }
+
+  // Show inline field hints when the API reports validation codes; otherwise fall
+  // back to the generic message (e.g. duplicate email / server error).
+  function applyRequestError(result: { fields?: Record<string, string> }) {
+    if (result.fields && Object.keys(result.fields).length > 0) {
+      setFieldErrors(result.fields);
+      setError(null);
+    } else {
+      setError(t('registerFailed'));
+    }
+  }
+
+  // Render a localized hint for a field, ignoring any unrecognized code.
+  function fieldHint(field: string) {
+    const code = fieldErrors[field];
+    if (!code || !FIELD_ERR_CODES.has(code)) return null;
+    return <span className="auth-field-error">{tErr(code)}</span>;
   }
 
   async function register(e: React.FormEvent) {
     e.preventDefault();
+    setFieldErrors({});
     if (!isPasswordValid(password)) {
       setError(t('pwInvalid'));
       return;
@@ -77,10 +107,10 @@ export default function RegisterPage() {
     }
     setBusy(true);
     setError(null);
-    const ok = await requestCode();
+    const result = await requestCode();
     setBusy(false);
-    if (!ok) {
-      setError(t('registerFailed'));
+    if (!result.ok) {
+      applyRequestError(result);
       return;
     }
     setVerificationRequested(true);
@@ -91,10 +121,11 @@ export default function RegisterPage() {
     if (resendIn > 0 || busy) return;
     setBusy(true);
     setError(null);
-    const ok = await requestCode();
+    setFieldErrors({});
+    const result = await requestCode();
     setBusy(false);
-    if (!ok) {
-      setError(t('registerFailed'));
+    if (!result.ok) {
+      applyRequestError(result);
       return;
     }
     setResendIn(60);
@@ -156,6 +187,7 @@ export default function RegisterPage() {
             <input className="auth-input" type="email" autoComplete="email"
               value={email} required disabled={verificationRequested}
               onChange={(e) => setEmail(e.target.value)} />
+            {fieldHint('email')}
           </label>
 
           {/* Username — optional */}
@@ -165,6 +197,7 @@ export default function RegisterPage() {
               placeholder={t('usernamePlaceholder')}
               value={username} disabled={verificationRequested}
               onChange={(e) => setUsername(e.target.value)} />
+            {fieldHint('username')}
           </label>
 
           {/* Phone — optional */}
@@ -174,6 +207,7 @@ export default function RegisterPage() {
               placeholder={t('phonePlaceholder')}
               value={phone} disabled={verificationRequested}
               onChange={(e) => setPhone(e.target.value)} />
+            {fieldHint('phone')}
           </label>
 
           {/* Password — required */}
@@ -183,6 +217,7 @@ export default function RegisterPage() {
               value={password} required disabled={verificationRequested}
               onFocus={() => setPwFocused(true)}
               onChange={(e) => setPassword(e.target.value)} />
+            {fieldHint('password')}
           </label>
 
           {/* Password strength checklist */}

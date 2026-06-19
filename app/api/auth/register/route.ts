@@ -3,11 +3,13 @@ import { sendVerificationCode } from "../../../../src/lib/auth/delivery";
 import { registerLocalAccount } from "../../../../src/lib/auth/localAccount";
 import { requestVerificationCode } from "../../../../src/lib/auth/verificationCode";
 
+// Each rule's message is a stable error code (not prose) so the client can map
+// it to a localized hint via the `auth.err.*` i18n keys.
 const RegisterBody = z.object({
-  email: z.string().email(),
-  password: z.string().min(8).max(72),
-  username: z.string().min(6).max(24).regex(/^[a-zA-Z0-9]+$/, "letters and numbers only").optional(),
-  phone: z.string().min(7).optional(),
+  email: z.string({ required_error: "email_required" }).email("email_invalid"),
+  password: z.string({ required_error: "password_required" }).min(8, "password_length").max(72, "password_length"),
+  username: z.string().min(6, "username_length").max(24, "username_length").regex(/^[a-zA-Z0-9]+$/, "username_charset").optional(),
+  phone: z.string().min(7, "phone_length").optional(),
 }).strict();
 
 function statusForError(error: unknown): number {
@@ -30,7 +32,12 @@ export async function POST(req: Request): Promise<Response> {
 
   const parsed = RegisterBody.safeParse(raw);
   if (!parsed.success) {
-    return Response.json({ error: "invalid body" }, { status: 400 });
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const fields: Record<string, string> = {};
+    for (const [field, codes] of Object.entries(fieldErrors)) {
+      if (codes && codes.length > 0) fields[field] = codes[0];
+    }
+    return Response.json({ error: "invalid body", fields }, { status: 400 });
   }
 
   try {
