@@ -146,6 +146,7 @@
       "email_invalid": "邮箱格式不正确。",
       "password_required": "请输入密码。",
       "password_length": "密码需为 8–72 个字符。",
+      "password_weak": "该密码过于常见或容易被猜到，请换一个更难预测的密码。",
       "username_length": "用户名需为 6–24 位。",
       "username_charset": "用户名只能包含字母和数字。",
       "phone_length": "请输入有效的手机号。"

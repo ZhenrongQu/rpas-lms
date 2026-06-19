@@ -146,6 +146,7 @@
       "email_invalid": "Enter a valid email address.",
       "password_required": "Password is required.",
       "password_length": "Password must be 8–72 characters.",
+      "password_weak": "This password is too common or guessable. Choose a less predictable one.",
       "username_length": "Username must be 6–24 characters.",
       "username_charset": "Username can only contain letters and numbers.",
       "phone_length": "Enter a valid phone number."

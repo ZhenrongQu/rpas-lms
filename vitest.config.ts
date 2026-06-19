@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 // Tests run against a local Postgres (matches the prod provider). Override via
@@ -7,6 +8,11 @@ const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5433/postgres";
 
 export default defineConfig({
+  resolve: {
+    // Mirror tsconfig "@/*" → "./src/*" so tests can import route modules that
+    // use the "@/" alias (e.g. coriander video routes).
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+  },
   test: {
     environment: "node",
     include: ["src/**/*.test.ts", "app/**/*.test.ts"],

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createPasswordResetToken } from "../../../../../src/lib/auth/localAccount";
 import { sendPasswordResetLink } from "../../../../../src/lib/auth/delivery";
+import { clientIp, enforceRateLimit } from "../../../../../src/lib/security/rateLimit";
 
 const Body = z.object({
   email: z.string({ required_error: "email_required" }).email("email_invalid"),
@@ -11,6 +12,15 @@ const Body = z.object({
 // an account exists — this is what prevents email enumeration. A reset link is
 // only actually emailed when a matching account is found.
 export async function POST(req: Request): Promise<Response> {
+  // SEC-11: cap reset-link emails per IP. A 429 is existence-independent, so it
+  // does not weaken the anti-enumeration guarantee below.
+  const ipLimited = await enforceRateLimit(`forgot:ip:${clientIp(req)}`, {
+    limit: 10,
+    windowSec: 60 * 60,
+    blockSec: 60 * 60,
+  });
+  if (ipLimited) return ipLimited;
+
   let raw: unknown;
   try {
     raw = await req.json();
@@ -29,6 +39,14 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const { email, locale = "en" } = parsed.data;
+
+  // SEC-11: per-target cap (counted whether or not the account exists).
+  const targetLimited = await enforceRateLimit(`forgot:email:${email.trim().toLowerCase()}`, {
+    limit: 5,
+    windowSec: 60 * 60,
+    blockSec: 60 * 60,
+  });
+  if (targetLimited) return targetLimited;
   const result = await createPasswordResetToken({ email });
   if (result.ok) {
     const base = process.env.APP_URL ?? new URL(req.url).origin;

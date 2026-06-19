@@ -98,23 +98,30 @@ export async function verifyCode({
 
   const matches = await bcrypt.compare(code, row.codeHash);
   if (!matches) {
-    const attempts = row.attempts + 1;
-
-    await prisma.verificationCode.update({
-      where: { id: row.id },
-      data: { attempts },
+    // P1-4: atomic increment guarded by the same predicates we read on, so
+    // concurrent wrong guesses can't both read the old `attempts` and undercount
+    // (which would inflate the 5-try cap). The reason text is best-effort.
+    await prisma.verificationCode.updateMany({
+      where: { id: row.id, consumedAt: null, expiresAt: { gt: currentTime }, attempts: { lt: MAX_ATTEMPTS } },
+      data: { attempts: { increment: 1 } },
     });
 
     return {
       ok: false,
-      reason: attempts >= MAX_ATTEMPTS ? "too_many_attempts" : "invalid_or_expired",
+      reason: row.attempts + 1 >= MAX_ATTEMPTS ? "too_many_attempts" : "invalid_or_expired",
     };
   }
 
-  await prisma.verificationCode.update({
-    where: { id: row.id },
+  // P1-4: consume with a conditional update and check the affected count, so only
+  // ONE of several concurrent correct submissions wins — a single-use reset /
+  // verification token can't be redeemed twice.
+  const consumed = await prisma.verificationCode.updateMany({
+    where: { id: row.id, consumedAt: null, expiresAt: { gt: currentTime }, attempts: { lt: MAX_ATTEMPTS } },
     data: { consumedAt: currentTime },
   });
+  if (consumed.count === 0) {
+    return { ok: false, reason: "invalid_or_expired" };
+  }
 
   return { ok: true, target: normalizedTarget };
 }

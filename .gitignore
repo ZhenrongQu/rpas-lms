@@ -27,3 +27,8 @@ prisma/*.db-journal
 
 # Database dumps — may contain user/payment data, never commit
 *.dump
+
+# Claude Code agent settings — machine-specific tool allowlist / local paths.
+# Not for committing (broad command perms shouldn't be a project artifact).
+.claude/settings.json
+.claude/settings.local.json

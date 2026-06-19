@@ -64,11 +64,11 @@ Status key: ✅ done · ⚠️ partial · ❌ not started
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 22 | Rate limiting on auth routes | ❌ | `/api/auth/register`, `/api/auth/code/request`, `/api/payments/checkout` have no rate limiting. Add middleware (e.g. Upstash Redis + `@upstash/ratelimit`). |
+| 22 | Rate limiting on auth routes | ✅ | DB-backed fixed-window limiter (`RateLimit` table): `/api/auth/register`, `/api/auth/password/forgot`, `/api/payments/checkout`; plus account+IP lockout on customer and admin login. `/api/auth/code/*` retired (410). |
 | 23 | Error monitoring | ❌ | Add Sentry (or similar) to catch runtime exceptions. |
 | 24 | Environment variable audit | ❌ | Confirm no secrets exist in `.env` that get committed. `.gitignore` should exclude `.env` (not `.env.example`). |
 | 25 | Stripe webhook signature verified | ✅ | `constructEvent` with webhook secret is already implemented. |
-| 26 | Webhook idempotency | ✅ | `WebhookEvent` table prevents duplicate processing. |
+| 26 | Webhook idempotency | ✅ | `WebhookEvent` dedupes deliveries, and the event is recorded **only after** the grant succeeds — a failed grant leaves no row so Stripe's retry safely re-runs the idempotent grant (no pay-without-access). |
 
 ---
 

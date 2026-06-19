@@ -3,8 +3,26 @@ import { Prisma } from "@prisma/client";
 // NOTE: `prisma.customer` is the former `User` table (renamed in the
 // Admin/Customer split). This module only deals with customer (learner) login.
 import { prisma } from "../db";
+import { clearRateLimit, hitRateLimit, isLocked } from "../security/rateLimit";
 import { hashPassword, verifyPassword } from "./password";
 import { normalizeTarget, requestVerificationCode, verifyCode } from "./verificationCode";
+import { weakPasswordReason } from "./weakPassword";
+
+// SEC-10: lock an account after repeated failed logins so weak passwords can't
+// be brute-forced online. Auto-recovers after the window. A per-account lock can
+// be abused to deny a known victim service, so the window is short and the
+// caller's IP is throttled in parallel (see auth.ts).
+const LOGIN_MAX_FAILURES = 8;
+const LOGIN_WINDOW_SEC = 15 * 60;
+const LOGIN_BLOCK_SEC = 15 * 60;
+
+async function recordLoginFailure(acctKey: string, ipKey: string | null, now: () => Date): Promise<void> {
+  await hitRateLimit({ key: acctKey, limit: LOGIN_MAX_FAILURES, windowSec: LOGIN_WINDOW_SEC, blockSec: LOGIN_BLOCK_SEC, now });
+  // IP limit is looser than per-account: many users can share one NAT egress IP.
+  if (ipKey) {
+    await hitRateLimit({ key: ipKey, limit: LOGIN_MAX_FAILURES * 4, windowSec: LOGIN_WINDOW_SEC, blockSec: LOGIN_BLOCK_SEC, now });
+  }
+}
 
 // Length bounds shared by register / reset / change. The 72-byte ceiling matches
 // bcrypt (bytes beyond it are silently ignored, so accepting longer passwords
@@ -100,6 +118,11 @@ export async function registerLocalAccount(input: RegisterLocalAccountInput) {
   if (!passwordWithinBounds(input.password)) {
     throw new Error("invalid_password");
   }
+  // SEC-13: reject common / guessable passwords server-side (client complexity
+  // rules are a UX gate and can be bypassed by calling the API directly).
+  if (weakPasswordReason(input.password, { email: input.email, username: input.username })) {
+    throw new Error("weak_password");
+  }
   const email = normalizeEmail(input.email);
   const username = input.username ? normalizeUsername(input.username) : undefined;
   const phone = input.phone ? normalizePhone(input.phone) : undefined;
@@ -128,16 +151,26 @@ export async function registerLocalAccount(input: RegisterLocalAccountInput) {
     });
   }
 
-  const maxResult = await prisma.customer.aggregate({ _max: { userNumber: true } });
-  const nextUserNumber = (maxResult._max.userNumber ?? 0) + 1;
+  // P2-1: `userNumber` is allocated as max+1, which two concurrent registrations
+  // can read identically and collide on its unique index. Retry on that specific
+  // conflict with a recomputed number; any other unique violation (e.g. email)
+  // is a real error and rethrown.
+  for (let attempt = 0; ; attempt++) {
+    const maxResult = await prisma.customer.aggregate({ _max: { userNumber: true } });
+    const nextUserNumber = (maxResult._max.userNumber ?? 0) + 1;
+    try {
+      return await prisma.customer.create({ data: { ...data, email, userNumber: nextUserNumber } });
+    } catch (error) {
+      if (attempt < 5 && isUserNumberConflict(error)) continue;
+      throw error;
+    }
+  }
+}
 
-  return prisma.customer.create({
-    data: {
-      ...data,
-      email,
-      userNumber: nextUserNumber,
-    },
-  });
+function isUserNumberConflict(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") return false;
+  const target = error.meta?.target;
+  return Array.isArray(target) ? target.includes("userNumber") : String(target ?? "").includes("userNumber");
 }
 
 export async function verifyRegistrationEmail({
@@ -193,10 +226,21 @@ export async function verifyRegistrationEmail({
   return { ok: true };
 }
 
-export async function authorizeLocalPasswordLogin(input: LoginInput) {
+export async function authorizeLocalPasswordLogin(
+  input: LoginInput & { ip?: string },
+  now: () => Date = () => new Date(),
+) {
   if (!input.password) return null;
   const identifier = selectedIdentifier(input);
   if (!identifier) return null;
+
+  const acctKey = `login:acct:${identifier.kind}:${identifier.value}`;
+  const ipKey = input.ip ? `login:ip:${input.ip}` : null;
+
+  // SEC-10: reject while locked, before any DB/bcrypt work, so a locked account
+  // stays locked even for the correct password until the window elapses.
+  if (!(await isLocked(acctKey, now)).allowed) return null;
+  if (ipKey && !(await isLocked(ipKey, now)).allowed) return null;
 
   const user =
     identifier.kind === "email"
@@ -204,10 +248,20 @@ export async function authorizeLocalPasswordLogin(input: LoginInput) {
       : identifier.kind === "phone"
         ? await prisma.customer.findUnique({ where: { phone: identifier.value } })
         : await prisma.customer.findUnique({ where: { username: identifier.value } });
-  if (!user?.hashedPassword || !user.emailVerifiedAt) return null;
+  if (!user?.hashedPassword || !user.emailVerifiedAt) {
+    await recordLoginFailure(acctKey, ipKey, now);
+    return null;
+  }
 
   const ok = await verifyPassword(input.password, user.hashedPassword);
-  return ok ? user : null;
+  if (!ok) {
+    await recordLoginFailure(acctKey, ipKey, now);
+    return null;
+  }
+
+  await clearRateLimit(acctKey);
+  if (ipKey) await clearRateLimit(ipKey);
+  return user;
 }
 
 // ── Password reset (forgot password) ────────────────────────────────────────

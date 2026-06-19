@@ -64,6 +64,46 @@ describe("POST /api/payments/webhook", () => {
     expect(await prisma.entitlement.count()).toBe(1);
   });
 
+  it("re-attempts the grant on retry when the first delivery failed (P1-3)", async () => {
+    // userId has no Customer row → the grant's Payment upsert violates the FK and
+    // throws, so no WebhookEvent is recorded and the user gets nothing yet.
+    const event = {
+      id: "evt_retry",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_retry",
+          payment_status: "paid",
+          metadata: { userId: "u_missing", product: "paid_access" },
+          payment_intent: "pi_retry",
+          customer: "cus_retry",
+          amount_total: 9900,
+          currency: "cad",
+        },
+      },
+    };
+    __setStripeClientForTests({
+      checkout: { sessions: { create: async () => ({ url: "" }) } },
+      webhooks: { constructEvent: () => event },
+    });
+    const request = () => new Request("http://test/api/payments/webhook", {
+      method: "POST",
+      headers: { "stripe-signature": "sig" },
+      body: JSON.stringify(event),
+    });
+
+    // First delivery: grant fails, nothing recorded — critically NOT a swallowed 200.
+    await expect(POST(request())).rejects.toBeTruthy();
+    expect(await prisma.webhookEvent.count()).toBe(0);
+    expect(await prisma.entitlement.count()).toBe(0);
+
+    // The transient cause is resolved (customer now exists); Stripe retries.
+    await prisma.customer.create({ data: { id: "u_missing", email: "missing@test.local", accessTier: "FREE" } });
+    expect((await POST(request())).status).toBe(200);
+    expect(await prisma.webhookEvent.count()).toBe(1);
+    expect(await prisma.entitlement.count()).toBe(1);
+  });
+
   it("grants the flight_review entitlement without changing access tier", async () => {
     const flightReviewEvent = {
       id: "evt_fr",

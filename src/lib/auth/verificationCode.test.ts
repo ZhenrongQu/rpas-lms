@@ -135,4 +135,45 @@ describe("verification code service", () => {
     if (result.ok) throw new Error("expected locked code to fail");
     expect(result.reason).toBe("too_many_attempts");
   });
+
+  // P1-4: a single-use code redeemed concurrently must succeed exactly once.
+  it("consumes a correct code only once under concurrency", async () => {
+    await requestVerificationCode({
+      channel: "email",
+      target: "race@example.com",
+      now: () => new Date("2026-06-06T00:00:00.000Z"),
+      codeFactory: () => "424242",
+    });
+
+    const at = () => new Date("2026-06-06T00:01:00.000Z");
+    const results = await Promise.all(
+      Array.from({ length: 8 }, () =>
+        verifyCode({ channel: "email", target: "race@example.com", code: "424242", now: at }),
+      ),
+    );
+    expect(results.filter((r) => r.ok).length).toBe(1);
+  });
+
+  // P1-4: concurrent wrong guesses must each be counted — no undercount that
+  // would let an attacker exceed the 5-try cap.
+  it("counts concurrent failed attempts atomically", async () => {
+    await requestVerificationCode({
+      channel: "email",
+      target: "brute@example.com",
+      now: () => new Date("2026-06-06T00:00:00.000Z"),
+      codeFactory: () => "999999",
+    });
+
+    const at = () => new Date("2026-06-06T00:01:00.000Z");
+    await Promise.all(
+      Array.from({ length: 5 }, () =>
+        verifyCode({ channel: "email", target: "brute@example.com", code: "000000", now: at }),
+      ),
+    );
+
+    const row = await prisma.verificationCode.findFirstOrThrow({
+      where: { channel: "email", target: "brute@example.com" },
+    });
+    expect(row.attempts).toBe(5);
+  });
 });

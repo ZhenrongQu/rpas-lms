@@ -29,14 +29,14 @@
 | SEC-07 | 后台页面（ADMIN_BASE UI）鉴权未确认 | 🟠 | ⏱️ 验证 | `app/coriander/layout.tsx` | ☑ 已确认 |
 | SEC-08 | 密码 min(8) 只在路由层；无最大长度 | 🟡 | ⏱️ | `src/lib/auth/localAccount.ts` `register/route.ts` | ☑ |
 | SEC-09 | 后台筛选参数未做枚举校验（正确性） | 🟡 | ⏱️ | `app/api/coriander/{lessons,questions}/route.ts` | ☑ |
-| SEC-10 | **无登录失败限制 / 账号锁定** | 🔴 | 📅 | 全局（登录+管理员登录） | ☐ |
-| SEC-11 | 无发码/注册/下单接口限流 | 🟠 | 📅 | 全局 | ☐ |
-| SEC-12 | 后台 `coriander/*` 无路由级测试 | 🟠 | 📅 | `app/api/coriander/**` | ☐ |
-| SEC-13 | 无密码复杂度 / 弱密码 / 泄露库拦截 | 🟠 | 📅 | 注册路由 | ☐ |
-| SEC-14 | 无「修改密码」流程 | 🟠 | 🗓️ | 不存在 | ☐ |
-| SEC-15 | 无「忘记/重置密码」流程 | 🔴 | 🗓️ | 不存在 | ☐ |
-| SEC-16 | 管理员无 MFA，密码规则与普通用户相同 | 🟠 | 🗓️ | 管理员登录 | ☐ |
-| SEC-17 | MDX 用正则黑名单清洗（建议换白名单 sanitizer） | 🟡 | 🗓️ | `src/lib/admin/mdxValidation.ts` | ☐ |
+| SEC-10 | **无登录失败限制 / 账号锁定** | 🔴 | 📅 | 全局（登录+管理员登录） | ☑ |
+| SEC-11 | 无发码/注册/下单接口限流 | 🟠 | 📅 | 全局 | ☑ |
+| SEC-12 | 后台 `coriander/*` 无路由级测试 | 🟠 | 📅 | `app/api/coriander/**` | ☑ |
+| SEC-13 | 无密码复杂度 / 弱密码 / 泄露库拦截 | 🟠 | 📅 | 注册路由 | ☑ |
+| SEC-14 | 无「修改密码」流程 | 🟠 | 🗓️ | `app/api/auth/password/route.ts` | ☑ |
+| SEC-15 | 无「忘记/重置密码」流程 | 🔴 | 🗓️ | `app/api/auth/password/{forgot,reset}` | ☑ |
+| SEC-16 | 管理员无 MFA，密码规则与普通用户相同 | 🟠 | 🗓️ | 管理员登录 + `coriander/security` | ☑ |
+| SEC-17 | MDX 用正则黑名单清洗（已换白名单） | 🟡 | 🗓️ | `src/lib/admin/mdxValidation.ts` | ☑ |
 
 ---
 
@@ -199,3 +199,24 @@
 - `pnpm typecheck` / `pnpm build`：✅ 通过。
 - 已完成（截至本次）：SEC-01 / 02 / 03 / 04(临时+**彻底**) / 05 / 06 / 07 / 08 / 09。剩余：SEC-10~17（登录失败锁定、限流、其余后台路由测试、弱密码拦截、改密/重置、管理员 MFA 等）。
 - 测试库：本地用 Docker 容器 `rpas-test-pg`（Postgres 16，:5433）跑起后验证，容器保留供后续测试。
+
+## 实施进展 (2026-06-18) — SEC-10~17 全部完成
+
+**SEC-10 登录失败锁定**：新增 `RateLimit` 表 + `src/lib/security/rateLimit.ts`（DB 固定窗口计数器，Vercel 无状态多实例可靠）。`authorizeLocalPasswordLogin`（客户，8 次/15 分钟锁）与 `authorizeAdminPasswordLogin`（管理员更严，5 次/30 分钟锁）按「账号 + IP」记失败；**锁定后即使密码正确也拒**，窗口后自动恢复。IP 由 NextAuth `authorize(creds, request)` 的 `x-forwarded-for` 取得。测试 `loginLockout.test.ts`。
+
+**SEC-11 接口限流**：复用同一 `RateLimit` 表 + `enforceRateLimit()`。注册（12/小时·IP + 8/天·邮箱）、忘记密码（10/小时·IP + 5/小时·邮箱，429 与账号是否存在无关，不破坏防枚举）、下单（20/小时·用户）。超限返回 429 + `Retry-After`。测试覆盖注册路由 429。
+
+**SEC-12 后台路由测试**：`app/api/coriander/guards.test.ts` 对 **19 个** coriander 处理器断言「非管理员（含伪造 isAdmin）→ 404」，并对 questions/lessons/slots 三个 create 路由断言「坏 body → 422」。webhook 因属签名鉴权（非 admin guard）单列、不在本测试范围。顺带给 `vitest.config.ts` 加 `@/` alias 以便测试导入 `@/`-引用的路由。
+
+**SEC-13 弱密码拦截**：`src/lib/auth/weakPassword.ts` 服务端黑名单（常见弱密码 + 含邮箱/用户名 + 全同字符/顺序串）。在 `registerLocalAccount` 入口强制（客户端复杂度规则仍是 UX 层，可被直接调 API 绕过，故服务端补一道）。弱密码 → 400 + `fields.password=password_weak`，注册页加 `auth.err.password_weak` 中英文提示。
+
+**SEC-16 管理员 MFA（TOTP）**：手写 RFC 6238 TOTP（`src/lib/auth/totp.ts`，无新依赖，过 RFC 测试向量）。`Admin` 加 `totpSecret`/`totpEnabledAt` 两列。启用后管理员登录必须带有效 6 位码（错/缺码计入锁定）。自助流程 `src/lib/auth/adminMfa.ts` + `/api/coriander/mfa`（begin/confirm/disable，禁用需密码+码）+ `/coriander/security` 管理页 + 登录表单可填验证码。**注**：未加二维码图片（避免新依赖），用 base32 密钥 / `otpauth://` URI 手动导入认证器 App。测试 `adminMfa.test.ts`、`totp.test.ts`。
+
+**SEC-17 MDX 黑名单→白名单**：`mdxValidation.ts` 由「列已知危险标签」改为「列允许的标签」——任何 JSX/HTML 标签不在 {允许的组件 ∪ 安全 HTML 标签} 即拒。先剥离 fenced/inline 代码与 autolink 再扫描，避免 prose 里的 `<` 误报。保留 on*/javascript:/data:text/html 属性扫描。未改渲染管线（`rehype-sanitize` 会吃掉 MDX 组件，风险高、收益低，且本项最低优先级、仅管理员可写）。测试 `mdxValidation.test.ts`。
+
+**验证状态（2026-06-18）**
+- `pnpm typecheck`：✅ 通过。
+- `pnpm test`：✅ **55 个测试文件 / 234 项全通过**（含 SEC-10 锁定、SEC-11 429、SEC-12 19 路由 guard、SEC-13 弱密码、SEC-16 TOTP/MFA 登录强制、SEC-17 白名单等新证明）。
+- `pnpm build`：✅ 通过（含 `/coriander/security`、`/api/coriander/mfa`）。
+- ⚠️ **部署前**：本批新增两个迁移需应用到目标库——`20260618093000_add_rate_limit`（建 `RateLimit` 表）、`20260618093500_add_admin_totp`（`Admin` 加两列）。均为**纯增量**（CREATE TABLE / ADD COLUMN，旧代码不引用），可在合并前安全先应用到 prod。Vercel 构建不跑迁移，须 out-of-band 应用。
+- ⚠️ **管理员须自助启用 MFA**：MFA 默认关闭，老管理员需到 `/coriander/security` 扫码启用后才生效（SEC-16 是能力，不是强制开关）。

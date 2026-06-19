@@ -7,6 +7,7 @@ import { authorizeAdminPasswordLogin } from "./src/lib/auth/adminAccount";
 import { authorizeLocalPasswordLogin } from "./src/lib/auth/localAccount";
 import { getOAuthProviderCredentials } from "./src/lib/auth/oauthConfig";
 import { hasPaidAccess } from "./src/lib/payments/entitlements";
+import { clientIp } from "./src/lib/security/rateLimit";
 
 const oauthCredentials = getOAuthProviderCredentials();
 
@@ -22,12 +23,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         username: {},
         password: {},
       },
-      async authorize(creds) {
+      async authorize(creds, request) {
         const email = typeof creds?.email === "string" ? creds.email : undefined;
         const phone = typeof creds?.phone === "string" ? creds.phone : undefined;
         const username = typeof creds?.username === "string" ? creds.username : undefined;
         const password = typeof creds?.password === "string" ? creds.password : undefined;
-        const user = await authorizeLocalPasswordLogin({ email, phone, username, password });
+        const user = await authorizeLocalPasswordLogin({ email, phone, username, password, ip: clientIp(request) });
         if (!user) return null;
         return {
           id: user.id,
@@ -44,13 +45,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         phone: {},
         username: {},
         password: {},
+        totp: {},
       },
-      async authorize(creds) {
+      async authorize(creds, request) {
         const email = typeof creds?.email === "string" ? creds.email : undefined;
         const phone = typeof creds?.phone === "string" ? creds.phone : undefined;
         const username = typeof creds?.username === "string" ? creds.username : undefined;
         const password = typeof creds?.password === "string" ? creds.password : undefined;
-        const admin = await authorizeAdminPasswordLogin({ email, phone, username, password });
+        const totp = typeof creds?.totp === "string" ? creds.totp : undefined;
+        const admin = await authorizeAdminPasswordLogin({ email, phone, username, password, totp, ip: clientIp(request) });
         if (!admin) return null;
         return {
           id: admin.id,
