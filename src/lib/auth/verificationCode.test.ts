@@ -176,4 +176,25 @@ describe("verification code service", () => {
     });
     expect(row.attempts).toBe(5);
   });
+
+  // P3: concurrent issuance for one target must leave exactly one active code —
+  // the advisory lock serializes "invalidate old + insert new".
+  it("leaves only one active code when issued concurrently", async () => {
+    const at = () => new Date("2026-06-06T00:00:00.000Z");
+    await Promise.all(
+      Array.from({ length: 5 }, (_, i) =>
+        requestVerificationCode({
+          channel: "email",
+          target: "issue-race@example.com",
+          now: at,
+          codeFactory: () => String(100000 + i),
+        }),
+      ),
+    );
+
+    const active = await prisma.verificationCode.count({
+      where: { channel: "email", target: "issue-race@example.com", consumedAt: null },
+    });
+    expect(active).toBe(1);
+  });
 });

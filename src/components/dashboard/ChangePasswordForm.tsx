@@ -42,7 +42,9 @@ export default function ChangePasswordForm() {
           ? t('wrongCurrentPassword')
           : data?.error === 'no_password_set'
             ? t('noPasswordSet')
-            : t('changePasswordFailed'),
+            : data?.error === 'weak_password'
+              ? t('err.password_weak')
+              : t('changePasswordFailed'),
       );
       return;
     }

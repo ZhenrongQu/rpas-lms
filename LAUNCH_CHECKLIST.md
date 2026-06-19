@@ -70,6 +70,14 @@ Status key: ✅ done · ⚠️ partial · ❌ not started
 | 25 | Stripe webhook signature verified | ✅ | `constructEvent` with webhook secret is already implemented. |
 | 26 | Webhook idempotency | ✅ | `WebhookEvent` dedupes deliveries, and the event is recorded **only after** the grant succeeds — a failed grant leaves no row so Stripe's retry safely re-runs the idempotent grant (no pay-without-access). |
 
+### Known dependency advisories (pre-launch risk — `pnpm audit`)
+
+`pnpm audit` reports 10 advisories (1 critical, 1 high, 7 moderate, 1 low). Tracked, **not yet resolved** (see `docs/CODE_REVIEW_REPORT_2026-06-19.md` P2-3):
+
+- **`next-intl@3.26.5`** — **production** dependency on the middleware/i18n path; plan the upgrade (it's a major) before launch. Highest priority of the three.
+- **`vitest`/`vite`** — dev-only (the critical/high come from the Vitest UI dev server); patch when convenient, no production exposure.
+- **`gray-matter@4.0.3`** (→ `js-yaml`) — production; confirm it's still needed and upgrade or narrow its use.
+
 ---
 
 ## UX / Polish

@@ -31,6 +31,22 @@ function passwordWithinBounds(password: string): boolean {
   return password.length >= 8 && Buffer.byteLength(password, "utf8") <= 72;
 }
 
+/**
+ * Single screen for any NEW password — register, reset, and change all go
+ * through it (P2). Enforces the length bounds AND the SEC-13 common/guessable
+ * blocklist server-side, so a password the register form would reject can't be
+ * slipped in via the reset or change-password APIs (the client complexity rules
+ * are only a UX gate). Returns a machine reason, or null when acceptable.
+ */
+function validateNewPassword(
+  password: string,
+  identifiers: { email?: string; username?: string } = {},
+): "invalid_password" | "weak_password" | null {
+  if (!passwordWithinBounds(password)) return "invalid_password";
+  if (weakPasswordReason(password, identifiers)) return "weak_password";
+  return null;
+}
+
 type LocalIdentifier = {
   email?: string;
   phone?: string;
@@ -114,15 +130,10 @@ async function assertAliasAvailable({
 }
 
 export async function registerLocalAccount(input: RegisterLocalAccountInput) {
-  // SEC-08: enforce password bounds in the service, not only the route's zod.
-  if (!passwordWithinBounds(input.password)) {
-    throw new Error("invalid_password");
-  }
-  // SEC-13: reject common / guessable passwords server-side (client complexity
-  // rules are a UX gate and can be bypassed by calling the API directly).
-  if (weakPasswordReason(input.password, { email: input.email, username: input.username })) {
-    throw new Error("weak_password");
-  }
+  // SEC-08/SEC-13: enforce length + common-password blocklist in the service,
+  // not only the route's zod (the client rules can be bypassed via the API).
+  const invalid = validateNewPassword(input.password, { email: input.email, username: input.username });
+  if (invalid) throw new Error(invalid);
   const email = normalizeEmail(input.email);
   const username = input.username ? normalizeUsername(input.username) : undefined;
   const phone = input.phone ? normalizePhone(input.phone) : undefined;
@@ -309,11 +320,10 @@ export async function resetLocalPassword({
   token: string;
   newPassword: string;
   now?: () => Date;
-}): Promise<{ ok: true } | { ok: false; reason: "invalid_password" | "invalid_or_expired" | "too_many_attempts" }> {
-  if (!passwordWithinBounds(newPassword)) {
-    return { ok: false, reason: "invalid_password" };
-  }
+}): Promise<{ ok: true } | { ok: false; reason: "invalid_password" | "weak_password" | "invalid_or_expired" | "too_many_attempts" }> {
   const normalizedEmail = normalizeEmail(email);
+  const invalid = validateNewPassword(newPassword, { email: normalizedEmail });
+  if (invalid) return { ok: false, reason: invalid };
   const verified = await verifyCode({ channel: "email_reset", target: normalizedEmail, code: token, now });
   if (!verified.ok) return verified;
 
@@ -350,15 +360,20 @@ export async function changeLocalPassword({
   userId: string;
   oldPassword: string;
   newPassword: string;
-}): Promise<{ ok: true } | { ok: false; reason: "no_password_set" | "wrong_password" | "invalid_password" }> {
-  if (!passwordWithinBounds(newPassword)) {
-    return { ok: false, reason: "invalid_password" };
-  }
+}): Promise<{ ok: true } | { ok: false; reason: "no_password_set" | "wrong_password" | "invalid_password" | "weak_password" }> {
   const user = await prisma.customer.findUnique({ where: { id: userId } });
   if (!user?.hashedPassword) return { ok: false, reason: "no_password_set" };
 
+  // Authenticate before validating the new password so we never reveal anything
+  // about it to an unauthenticated caller.
   const ok = await verifyPassword(oldPassword, user.hashedPassword);
   if (!ok) return { ok: false, reason: "wrong_password" };
+
+  const invalid = validateNewPassword(newPassword, {
+    email: user.email ?? undefined,
+    username: user.username ?? undefined,
+  });
+  if (invalid) return { ok: false, reason: invalid };
 
   const hashedPassword = await hashPassword(newPassword);
   await prisma.customer.update({ where: { id: userId }, data: { hashedPassword } });

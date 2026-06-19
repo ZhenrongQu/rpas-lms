@@ -58,7 +58,8 @@ function ResetForm() {
     });
     setBusy(false);
     if (!res.ok) {
-      setError(t('resetLinkInvalid'));
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(data?.error === 'weak_password' ? t('err.password_weak') : t('resetLinkInvalid'));
       return;
     }
     setDone(true);
