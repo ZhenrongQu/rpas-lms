@@ -141,6 +141,15 @@
     "guest": "Guest",
     "invalidCredentials": "Invalid email or password.",
     "registerFailed": "Could not create account. The email may already be in use.",
+    "err": {
+      "email_required": "Email is required.",
+      "email_invalid": "Enter a valid email address.",
+      "password_required": "Password is required.",
+      "password_length": "Password must be 8–72 characters.",
+      "username_length": "Username must be 6–24 characters.",
+      "username_charset": "Username can only contain letters and numbers.",
+      "phone_length": "Enter a valid phone number."
+    },
     "working": "Working…",
     "continueGoogle": "Continue with Google",
     "continueApple": "Continue with Apple",

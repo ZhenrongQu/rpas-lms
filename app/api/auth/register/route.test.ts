@@ -46,9 +46,17 @@ describe("POST /api/auth/register", () => {
     expect(code.codeHash).toBeTruthy();
   });
 
-  it("rejects invalid bodies", async () => {
-    const res = await register(req({ email: "bad", password: "short" }));
+  it("rejects invalid bodies with per-field error codes", async () => {
+    const res = await register(req({ email: "bad", password: "short", username: "ab" }));
     expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "invalid body",
+      fields: {
+        email: "email_invalid",
+        password: "password_length",
+        username: "username_length",
+      },
+    });
   });
 
   it("rejects a verified duplicate email", async () => {

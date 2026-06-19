@@ -551,6 +551,7 @@ html, body {
 .auth-input::placeholder { color: var(--text-3); }
 .auth-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(184,80,30,0.12); }
 .auth-error { color: var(--red); font-family: var(--font-ui); font-size: 13px; }
+.auth-field-error { color: var(--red); font-family: var(--font-ui); font-size: 12px; }
 .auth-info { color: var(--text-2); font-family: var(--font-ui); font-size: 13px; }
 .auth-required { color: var(--red); margin-left: 2px; }
 .auth-link { font-family: var(--font-ui); font-size: 13px; color: var(--accent-text); text-align: center; text-decoration: none; }

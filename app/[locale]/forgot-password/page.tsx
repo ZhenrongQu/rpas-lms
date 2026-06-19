@@ -6,22 +6,38 @@ import { useTranslations, useLocale } from 'next-intl';
 
 export default function ForgotPasswordPage() {
   const t = useTranslations('auth');
+  const tErr = useTranslations('auth.err');
   const locale = useLocale();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    // Ignore the response body on purpose — the endpoint is intentionally
-    // uniform (no account enumeration), so we always show the same notice.
-    await fetch('/api/auth/password/forgot', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim(), locale }),
-    }).catch(() => {});
+    setEmailError(null);
+    let res: Response | null = null;
+    try {
+      res = await fetch('/api/auth/password/forgot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), locale }),
+      });
+    } catch {
+      res = null;
+    }
     setBusy(false);
+    // Only a malformed email is surfaced — it leaks nothing about account
+    // existence. Every well-formed request shows the same uniform notice.
+    if (res && res.status === 400) {
+      const data = await res.json().catch(() => null);
+      const code = data?.fields?.email;
+      if (code === 'email_invalid' || code === 'email_required') {
+        setEmailError(code);
+        return;
+      }
+    }
     setSent(true);
   }
 
@@ -48,6 +64,7 @@ export default function ForgotPasswordPage() {
                 required
                 onChange={(e) => setEmail(e.target.value)}
               />
+              {emailError && <span className="auth-field-error">{tErr(emailError)}</span>}
             </label>
             <button className="btn-launch" type="submit" disabled={busy || !email}>
               {busy ? t('working') : t('sendResetLink')}

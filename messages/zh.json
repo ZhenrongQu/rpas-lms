@@ -141,6 +141,15 @@
     "guest": "访客",
     "invalidCredentials": "邮箱或密码不正确。",
     "registerFailed": "无法创建账号，邮箱可能已被使用。",
+    "err": {
+      "email_required": "请输入邮箱。",
+      "email_invalid": "邮箱格式不正确。",
+      "password_required": "请输入密码。",
+      "password_length": "密码需为 8–72 个字符。",
+      "username_length": "用户名需为 6–24 位。",
+      "username_charset": "用户名只能包含字母和数字。",
+      "phone_length": "请输入有效的手机号。"
+    },
     "working": "处理中…",
     "continueGoogle": "使用 Google 继续",
     "continueApple": "使用 Apple 继续",

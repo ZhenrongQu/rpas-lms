@@ -3,7 +3,7 @@ import { createPasswordResetToken } from "../../../../../src/lib/auth/localAccou
 import { sendPasswordResetLink } from "../../../../../src/lib/auth/delivery";
 
 const Body = z.object({
-  email: z.string().email(),
+  email: z.string({ required_error: "email_required" }).email("email_invalid"),
   locale: z.enum(["en", "zh"]).optional(),
 }).strict();
 
@@ -20,7 +20,12 @@ export async function POST(req: Request): Promise<Response> {
 
   const parsed = Body.safeParse(raw);
   if (!parsed.success) {
-    return Response.json({ error: "invalid body" }, { status: 400 });
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const fields: Record<string, string> = {};
+    for (const [field, codes] of Object.entries(fieldErrors)) {
+      if (codes && codes.length > 0) fields[field] = codes[0];
+    }
+    return Response.json({ error: "invalid body", fields }, { status: 400 });
   }
 
   const { email, locale = "en" } = parsed.data;
