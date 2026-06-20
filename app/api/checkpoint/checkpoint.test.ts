@@ -73,6 +73,7 @@ function ctx(id: string) {
 async function cleanup() {
   await prisma.checkpointQuestion.deleteMany({ where: { id: { in: [CP_QID, CP_ARCHIVED] } } });
   await prisma.basicQuestionBank.deleteMany({ where: { id: EXAM_QID } });
+  await prisma.rateLimit.deleteMany({ where: { key: { startsWith: "checkpoint:" } } });
 }
 
 describe("checkpoint API (dedicated bank, SEC-04)", () => {
@@ -116,6 +117,27 @@ describe("checkpoint API (dedicated bank, SEC-04)", () => {
     expect(rbody.correct).toBe(true);
     expect(rbody.correctOptionIds).toEqual(["b"]);
     expect(rbody.explanation.length).toBeGreaterThan(0);
+  });
+
+  // SEC-04: the public checkpoint endpoints are rate-limited per IP so the
+  // predictable cp-<module>-NNNN ids can't be enumerated to scrape the bank.
+  it("returns 429 on both endpoints when the per-IP limit is locked", async () => {
+    const IP = "198.51.100.50";
+    await prisma.rateLimit.create({
+      data: { key: `checkpoint:ip:${IP}`, lockedUntil: new Date(Date.now() + 5 * 60_000) },
+    });
+    const headers = { "x-forwarded-for": IP };
+    const getRes = await getCheckpoint(new Request("http://test", { headers }), ctx(CP_QID));
+    expect(getRes.status).toBe(429);
+    const postRes = await checkCheckpoint(
+      new Request("http://test", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ questionId: CP_QID, selectedOptionIds: ["b"], locale: "en" }),
+      }),
+    );
+    expect(postRes.status).toBe(429);
+    await prisma.rateLimit.deleteMany({ where: { key: `checkpoint:ip:${IP}` } });
   });
 
   it("SEC-04: checkpoint endpoints never resolve an EXAM-bank id (no answer leak)", async () => {

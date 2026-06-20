@@ -16,12 +16,16 @@ describe("POST /api/auth/register/verify-email", () => {
     await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
     await prisma.customer.deleteMany();
+    await prisma.rateLimit.deleteMany({ where: { key: { startsWith: "verify-email:" } } });
+    await prisma.rateLimit.deleteMany({ where: { key: { startsWith: "register:" } } });
   });
 
   afterAll(async () => {
     await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
     await prisma.customer.deleteMany();
+    await prisma.rateLimit.deleteMany({ where: { key: { startsWith: "verify-email:" } } });
+    await prisma.rateLimit.deleteMany({ where: { key: { startsWith: "register:" } } });
     await prisma.$disconnect();
   });
 
@@ -66,5 +70,21 @@ describe("POST /api/auth/register/verify-email", () => {
 
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "invalid_or_expired" });
+  });
+
+  // SEC: a locked per-IP key short-circuits to 429 before any code check.
+  it("returns 429 when the per-IP limit is locked", async () => {
+    const IP = "198.51.100.23";
+    await prisma.rateLimit.create({
+      data: { key: `verify-email:ip:${IP}`, lockedUntil: new Date(Date.now() + 5 * 60_000) },
+    });
+    const res = await verifyEmail(
+      new Request("http://test/api/auth/register/verify-email", {
+        method: "POST",
+        headers: { "x-forwarded-for": IP },
+        body: JSON.stringify({ email: "pilot@example.com", code: "123456" }),
+      }),
+    );
+    expect(res.status).toBe(429);
   });
 });

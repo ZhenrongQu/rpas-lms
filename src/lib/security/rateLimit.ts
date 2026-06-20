@@ -100,12 +100,23 @@ export async function isLocked(key: string, now: () => Date = () => new Date()):
   return { allowed: true, retryAfterSec: 0 };
 }
 
-/** Best-effort client IP from proxy headers (Vercel sets x-forwarded-for). */
+/**
+ * Best-effort client IP for rate-limit keys. On Vercel (and most managed
+ * platforms) the edge OVERWRITES `x-real-ip` / `x-forwarded-for` with the real
+ * client IP before the function runs, so a client-supplied value never reaches
+ * us. We read `x-real-ip` first — a single, platform-set value — and only fall
+ * back to the left-most `x-forwarded-for` entry. NOTE: this trust model assumes
+ * an edge that sets these headers; if ever deployed behind a proxy that passes
+ * client-supplied forwarding headers through, the source must be revisited
+ * (taking the left-most XFF entry would then be spoofable).
+ */
 export function clientIp(req: Request | undefined): string {
   if (!req?.headers) return "unknown";
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
   const fwd = req.headers.get("x-forwarded-for");
   if (fwd) return fwd.split(",")[0]!.trim();
-  return req.headers.get("x-real-ip")?.trim() || "unknown";
+  return "unknown";
 }
 
 /** Standard 429 with a Retry-After header. */

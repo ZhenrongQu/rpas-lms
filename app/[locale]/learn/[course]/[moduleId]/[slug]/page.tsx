@@ -87,6 +87,7 @@ export default async function LessonPage({ params }: Props) {
         moduleId={moduleId}
         currentSlug={slug}
         completed={completed}
+        lessons={lessons}
       />
       <article className="lesson-main">
         <h1 className="lesson-h1">{lesson.meta.title}</h1>
