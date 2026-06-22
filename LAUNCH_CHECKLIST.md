@@ -72,11 +72,11 @@ Status key: ✅ done · ⚠️ partial · ❌ not started
 
 ### Known dependency advisories (pre-launch risk — `pnpm audit`)
 
-`pnpm audit` reports 10 advisories (1 critical, 1 high, 7 moderate, 1 low). Tracked, **not yet resolved** (see `docs/CODE_REVIEW_REPORT_2026-06-19.md` P2-3):
+`pnpm audit` now reports **5 advisories (4 moderate, 1 low)** — `--audit-level high` passes. The 1 critical + 1 high were cleared by upgrading the dev toolchain (`vitest 2 → 4`, `vite` pinned `≥6.4.3`, config moved to `vitest.config.mts`). Remaining:
 
-- **`next-intl@3.26.5`** — **production** dependency on the middleware/i18n path; plan the upgrade (it's a major) before launch. Highest priority of the three.
-- **`vitest`/`vite`** — dev-only (the critical/high come from the Vitest UI dev server); patch when convenient, no production exposure.
-- **`gray-matter@4.0.3`** (→ `js-yaml`) — production; confirm it's still needed and upgrade or narrow its use.
+- **`next-intl@3.26.5`** — **production**, the top remaining item. Two moderate advisories (open redirect, prototype pollution) are fixed only in **≥4.9.1**; there is no 3.x patch, so this needs the **3 → 4 major migration** (latest 4.13.0) on the i18n/middleware path before launch.
+- **`gray-matter@4.0.3` → `js-yaml@3.x`** — production. JS-YAML DoS fixed only in `js-yaml ≥4.2.0`, which gray-matter 4.0.3 doesn't allow; needs a gray-matter bump or replacement. Low real exposure (only admin-authored MDX frontmatter is parsed).
+- **`postcss` / `esbuild`** — dev-only (moderate + low), no production exposure.
 
 ---
 

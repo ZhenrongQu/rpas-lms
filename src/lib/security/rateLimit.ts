@@ -14,6 +14,11 @@ type HitArgs = {
   now?: () => Date;
 };
 
+// Opportunistic-cleanup tuning: a row untouched for this long with no live lock
+// is fair game for GC; SWEEP_PROBABILITY is the per-call chance we run a sweep.
+const RATE_LIMIT_TTL_MS = 24 * 60 * 60 * 1000;
+const SWEEP_PROBABILITY = 0.01;
+
 /**
  * Record one attempt against `key` and report whether it is allowed.
  *
@@ -67,6 +72,15 @@ export async function hitRateLimit({
   `;
 
   const lockedUntil = rows[0]?.lockedUntil ?? null;
+
+  // Opportunistic GC (no cron required): on a small fraction of calls, prune
+  // rows idle well past their window/lock so the table can't grow unbounded on
+  // a stateless deploy. Awaited so it runs to completion before a serverless
+  // function can suspend; cheap once the table is kept small by these sweeps.
+  if (Math.random() < SWEEP_PROBABILITY) {
+    await sweepExpiredRateLimits(now).catch(() => {});
+  }
+
   if (lockedUntil && lockedUntil > current) {
     return { allowed: false, retryAfterSec: secsUntil(lockedUntil, current) };
   }
@@ -76,6 +90,24 @@ export async function hitRateLimit({
 /** Forget a key entirely (e.g. clear login failures after a successful login). */
 export async function clearRateLimit(key: string): Promise<void> {
   await prisma.rateLimit.deleteMany({ where: { key } });
+}
+
+/**
+ * Best-effort GC of rows idle well past their window and lock. Safe to run from
+ * a cron OR opportunistically — it only deletes rows untouched for
+ * RATE_LIMIT_TTL_MS whose lock has elapsed (or is null), so it never drops a
+ * live counter or an active lockout. Returns the number of rows removed.
+ */
+export async function sweepExpiredRateLimits(now: () => Date = () => new Date()): Promise<number> {
+  const current = now();
+  const cutoff = new Date(current.getTime() - RATE_LIMIT_TTL_MS);
+  const { count } = await prisma.rateLimit.deleteMany({
+    where: {
+      updatedAt: { lt: cutoff },
+      OR: [{ lockedUntil: null }, { lockedUntil: { lt: current } }],
+    },
+  });
+  return count;
 }
 
 /**

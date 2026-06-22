@@ -55,4 +55,18 @@ describe("/api/coriander/mfa step-up rate limit (P2)", () => {
     // Now locked — even further attempts short-circuit to 429 before any check.
     expect((await mfaPOST(disableBody("wrong-pass"))).status).toBe(429);
   });
+
+  it("rate-limits the begin action per admin (caps pending-secret churn)", async () => {
+    await prisma.rateLimit.create({
+      data: { key: `mfa:begin:${ADMIN}`, lockedUntil: new Date(Date.now() + 5 * 60_000) },
+    });
+    const res = await mfaPOST(
+      new Request("http://test/api/coriander/mfa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-forwarded-for": IP },
+        body: JSON.stringify({ action: "begin" }),
+      }),
+    );
+    expect(res.status).toBe(429);
+  });
 });

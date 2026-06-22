@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "../db";
-import { clearRateLimit, enforceRateLimit, hitRateLimit, isLocked } from "./rateLimit";
+import { clearRateLimit, clientIp, enforceRateLimit, hitRateLimit, isLocked, sweepExpiredRateLimits } from "./rateLimit";
 
 const KEY = "test:ratelimit:unit";
 const at = (ms: number) => () => new Date(ms);
@@ -68,5 +68,61 @@ describe("hitRateLimit (SEC-10/11 primitive)", () => {
     const results = await Promise.all(Array.from({ length: 20 }, () => hitRateLimit(opts)));
     expect(results.filter((r) => r.allowed).length).toBe(5);
     expect(results.filter((r) => !r.allowed).length).toBe(15);
+  });
+});
+
+// P3: clientIp underpins every per-IP key, so its header precedence and
+// fallback are security-relevant — pin them so a refactor can't silently
+// start trusting the spoofable left-most XFF entry over the platform header.
+describe("clientIp (per-IP key derivation)", () => {
+  const ipReq = (headers: Record<string, string>) => new Request("http://test", { headers });
+
+  it("prefers x-real-ip over x-forwarded-for", () => {
+    expect(clientIp(ipReq({ "x-real-ip": "9.9.9.9", "x-forwarded-for": "1.1.1.1, 2.2.2.2" }))).toBe("9.9.9.9");
+  });
+
+  it("falls back to the left-most x-forwarded-for entry when x-real-ip is absent", () => {
+    expect(clientIp(ipReq({ "x-forwarded-for": "1.1.1.1, 2.2.2.2, 3.3.3.3" }))).toBe("1.1.1.1");
+  });
+
+  it("trims surrounding whitespace", () => {
+    expect(clientIp(ipReq({ "x-real-ip": "  4.4.4.4  " }))).toBe("4.4.4.4");
+    expect(clientIp(ipReq({ "x-forwarded-for": "  5.5.5.5 , 6.6.6.6" }))).toBe("5.5.5.5");
+  });
+
+  it("returns 'unknown' when no forwarding headers are present", () => {
+    expect(clientIp(ipReq({}))).toBe("unknown");
+    expect(clientIp(undefined)).toBe("unknown");
+  });
+});
+
+describe("sweepExpiredRateLimits (P3 cleanup)", () => {
+  beforeEach(reset);
+  afterAll(async () => {
+    await reset();
+    await prisma.$disconnect();
+  });
+
+  it("deletes long-idle rows but keeps fresh and still-locked ones", async () => {
+    const realNow = Date.now();
+    const twoDaysAgo = new Date(realNow - 2 * 24 * 60 * 60 * 1000);
+
+    await prisma.rateLimit.create({ data: { key: "test:ratelimit:stale" } });
+    await prisma.rateLimit.create({ data: { key: "test:ratelimit:fresh" } });
+    await prisma.rateLimit.create({
+      data: { key: "test:ratelimit:locked", lockedUntil: new Date(realNow + 24 * 60 * 60 * 1000) },
+    });
+    // `updatedAt` is @updatedAt-managed, so back-date it with raw SQL to simulate idleness.
+    await prisma.$executeRaw`UPDATE "RateLimit" SET "updatedAt" = ${twoDaysAgo} WHERE "key" IN ('test:ratelimit:stale', 'test:ratelimit:locked')`;
+
+    const removed = await sweepExpiredRateLimits();
+    expect(removed).toBe(1); // only :stale — idle AND no live lock
+
+    const keys = (
+      await prisma.rateLimit.findMany({ where: { key: { startsWith: "test:ratelimit:" } }, select: { key: true } })
+    )
+      .map((r) => r.key)
+      .sort();
+    expect(keys).toEqual(["test:ratelimit:fresh", "test:ratelimit:locked"]);
   });
 });

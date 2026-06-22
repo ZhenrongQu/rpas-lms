@@ -9,6 +9,7 @@ import {
 import {
   clearRateLimit,
   clientIp,
+  enforceRateLimit,
   hitRateLimit,
   isLocked,
   tooManyRequests,
@@ -67,6 +68,15 @@ export async function POST(req: Request): Promise<Response> {
   if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 422 });
 
   if (parsed.data.action === "begin") {
+    // A hijacked session can't activate MFA (confirm requires the password), but
+    // cap begin per-admin so it can't be used to churn/regenerate the pending
+    // secret and amplify DB writes / secret generation on this privileged route.
+    const limited = await enforceRateLimit(`mfa:begin:${admin!.id}`, {
+      limit: 10,
+      windowSec: 60 * 60,
+      blockSec: 60 * 60,
+    });
+    if (limited) return limited;
     const result = await beginMfaEnrollment(admin!.id);
     if (!result) return Response.json({ error: "already_enabled" }, { status: 409 });
     return Response.json(result);
