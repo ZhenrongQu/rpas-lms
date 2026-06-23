@@ -72,11 +72,11 @@ Status key: ✅ done · ⚠️ partial · ❌ not started
 
 ### Known dependency advisories (pre-launch risk — `pnpm audit`)
 
-`pnpm audit` now reports **5 advisories (4 moderate, 1 low)** — `--audit-level high` passes. The 1 critical + 1 high were cleared by upgrading the dev toolchain (`vitest 2 → 4`, `vite` pinned `≥6.4.3`, config moved to `vitest.config.mts`). Remaining:
+`pnpm audit` now reports **3 advisories (2 moderate, 1 low)** — `--audit-level high` passes, no production-facing advisory remains. Cleared so far: the 1 critical + 1 high via the dev toolchain (`vitest 2 → 4`, `vite` pinned `≥6.4.3`, config → `vitest.config.mts`), and both `next-intl` production advisories via the **`next-intl 3 → 4` major upgrade** (now `4.13.0`; wiring was already v4-shaped — verified locale routing, `<html lang>`, and per-locale messages render correctly). Remaining (all dev/build-only or very-low-exposure):
 
-- **`next-intl@3.26.5`** — **production**, the top remaining item. Two moderate advisories (open redirect, prototype pollution) are fixed only in **≥4.9.1**; there is no 3.x patch, so this needs the **3 → 4 major migration** (latest 4.13.0) on the i18n/middleware path before launch.
-- **`gray-matter@4.0.3` → `js-yaml@3.x`** — production. JS-YAML DoS fixed only in `js-yaml ≥4.2.0`, which gray-matter 4.0.3 doesn't allow; needs a gray-matter bump or replacement. Low real exposure (only admin-authored MDX frontmatter is parsed).
-- **`postcss` / `esbuild`** — dev-only (moderate + low), no production exposure.
+- **`postcss`** (moderate) — build-time only (Tailwind/PostCSS); processes our own CSS, no runtime/untrusted input.
+- **`gray-matter@4.0.3` → `js-yaml@3.x`** (moderate) — JS-YAML DoS fixed only in `js-yaml ≥4.2.0`, which gray-matter 4.0.3 doesn't allow; needs a gray-matter bump/replacement. Only admin-authored MDX frontmatter is parsed, so exposure is minimal.
+- **`esbuild`** (low) — dev-server file read, dev-only (via the vite/vitest/tsx chain).
 
 ---
 
