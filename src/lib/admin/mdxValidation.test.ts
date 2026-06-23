@@ -47,12 +47,48 @@ describe("validateLessonMdxBodies", () => {
     if (!res.ok) expect(res.errors.some((e) => e.includes("import/export"))).toBe(true);
   });
 
-  it("rejects dangerous raw HTML", async () => {
+  it("rejects dangerous raw HTML via the allowlist (SEC-17)", async () => {
     const res = await validateLessonMdxBodies({
       bodyEN: prose("<script>alert(1)</script>"),
       bodyZH: prose("正文。"),
     });
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.errors.some((e) => e.includes("disallowed HTML"))).toBe(true);
+    if (!res.ok) expect(res.errors.some((e) => e.includes("disallowed tag <script>"))).toBe(true);
+  });
+
+  it("rejects a non-whitelisted HTML tag like <iframe> (SEC-17)", async () => {
+    const res = await validateLessonMdxBodies({
+      bodyEN: prose('<iframe src="https://evil.test"></iframe>'),
+      bodyZH: prose("正文。"),
+    });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.errors.some((e) => e.includes("disallowed tag <iframe>"))).toBe(true);
+  });
+
+  it("rejects a dangerous attribute on an allowed tag (SEC-17)", async () => {
+    const res = await validateLessonMdxBodies({
+      bodyEN: prose('<img src="x" onerror="alert(1)" />'),
+      bodyZH: prose("正文。"),
+    });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.errors.some((e) => e.includes("on*="))).toBe(true);
+  });
+
+  it("accepts safe whitelisted raw HTML (SEC-17)", async () => {
+    expect(
+      await validateLessonMdxBodies({
+        bodyEN: prose("Press <kbd>Esc</kbd> then a <br/> line and <sub>x</sub>."),
+        bodyZH: prose("正文。"),
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it("does not false-positive on `<...>` inside inline code (SEC-17)", async () => {
+    expect(
+      await validateLessonMdxBodies({
+        bodyEN: prose("Use the path `media/<moduleId>/<id>.<ext>` for assets."),
+        bodyZH: prose("正文。"),
+      }),
+    ).toEqual({ ok: true });
   });
 });

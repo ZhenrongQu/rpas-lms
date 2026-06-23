@@ -14,12 +14,14 @@ describe("POST /api/auth/register", () => {
     await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
     await prisma.customer.deleteMany();
+    await prisma.rateLimit.deleteMany(); // SEC-11: reset register IP/email caps between cases
   });
 
   afterAll(async () => {
     await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
     await prisma.customer.deleteMany();
+    await prisma.rateLimit.deleteMany();
     await prisma.$disconnect();
   });
 
@@ -57,6 +59,20 @@ describe("POST /api/auth/register", () => {
         username: "username_length",
       },
     });
+  });
+
+  it("rejects a common password with a weak-password field hint (SEC-13)", async () => {
+    const res = await register(req({ email: "newpilot@example.com", password: "password123" }));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "weak_password", fields: { password: "password_weak" } });
+  });
+
+  it("rate-limits registrations per IP (SEC-11)", async () => {
+    // The IP cap (12/hour) runs before body parsing, so even invalid bodies count.
+    for (let i = 0; i < 12; i++) {
+      expect((await register(req({ email: "bad" }))).status).toBe(400);
+    }
+    expect((await register(req({ email: "bad" }))).status).toBe(429);
   });
 
   it("rejects a verified duplicate email", async () => {

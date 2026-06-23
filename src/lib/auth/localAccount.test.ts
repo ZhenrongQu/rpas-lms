@@ -4,7 +4,9 @@ import { prisma } from "../db";
 import { requestVerificationCode } from "./verificationCode";
 import {
   authorizeLocalPasswordLogin,
+  changeLocalPassword,
   registerLocalAccount,
+  resetLocalPassword,
   verifyRegistrationEmail,
 } from "./localAccount";
 
@@ -80,6 +82,46 @@ describe("local password accounts", () => {
     await expect(
       registerLocalAccount({ email: "long@example.com", password: "a".repeat(73) }),
     ).rejects.toThrow("invalid_password");
+  });
+
+  it("rejects a common/guessable password on register (SEC-13)", async () => {
+    await expect(
+      registerLocalAccount({ email: "weak@example.com", password: "password123" }),
+    ).rejects.toThrow("weak_password");
+  });
+
+  // P2: the weak-password screen must cover reset and change too, not just
+  // register — calling those APIs directly must not let a weak password through.
+  it("reset rejects a weak new password before consuming the token (P2)", async () => {
+    const res = await resetLocalPassword({
+      email: "any@example.com",
+      token: "irrelevant",
+      newPassword: "password123",
+    });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toBe("weak_password");
+  });
+
+  it("change rejects a weak new password, but only after authenticating (P2)", async () => {
+    const hashedPassword = await bcrypt.hash("correct-password", 10);
+    const user = await prisma.customer.create({
+      data: {
+        email: "chg@example.com",
+        hashedPassword,
+        emailVerifiedAt: new Date("2026-06-08T00:00:00.000Z"),
+        accessTier: "FREE",
+      },
+    });
+
+    // Wrong current password is reported first — no signal about the new one.
+    await expect(
+      changeLocalPassword({ userId: user.id, oldPassword: "nope", newPassword: "password123" }),
+    ).resolves.toMatchObject({ ok: false, reason: "wrong_password" });
+
+    // Correct current password + weak new password → weak_password.
+    await expect(
+      changeLocalPassword({ userId: user.id, oldPassword: "correct-password", newPassword: "password123" }),
+    ).resolves.toMatchObject({ ok: false, reason: "weak_password" });
   });
 
   it("verifies registration email and then allows email, phone, and username login", async () => {

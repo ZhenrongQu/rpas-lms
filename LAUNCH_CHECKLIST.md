@@ -64,11 +64,19 @@ Status key: ✅ done · ⚠️ partial · ❌ not started
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 22 | Rate limiting on auth routes | ❌ | `/api/auth/register`, `/api/auth/code/request`, `/api/payments/checkout` have no rate limiting. Add middleware (e.g. Upstash Redis + `@upstash/ratelimit`). |
+| 22 | Rate limiting on auth routes | ✅ | DB-backed fixed-window limiter (`RateLimit` table): `/api/auth/register`, `/api/auth/password/forgot`, `/api/payments/checkout`; plus account+IP lockout on customer and admin login. `/api/auth/code/*` retired (410). |
 | 23 | Error monitoring | ❌ | Add Sentry (or similar) to catch runtime exceptions. |
 | 24 | Environment variable audit | ❌ | Confirm no secrets exist in `.env` that get committed. `.gitignore` should exclude `.env` (not `.env.example`). |
 | 25 | Stripe webhook signature verified | ✅ | `constructEvent` with webhook secret is already implemented. |
-| 26 | Webhook idempotency | ✅ | `WebhookEvent` table prevents duplicate processing. |
+| 26 | Webhook idempotency | ✅ | `WebhookEvent` dedupes deliveries, and the event is recorded **only after** the grant succeeds — a failed grant leaves no row so Stripe's retry safely re-runs the idempotent grant (no pay-without-access). |
+
+### Known dependency advisories (pre-launch risk — `pnpm audit`)
+
+`pnpm audit` now reports **3 advisories (2 moderate, 1 low)** — `--audit-level high` passes, no production-facing advisory remains. Cleared so far: the 1 critical + 1 high via the dev toolchain (`vitest 2 → 4`, `vite` pinned `≥6.4.3`, config → `vitest.config.mts`), and both `next-intl` production advisories via the **`next-intl 3 → 4` major upgrade** (now `4.13.0`; wiring was already v4-shaped — verified locale routing, `<html lang>`, and per-locale messages render correctly). Remaining (all dev/build-only or very-low-exposure):
+
+- **`postcss`** (moderate) — build-time only (Tailwind/PostCSS); processes our own CSS, no runtime/untrusted input.
+- **`gray-matter@4.0.3` → `js-yaml@3.x`** (moderate) — JS-YAML DoS fixed only in `js-yaml ≥4.2.0`, which gray-matter 4.0.3 doesn't allow; needs a gray-matter bump/replacement. Only admin-authored MDX frontmatter is parsed, so exposure is minimal.
+- **`esbuild`** (low) — dev-server file read, dev-only (via the vite/vitest/tsx chain).
 
 ---
 

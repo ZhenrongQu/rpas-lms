@@ -18,6 +18,7 @@ function req(body: unknown) {
 async function cleanup() {
   await prisma.verificationCode.deleteMany({ where: { target: EMAIL } });
   await prisma.customer.deleteMany({ where: { email: EMAIL } });
+  await prisma.rateLimit.deleteMany({ where: { key: { startsWith: "reset:" } } });
 }
 
 async function seedUserAndToken(): Promise<string> {
@@ -59,5 +60,21 @@ describe("POST /api/auth/password/reset", () => {
     expect((await reset(req({ email: EMAIL, token, newPassword: NEW_PW }))).status).toBe(200);
     const again = await reset(req({ email: EMAIL, token, newPassword: "Another-Pw2x" }));
     expect(again.status).toBe(400);
+  });
+
+  // SEC: the per-IP cap short-circuits to 429 before any token/bcrypt work.
+  it("returns 429 when the per-IP limit is locked", async () => {
+    const IP = "198.51.100.7";
+    await prisma.rateLimit.create({
+      data: { key: `reset:ip:${IP}`, lockedUntil: new Date(Date.now() + 5 * 60_000) },
+    });
+    const res = await reset(
+      new Request("http://test/api/auth/password/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-forwarded-for": IP },
+        body: JSON.stringify({ email: EMAIL, token: "whatever", newPassword: NEW_PW }),
+      }),
+    );
+    expect(res.status).toBe(429);
   });
 });

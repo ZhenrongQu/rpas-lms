@@ -12,10 +12,19 @@ import {
   hasFlightReviewEntitlement,
 } from "../../../../src/lib/payments/entitlements";
 import { getStripeClient } from "../../../../src/lib/payments/stripeClient";
+import { enforceRateLimit } from "../../../../src/lib/security/rateLimit";
 
 export async function POST(req: Request): Promise<Response> {
   const account = await currentAccount(req);
   if (!account.userId) return Response.json({ error: "auth required" }, { status: 401 });
+
+  // SEC-11: cap Stripe checkout-session creation per user.
+  const limited = await enforceRateLimit(`checkout:user:${account.userId}`, {
+    limit: 20,
+    windowSec: 60 * 60,
+    blockSec: 60 * 60,
+  });
+  if (limited) return limited;
 
   let body: { locale?: unknown; product?: unknown } = {};
   try {

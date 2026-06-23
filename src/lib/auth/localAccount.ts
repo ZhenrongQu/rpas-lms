@@ -3,14 +3,48 @@ import { Prisma } from "@prisma/client";
 // NOTE: `prisma.customer` is the former `User` table (renamed in the
 // Admin/Customer split). This module only deals with customer (learner) login.
 import { prisma } from "../db";
+import { clearRateLimit, hitRateLimit, isLocked } from "../security/rateLimit";
 import { hashPassword, verifyPassword } from "./password";
 import { normalizeTarget, requestVerificationCode, verifyCode } from "./verificationCode";
+import { weakPasswordReason } from "./weakPassword";
+
+// SEC-10: lock an account after repeated failed logins so weak passwords can't
+// be brute-forced online. Auto-recovers after the window. A per-account lock can
+// be abused to deny a known victim service, so the window is short and the
+// caller's IP is throttled in parallel (see auth.ts).
+const LOGIN_MAX_FAILURES = 8;
+const LOGIN_WINDOW_SEC = 15 * 60;
+const LOGIN_BLOCK_SEC = 15 * 60;
+
+async function recordLoginFailure(acctKey: string, ipKey: string | null, now: () => Date): Promise<void> {
+  await hitRateLimit({ key: acctKey, limit: LOGIN_MAX_FAILURES, windowSec: LOGIN_WINDOW_SEC, blockSec: LOGIN_BLOCK_SEC, now });
+  // IP limit is looser than per-account: many users can share one NAT egress IP.
+  if (ipKey) {
+    await hitRateLimit({ key: ipKey, limit: LOGIN_MAX_FAILURES * 4, windowSec: LOGIN_WINDOW_SEC, blockSec: LOGIN_BLOCK_SEC, now });
+  }
+}
 
 // Length bounds shared by register / reset / change. The 72-byte ceiling matches
 // bcrypt (bytes beyond it are silently ignored, so accepting longer passwords
 // would overstate their strength).
 function passwordWithinBounds(password: string): boolean {
   return password.length >= 8 && Buffer.byteLength(password, "utf8") <= 72;
+}
+
+/**
+ * Single screen for any NEW password — register, reset, and change all go
+ * through it (P2). Enforces the length bounds AND the SEC-13 common/guessable
+ * blocklist server-side, so a password the register form would reject can't be
+ * slipped in via the reset or change-password APIs (the client complexity rules
+ * are only a UX gate). Returns a machine reason, or null when acceptable.
+ */
+function validateNewPassword(
+  password: string,
+  identifiers: { email?: string; username?: string } = {},
+): "invalid_password" | "weak_password" | null {
+  if (!passwordWithinBounds(password)) return "invalid_password";
+  if (weakPasswordReason(password, identifiers)) return "weak_password";
+  return null;
 }
 
 type LocalIdentifier = {
@@ -96,10 +130,10 @@ async function assertAliasAvailable({
 }
 
 export async function registerLocalAccount(input: RegisterLocalAccountInput) {
-  // SEC-08: enforce password bounds in the service, not only the route's zod.
-  if (!passwordWithinBounds(input.password)) {
-    throw new Error("invalid_password");
-  }
+  // SEC-08/SEC-13: enforce length + common-password blocklist in the service,
+  // not only the route's zod (the client rules can be bypassed via the API).
+  const invalid = validateNewPassword(input.password, { email: input.email, username: input.username });
+  if (invalid) throw new Error(invalid);
   const email = normalizeEmail(input.email);
   const username = input.username ? normalizeUsername(input.username) : undefined;
   const phone = input.phone ? normalizePhone(input.phone) : undefined;
@@ -128,16 +162,26 @@ export async function registerLocalAccount(input: RegisterLocalAccountInput) {
     });
   }
 
-  const maxResult = await prisma.customer.aggregate({ _max: { userNumber: true } });
-  const nextUserNumber = (maxResult._max.userNumber ?? 0) + 1;
+  // P2-1: `userNumber` is allocated as max+1, which two concurrent registrations
+  // can read identically and collide on its unique index. Retry on that specific
+  // conflict with a recomputed number; any other unique violation (e.g. email)
+  // is a real error and rethrown.
+  for (let attempt = 0; ; attempt++) {
+    const maxResult = await prisma.customer.aggregate({ _max: { userNumber: true } });
+    const nextUserNumber = (maxResult._max.userNumber ?? 0) + 1;
+    try {
+      return await prisma.customer.create({ data: { ...data, email, userNumber: nextUserNumber } });
+    } catch (error) {
+      if (attempt < 5 && isUserNumberConflict(error)) continue;
+      throw error;
+    }
+  }
+}
 
-  return prisma.customer.create({
-    data: {
-      ...data,
-      email,
-      userNumber: nextUserNumber,
-    },
-  });
+function isUserNumberConflict(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") return false;
+  const target = error.meta?.target;
+  return Array.isArray(target) ? target.includes("userNumber") : String(target ?? "").includes("userNumber");
 }
 
 export async function verifyRegistrationEmail({
@@ -193,10 +237,21 @@ export async function verifyRegistrationEmail({
   return { ok: true };
 }
 
-export async function authorizeLocalPasswordLogin(input: LoginInput) {
+export async function authorizeLocalPasswordLogin(
+  input: LoginInput & { ip?: string },
+  now: () => Date = () => new Date(),
+) {
   if (!input.password) return null;
   const identifier = selectedIdentifier(input);
   if (!identifier) return null;
+
+  const acctKey = `login:acct:${identifier.kind}:${identifier.value}`;
+  const ipKey = input.ip ? `login:ip:${input.ip}` : null;
+
+  // SEC-10: reject while locked, before any DB/bcrypt work, so a locked account
+  // stays locked even for the correct password until the window elapses.
+  if (!(await isLocked(acctKey, now)).allowed) return null;
+  if (ipKey && !(await isLocked(ipKey, now)).allowed) return null;
 
   const user =
     identifier.kind === "email"
@@ -204,10 +259,20 @@ export async function authorizeLocalPasswordLogin(input: LoginInput) {
       : identifier.kind === "phone"
         ? await prisma.customer.findUnique({ where: { phone: identifier.value } })
         : await prisma.customer.findUnique({ where: { username: identifier.value } });
-  if (!user?.hashedPassword || !user.emailVerifiedAt) return null;
+  if (!user?.hashedPassword || !user.emailVerifiedAt) {
+    await recordLoginFailure(acctKey, ipKey, now);
+    return null;
+  }
 
   const ok = await verifyPassword(input.password, user.hashedPassword);
-  return ok ? user : null;
+  if (!ok) {
+    await recordLoginFailure(acctKey, ipKey, now);
+    return null;
+  }
+
+  await clearRateLimit(acctKey);
+  if (ipKey) await clearRateLimit(ipKey);
+  return user;
 }
 
 // ── Password reset (forgot password) ────────────────────────────────────────
@@ -255,11 +320,10 @@ export async function resetLocalPassword({
   token: string;
   newPassword: string;
   now?: () => Date;
-}): Promise<{ ok: true } | { ok: false; reason: "invalid_password" | "invalid_or_expired" | "too_many_attempts" }> {
-  if (!passwordWithinBounds(newPassword)) {
-    return { ok: false, reason: "invalid_password" };
-  }
+}): Promise<{ ok: true } | { ok: false; reason: "invalid_password" | "weak_password" | "invalid_or_expired" | "too_many_attempts" }> {
   const normalizedEmail = normalizeEmail(email);
+  const invalid = validateNewPassword(newPassword, { email: normalizedEmail });
+  if (invalid) return { ok: false, reason: invalid };
   const verified = await verifyCode({ channel: "email_reset", target: normalizedEmail, code: token, now });
   if (!verified.ok) return verified;
 
@@ -296,15 +360,20 @@ export async function changeLocalPassword({
   userId: string;
   oldPassword: string;
   newPassword: string;
-}): Promise<{ ok: true } | { ok: false; reason: "no_password_set" | "wrong_password" | "invalid_password" }> {
-  if (!passwordWithinBounds(newPassword)) {
-    return { ok: false, reason: "invalid_password" };
-  }
+}): Promise<{ ok: true } | { ok: false; reason: "no_password_set" | "wrong_password" | "invalid_password" | "weak_password" }> {
   const user = await prisma.customer.findUnique({ where: { id: userId } });
   if (!user?.hashedPassword) return { ok: false, reason: "no_password_set" };
 
+  // Authenticate before validating the new password so we never reveal anything
+  // about it to an unauthenticated caller.
   const ok = await verifyPassword(oldPassword, user.hashedPassword);
   if (!ok) return { ok: false, reason: "wrong_password" };
+
+  const invalid = validateNewPassword(newPassword, {
+    email: user.email ?? undefined,
+    username: user.username ?? undefined,
+  });
+  if (invalid) return { ok: false, reason: invalid };
 
   const hashedPassword = await hashPassword(newPassword);
   await prisma.customer.update({ where: { id: userId }, data: { hashedPassword } });

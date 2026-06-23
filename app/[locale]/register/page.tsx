@@ -13,7 +13,7 @@ type OAuthStatus = { google: boolean; apple: boolean };
 // each mapped to a localized hint under the `auth.err.*` i18n keys.
 const FIELD_ERR_CODES = new Set([
   'email_required', 'email_invalid', 'password_required',
-  'password_length', 'username_length', 'username_charset', 'phone_length',
+  'password_length', 'password_weak', 'username_length', 'username_charset', 'phone_length',
 ]);
 
 export default function RegisterPage() {

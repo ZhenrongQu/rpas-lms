@@ -2,6 +2,7 @@ import { z } from "zod";
 import { sendVerificationCode } from "../../../../src/lib/auth/delivery";
 import { registerLocalAccount } from "../../../../src/lib/auth/localAccount";
 import { requestVerificationCode } from "../../../../src/lib/auth/verificationCode";
+import { clientIp, enforceRateLimit } from "../../../../src/lib/security/rateLimit";
 
 // Each rule's message is a stable error code (not prose) so the client can map
 // it to a localized hint via the `auth.err.*` i18n keys.
@@ -23,6 +24,14 @@ function statusForError(error: unknown): number {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  // SEC-11: cap registrations (each sends an email) per source IP.
+  const ipLimited = await enforceRateLimit(`register:ip:${clientIp(req)}`, {
+    limit: 12,
+    windowSec: 60 * 60,
+    blockSec: 60 * 60,
+  });
+  if (ipLimited) return ipLimited;
+
   let raw: unknown;
   try {
     raw = await req.json();
@@ -40,6 +49,14 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "invalid body", fields }, { status: 400 });
   }
 
+  // SEC-11: per-target daily cap so a single inbox can't be used to rack up email cost.
+  const targetLimited = await enforceRateLimit(`register:email:${parsed.data.email.trim().toLowerCase()}`, {
+    limit: 8,
+    windowSec: 24 * 60 * 60,
+    blockSec: 24 * 60 * 60,
+  });
+  if (targetLimited) return targetLimited;
+
   try {
     const user = await registerLocalAccount(parsed.data);
     const requested = await requestVerificationCode({
@@ -55,6 +72,10 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ ok: true, emailVerificationRequired: true }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "registration_failed";
+    // SEC-13: surface a weak password as a per-field hint under the password input.
+    if (message === "weak_password") {
+      return Response.json({ error: message, fields: { password: "password_weak" } }, { status: 400 });
+    }
     return Response.json({ error: message }, { status: statusForError(error) });
   }
 }

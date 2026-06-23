@@ -15,13 +15,18 @@ datasource db {
 // learning/payment data.
 
 model Admin {
-  id             String   @id @default(cuid())
-  username       String   @unique
-  email          String?  @unique
+  id             String    @id @default(cuid())
+  username       String    @unique
+  email          String?   @unique
   hashedPassword String
-  displayName    String?  @map("name")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  displayName    String?   @map("name")
+  // SEC-16: TOTP MFA. `totpSecret` holds a pending or active base32 secret;
+  // `totpEnabledAt` is set only once the admin confirms a code, after which the
+  // second factor is required at login.
+  totpSecret     String?
+  totpEnabledAt  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model Customer {
@@ -71,6 +76,20 @@ model VerificationCode {
   createdAt  DateTime  @default(now())
 
   @@index([target, channel])
+}
+
+// SEC-10/11: shared, fixed-window counters for login lockout and endpoint
+// throttling. Lives in the DB (not memory) so the limit holds across Vercel's
+// stateless instances. `key` encodes the scope, e.g. "login:acct:<email>",
+// "login:ip:<ip>", "send-code:ip:<ip>". A row is reset when its window expires.
+model RateLimit {
+  key         String    @id
+  count       Int       @default(0)
+  windowStart DateTime  @default(now())
+  lockedUntil DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@index([lockedUntil])
 }
 
 model ExamSession {

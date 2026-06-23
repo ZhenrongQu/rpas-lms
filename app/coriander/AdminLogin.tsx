@@ -17,6 +17,7 @@ export default function AdminLogin() {
   const router = useRouter();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [totp, setTotp] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -28,6 +29,7 @@ export default function AdminLogin() {
     const res = await signIn("admin", {
       [mode]: identifier.trim(),
       password,
+      totp: totp.trim(),
       redirect: false,
     });
     setBusy(false);
@@ -71,6 +73,17 @@ export default function AdminLogin() {
             value={password}
             required
             onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <div className="admin-form-row">
+          <label>Verification code (if enabled)</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={totp}
+            placeholder="000000"
+            onChange={(e) => setTotp(e.target.value)}
           />
         </div>
         <button type="submit" className="btn-primary" disabled={busy || !identifier || !password}>

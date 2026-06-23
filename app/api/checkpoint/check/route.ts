@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { findActiveCheckpoint } from "../../../../src/lib/content/loadBank";
 import { correctOptionIds, isAnswerCorrect } from "../../../../src/lib/exam/grade";
+import { clientIp, enforceRateLimit } from "../../../../src/lib/security/rateLimit";
 
 // Reads the dedicated CheckpointQuestion bank only (SEC-04) — exam ids never
 // resolve here, so this endpoint cannot expose exam answers.
@@ -11,6 +12,15 @@ const CheckBody = z.object({
 });
 
 export async function POST(req: Request): Promise<Response> {
+  // SEC-04: public, unauthenticated endpoint — cap per IP so the predictable
+  // cp-<module>-NNNN ids can't be enumerated to scrape the checkpoint bank.
+  const limited = await enforceRateLimit(`checkpoint:ip:${clientIp(req)}`, {
+    limit: 120,
+    windowSec: 60,
+    blockSec: 60,
+  });
+  if (limited) return limited;
+
   let raw: unknown;
   try {
     raw = await req.json();

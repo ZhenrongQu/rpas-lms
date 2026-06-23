@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { getModuleLessons } from '@/lib/lessons/catalog';
-import type { Course, RouteLocale } from '@/lib/lessons/types';
+import type { Course, LessonMeta } from '@/lib/lessons/types';
 
 interface Props {
   locale: string;
@@ -9,11 +8,11 @@ interface Props {
   moduleId: string;
   currentSlug: string;
   completed: Set<string>;
+  lessons: LessonMeta[];
 }
 
-export default async function LessonSidebar({ locale, course, moduleId, currentSlug, completed }: Props) {
+export default async function LessonSidebar({ locale, course, moduleId, currentSlug, completed, lessons }: Props) {
   const t = await getTranslations({ locale });
-  const lessons = await getModuleLessons(locale as RouteLocale, course, moduleId);
   const done = lessons.filter((l) => completed.has(l.lessonId)).length;
   const pct = lessons.length === 0 ? 0 : Math.round((done / lessons.length) * 100);
 
