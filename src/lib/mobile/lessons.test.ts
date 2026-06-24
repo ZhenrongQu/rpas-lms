@@ -245,10 +245,20 @@ describe("completeMobileLesson", () => {
     vi.clearAllMocks();
   });
 
+  it("returns forbidden when a free user tries to complete an advanced lesson", async () => {
+    await expect(
+      completeMobileLesson("user_1", "advanced/mod/slug", "FREE"),
+    ).resolves.toBe("forbidden");
+    expect(lessonExists).not.toHaveBeenCalled();
+    expect(markLessonComplete).not.toHaveBeenCalled();
+  });
+
   it("returns not_found when the lesson does not exist", async () => {
     vi.mocked(lessonExists).mockResolvedValue(false);
 
-    await expect(completeMobileLesson("user_1", "basic/mod/missing")).resolves.toBe("not_found");
+    await expect(completeMobileLesson("user_1", "basic/mod/missing", "FREE")).resolves.toBe(
+      "not_found",
+    );
     expect(markLessonComplete).not.toHaveBeenCalled();
   });
 });

@@ -18,7 +18,12 @@ export async function POST(req: Request): Promise<Response> {
   const parsed = Body.safeParse(raw);
   if (!parsed.success) return Response.json({ error: "invalid body" }, { status: 400 });
 
-  const result = await completeMobileLesson(auth.account.userId, parsed.data.lessonId);
+  const result = await completeMobileLesson(
+    auth.account.userId,
+    parsed.data.lessonId,
+    auth.account.accessTier,
+  );
+  if (result === "forbidden") return Response.json({ error: "upgrade required" }, { status: 403 });
   if (result === "not_found") return Response.json({ error: "lesson not found" }, { status: 404 });
 
   return Response.json({ ok: true }, { status: 200 });

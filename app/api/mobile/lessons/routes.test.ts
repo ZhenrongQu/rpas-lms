@@ -260,9 +260,34 @@ describe("mobile lesson routes", () => {
       }),
     );
 
-    expect(completeMobileLesson).toHaveBeenCalledWith("user_1", "basic/mod/slug");
+    expect(completeMobileLesson).toHaveBeenCalledWith("user_1", "basic/mod/slug", "FREE");
     expect(res.status).toBe(404);
     await expect(res.json()).resolves.toEqual({ error: "lesson not found" });
+  });
+
+  it("returns upgrade required when a free user tries to complete an advanced lesson", async () => {
+    vi.mocked(requireMobileAccount).mockResolvedValue({
+      ok: true,
+      account: {
+        userId: "user_1",
+        email: "learner@test.com",
+        name: "Learner",
+        accessTier: "FREE",
+      },
+    });
+    vi.mocked(completeMobileLesson).mockResolvedValue("forbidden");
+
+    const res = await progressPost(
+      new Request("http://test/api/mobile/progress/lesson", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ lessonId: "advanced/mod/slug" }),
+      }),
+    );
+
+    expect(completeMobileLesson).toHaveBeenCalledWith("user_1", "advanced/mod/slug", "FREE");
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toEqual({ error: "upgrade required" });
   });
 
   it("records lesson progress for a valid request", async () => {
@@ -285,6 +310,7 @@ describe("mobile lesson routes", () => {
       }),
     );
 
+    expect(completeMobileLesson).toHaveBeenCalledWith("user_1", "basic/mod/slug", "FREE");
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ ok: true });
   });

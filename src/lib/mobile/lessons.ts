@@ -176,7 +176,10 @@ export async function getMobileLesson({
 export async function completeMobileLesson(
   userId: string,
   lessonId: string,
-): Promise<"ok" | "not_found"> {
+  accessTier: AccessTier,
+): Promise<"ok" | "not_found" | "forbidden"> {
+  const parsed = parseLessonId(lessonId);
+  if (parsed?.course === "advanced" && accessTier !== "PAID") return "forbidden";
   if (!(await lessonExists(lessonId))) return "not_found";
   await markLessonComplete(userId, lessonId);
   return "ok";
