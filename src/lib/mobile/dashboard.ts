@@ -17,6 +17,11 @@ function pct(done: number, total: number): number {
   return total === 0 ? 0 : Math.round((done / total) * 100);
 }
 
+function courseTitle(course: Course, locale: RouteLocale): string {
+  if (locale === "zh") return course === "basic" ? "基础" : "高级";
+  return course === "basic" ? "Basic" : "Advanced";
+}
+
 export async function getMobileDashboard({ userId, locale, accessTier }: Input) {
   const [completedIds, basicTotal, advancedTotal, examItems, frEligible, frBooking] =
     await Promise.all([
@@ -65,7 +70,7 @@ export async function getMobileDashboard({ userId, locale, accessTier }: Input) 
             course: resumeCourse,
             lessonId: resumeLesson.lessonId,
             title: resumeLesson.title,
-            courseTitle: resumeCourse === "basic" ? "Basic" : "Advanced",
+            courseTitle: courseTitle(resumeCourse, locale),
             pct: resumeCourse === "basic" ? basicPct : advancedPct,
           }
         : null,
@@ -75,7 +80,15 @@ export async function getMobileDashboard({ userId, locale, accessTier }: Input) 
     },
     flightReview: {
       status: frBooking ? "booked" : frEligible ? "eligible" : "locked",
-      booking: frBooking,
+      booking: frBooking
+        ? {
+            id: frBooking.id,
+            startsAt: frBooking.slot.startsAt.toISOString(),
+            durationMin: frBooking.slot.durationMin,
+            location: frBooking.slot.location,
+            examinerName: frBooking.slot.examinerName,
+          }
+        : null,
     },
   };
 }
