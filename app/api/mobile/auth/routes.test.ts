@@ -100,6 +100,7 @@ describe("mobile auth routes", () => {
     );
 
     expect(res.status).toBe(401);
+    expect(createMobileSession).not.toHaveBeenCalled();
     await expect(res.json()).resolves.toEqual({ error: "invalid credentials" });
   });
 
@@ -113,6 +114,7 @@ describe("mobile auth routes", () => {
     );
 
     expect(res.status).toBe(400);
+    expect(createMobileSession).not.toHaveBeenCalled();
     await expect(res.json()).resolves.toEqual({ error: "invalid JSON" });
   });
 
@@ -126,7 +128,27 @@ describe("mobile auth routes", () => {
     );
 
     expect(res.status).toBe(400);
+    expect(createMobileSession).not.toHaveBeenCalled();
     await expect(res.json()).resolves.toEqual({ error: "invalid body" });
+  });
+
+  it("short-circuits login when rate limited", async () => {
+    vi.mocked(enforceRateLimit).mockResolvedValue(
+      Response.json({ error: "too_many_requests", retryAfterSec: 900 }, { status: 429 }),
+    );
+
+    const res = await login(
+      new Request("http://test/api/mobile/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: "learner@test.com", password: "secret123" }),
+      }),
+    );
+
+    expect(res.status).toBe(429);
+    expect(authorizeLocalPasswordLogin).not.toHaveBeenCalled();
+    expect(createMobileSession).not.toHaveBeenCalled();
+    await expect(res.json()).resolves.toEqual({ error: "too_many_requests", retryAfterSec: 900 });
   });
 
   it("restores current account from bearer token", async () => {
