@@ -32,3 +32,11 @@ prisma/*.db-journal
 # Not for committing (broad command perms shouldn't be a project artifact).
 .claude/settings.json
 .claude/settings.local.json
+
+# Internal docs — kept local only. Only root README.md and CLAUDE.md are tracked.
+*.md
+!/README.md
+!/CLAUDE.md
+
+# Operational/seed scripts — kept local only (read secrets from env at runtime).
+scripts/
