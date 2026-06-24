@@ -32,3 +32,6 @@ prisma/*.db-journal
 # Not for committing (broad command perms shouldn't be a project artifact).
 .claude/settings.json
 .claude/settings.local.json
+
+# Assistant eval artifacts
+scripts/eval/results.json

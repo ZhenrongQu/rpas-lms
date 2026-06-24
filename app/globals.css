@@ -1511,3 +1511,31 @@ html, body {
   .dash-hero, .dash-stat, .dash-card { transition: none; }
   .dash-hero:hover { transform: none; }
 }
+
+/* ── Study Assistant (dashboard) ── */
+.assistant {
+  display: flex; flex-direction: column; gap: 12px; padding: 16px;
+  border: 1px solid var(--border); border-radius: var(--r-card);
+  background: var(--surface); box-shadow: var(--shadow-sm);
+}
+.assistant-log { display: flex; flex-direction: column; gap: 10px; min-height: 120px; max-height: 360px; overflow-y: auto; }
+.assistant-intro { margin: 0; color: var(--text-3); font-size: 14px; }
+.assistant-msg { max-width: 88%; padding: 10px 14px; border-radius: var(--r-ctl); font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+.assistant-msg.user { align-self: flex-end; background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--text-1); }
+.assistant-msg.assistant { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); }
+.assistant-typing { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); }
+.assistant-input { display: flex; gap: 8px; }
+.assistant-field {
+  flex: 1; padding: 11px 14px; font-family: var(--font-ui); font-size: 14px;
+  border: 1px solid var(--border-strong); border-radius: var(--r-ctl);
+  background: var(--paper); color: var(--text-1);
+}
+.assistant-field:focus { outline: none; border-color: var(--border-glow); }
+.assistant-send { display: inline-flex; align-items: center; padding: 0 16px; }
+.assistant-locked {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 22px;
+  border: 1px dashed var(--border-strong); border-radius: var(--r-card); background: var(--surface-2);
+}
+.assistant-locked-ico { display: inline-flex; color: var(--amber); }
+.assistant-locked-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--text-1); }
+.assistant-locked-body { margin: 4px 0 0; max-width: 46ch; color: var(--text-2); font-size: 14px; line-height: 1.6; }

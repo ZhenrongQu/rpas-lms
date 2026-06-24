@@ -12,6 +12,7 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "seed:content": "tsx scripts/seed-content.ts",
+    "eval:assistant": "tsx scripts/eval/run.ts",
     "postinstall": "prisma generate"
   },
   "devDependencies": {
@@ -39,6 +40,7 @@
     ]
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
     "@cloudflare/stream-react": "^1.9.3",
     "@prisma/client": "^5.22.0",
     "@sentry/nextjs": "^10.58.0",

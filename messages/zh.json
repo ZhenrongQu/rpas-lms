@@ -246,7 +246,18 @@
     "courseCompleteHint": "做得好，你已学完所有可学的课程。",
     "mockExam": "模拟考试",
     "bestOfAttempts": "{count} 次中的最佳",
-    "changePassword": "修改密码"
+    "changePassword": "修改密码",
+    "assistant": {
+      "title": "学习助教",
+      "intro": "课程、考试、下一步该学什么，都可以问我。",
+      "placeholder": "输入你的问题…",
+      "send": "发送",
+      "thinking": "思考中…",
+      "lockedTitle": "学习助教 — 会员专享",
+      "lockedBody": "升级后解锁专属 AI 学习助教，解答疑问并根据你的进度给出建议。",
+      "upgrade": "升级解锁",
+      "error": "出错了，请稍后再试。"
+    }
   },
   "flightReview": {
     "panelTitle": "飞行考核",
