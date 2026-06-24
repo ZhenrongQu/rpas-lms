@@ -1,5 +1,7 @@
 # RPAS LMS
 
+**中文** | [English](README.en.md)
+
 RPAS LMS 是一个基于 Next.js 的加拿大 RPAS / 无人机飞行员执照学习与模拟考试平台。当前项目重点放在 Basic Operations 和 Advanced Operations 的模拟考试体验上：支持 EN/ZH 双语界面、题库校验、服务端生成试卷与评分、考试 session 持久化、账号注册登录、考试历史、成绩页，以及提交后的逐题解析。
 
 课程内容（题库、课程、checkpoint）现在存在 PostgreSQL 里，通过 `/coriander` 后台 CMS 维护；界面文案仍放在 locale message 文件里；用户、考试 session、支付与权限通过 Prisma + PostgreSQL（Supabase）持久化。
