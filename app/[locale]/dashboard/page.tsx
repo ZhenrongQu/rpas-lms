@@ -23,6 +23,7 @@ import FlightReviewPanel from '@/components/dashboard/FlightReviewPanel';
 import MockExamCard from '@/components/dashboard/MockExamCard';
 import ProgressRing from '@/components/dashboard/ProgressRing';
 import ChangePasswordForm from '@/components/dashboard/ChangePasswordForm';
+import StudyAssistant from '@/components/dashboard/StudyAssistant';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -214,6 +215,9 @@ export default async function DashboardPage({ params }: Props) {
             <MockExamCard items={examItems} locale={locale} />
           </div>
         )}
+
+        {/* ── Study assistant (paid feature; free users see an upsell) ── */}
+        {userId && <StudyAssistant locale={locale} isPaid={isPaid} />}
 
         {/* ── Account & security ── */}
         <details className="dash-account">

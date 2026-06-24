@@ -1,0 +1,16 @@
+import { examService } from "../../../../../../src/lib/exam/instance";
+import { requireMobileExamOwner } from "../../auth";
+
+type Ctx = { params: Promise<{ id: string }> };
+
+export async function GET(req: Request, ctx: Ctx): Promise<Response> {
+  const { id } = await ctx.params;
+  const denied = await requireMobileExamOwner(req, id);
+  if (denied) return denied;
+
+  const review = await examService.getReview(id);
+  if (review === null) {
+    return Response.json({ error: "not submitted or session not found" }, { status: 404 });
+  }
+  return Response.json(review, { status: 200 });
+}

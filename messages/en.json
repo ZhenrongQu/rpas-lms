@@ -246,7 +246,18 @@
     "courseCompleteHint": "Nice work — you've finished every lesson available to you.",
     "mockExam": "Mock Exam",
     "bestOfAttempts": "best of {count} attempts",
-    "changePassword": "Change Password"
+    "changePassword": "Change Password",
+    "assistant": {
+      "title": "Study Assistant",
+      "intro": "Ask me about lessons, the exam, or what to study next.",
+      "placeholder": "Ask a question…",
+      "send": "Send",
+      "thinking": "Thinking…",
+      "lockedTitle": "Study Assistant — Premium",
+      "lockedBody": "Upgrade to unlock a personal AI study assistant that answers your questions and tailors advice to your progress.",
+      "upgrade": "Upgrade to unlock",
+      "error": "Something went wrong. Please try again."
+    }
   },
   "flightReview": {
     "panelTitle": "Flight Review",
