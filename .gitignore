@@ -36,10 +36,10 @@ prisma/*.db-journal
 # Assistant eval artifacts
 scripts/eval/results.json
 
-# Internal docs — kept local only. Only root README.md / README.en.md and CLAUDE.md are tracked.
+# Internal docs — kept local only. Only root README.md / README.zh.md and CLAUDE.md are tracked.
 *.md
 !/README.md
-!/README.en.md
+!/README.zh.md
 !/CLAUDE.md
 
 # Operational/seed scripts — kept local only (read secrets from env at runtime).

@@ -1,26 +1,26 @@
 # RPAS LMS
 
-**中文** | [English](README.en.md)
+**English** | [中文](README.zh.md)
 
-RPAS LMS 是一个基于 Next.js 的加拿大 RPAS / 无人机飞行员执照学习与模拟考试平台。当前项目重点放在 Basic Operations 和 Advanced Operations 的模拟考试体验上：支持 EN/ZH 双语界面、题库校验、服务端生成试卷与评分、考试 session 持久化、账号注册登录、考试历史、成绩页，以及提交后的逐题解析。
+RPAS LMS is a Next.js-based learning and mock-exam platform for the Canadian RPAS / drone pilot certification. The current focus is the Basic Operations and Advanced Operations mock-exam experience: a bilingual EN/ZH UI, question-bank validation, server-side paper generation and grading, exam session persistence, account registration/login, exam history, a results page, and post-submission per-question review.
 
-课程内容（题库、课程、checkpoint）现在存在 PostgreSQL 里，通过 `/coriander` 后台 CMS 维护；界面文案仍放在 locale message 文件里；用户、考试 session、支付与权限通过 Prisma + PostgreSQL（Supabase）持久化。
+Course content (question bank, lessons, checkpoints) now lives in PostgreSQL and is managed through the `/coriander` admin CMS; UI copy still lives in locale message files; users, exam sessions, payments and entitlements are persisted via Prisma + PostgreSQL (Supabase).
 
-## 技术栈
+## Tech stack
 
-- **Next.js App Router**：负责页面路由和 API route。
-- **React + TypeScript**：负责 UI 和应用逻辑。
-- **next-intl**：负责基于路由的 EN/ZH 国际化。
-- **Prisma + PostgreSQL（Supabase）**：负责数据持久化（dev 和 prod 都是 Postgres）。
-- **Auth.js / NextAuth v5**：负责 Google、Apple、验证码登录，以及已验证邮箱的旧密码登录兼容；Admin 与 Customer 是分离的表。
-- **Stripe**：负责 paid_access（Advanced 套餐）和 flight_review 两个产品的支付与权限。
-- **Cloudflare Stream**：负责课程视频上传与播放。
-- **Resend**：负责邮箱验证码与 flight-review 预约通知邮件。
-- **Zod**：负责题库和 API 请求体校验。
-- **Vitest**：负责单元测试和 route handler 测试。
-- **Tailwind CSS + 自定义 CSS**：负责无人机 HUD 风格界面。
+- **Next.js App Router** — page routing and API routes.
+- **React + TypeScript** — UI and application logic.
+- **next-intl** — route-based EN/ZH internationalization.
+- **Prisma + PostgreSQL (Supabase)** — data persistence (Postgres in both dev and prod).
+- **Auth.js / NextAuth v5** — Google, Apple, and verification-code login, plus legacy password login for verified-email accounts; `Admin` and `Customer` are separate tables.
+- **Stripe** — payments and entitlements for two products: paid_access (the Advanced bundle) and flight_review.
+- **Cloudflare Stream** — lesson video upload and playback.
+- **Resend** — email verification codes and flight-review booking notification emails.
+- **Zod** — question-bank and API request-body validation.
+- **Vitest** — unit tests and route-handler tests.
+- **Tailwind CSS + custom CSS** — the drone HUD-style UI.
 
-## 快速启动
+## Quick start
 
 ```bash
 cd /Users/quzhenrong/rpas-lms
@@ -29,12 +29,12 @@ pnpm exec prisma db push
 pnpm dev
 ```
 
-然后打开：
+Then open:
 
 - `http://localhost:3000/en`
 - `http://localhost:3000/zh`
 
-常用命令：
+Common commands:
 
 ```bash
 pnpm test
@@ -44,13 +44,13 @@ pnpm db:generate
 pnpm db:push
 ```
 
-## 环境变量
+## Environment variables
 
-从 `.env.example` 创建 `.env`：
+Create `.env` from `.env.example`:
 
 ```env
-DATABASE_URL="postgresql://...:6543/postgres?pgbouncer=true&connection_limit=1"  # Supavisor pooler，运行时
-DIRECT_URL="postgresql://...:5432/postgres"  # 直连，仅 prisma migrate / db push 用
+DATABASE_URL="postgresql://...:6543/postgres?pgbouncer=true&connection_limit=1"  # Supavisor pooler, runtime
+DIRECT_URL="postgresql://...:5432/postgres"  # direct connection, prisma migrate / db push only
 AUTH_SECRET="generate-with: openssl rand -base64 32"
 GOOGLE_CLIENT_ID=""
 GOOGLE_CLIENT_SECRET=""
@@ -58,25 +58,25 @@ APPLE_CLIENT_ID=""
 APPLE_CLIENT_SECRET=""
 ```
 
-`DATABASE_URL` / `DIRECT_URL` 指向 Prisma 使用的 PostgreSQL（Supabase）数据库，dev 和 prod 都是 Postgres，没有 SQLite 路径。完整变量见 `.env.example`（含 Stripe、Resend、Cloudflare Stream）。`AUTH_SECRET` 是 Auth.js 用来签名 session/JWT 数据的密钥。Google 和 Apple 的变量用于 OAuth 登录；本地未配置时仍可使用邮箱/手机验证码流程。
-未配置 Google 或 Apple 的 client id/secret 时，页面会禁用对应第三方登录按钮，避免跳转到 provider 的 `invalid_request` 页面。
+`DATABASE_URL` / `DIRECT_URL` point at the PostgreSQL (Supabase) database Prisma uses — Postgres in both dev and prod, with no SQLite path. See `.env.example` for the full set (including Stripe, Resend, Cloudflare Stream). `AUTH_SECRET` is the key Auth.js uses to sign session/JWT data. The Google and Apple variables are for OAuth login; when they are not configured locally you can still use the email/phone verification-code flow.
+When the Google or Apple client id/secret is missing, the page disables the corresponding third-party login button to avoid redirecting to the provider's `invalid_request` page.
 
-## 当前用户流程
+## Current user flow
 
-1. 学员访问 `/en` 或 `/zh`。
-2. Guest 用户可以访问 `/[locale]/intro`，查看公司介绍、服务介绍和课程介绍。
-3. 用户可以通过 Google、Apple，或本地账号登录。本地账号注册需要邮箱、密码和邮箱验证码；登录时可使用邮箱、手机号或用户名加密码。
-4. 注册用户默认是 `FREE`，可以启动 Basic 模拟考试，但只使用 `difficulty: 0` 的免费题目。
-5. 完整题库和 Advanced 模拟考试预留给 `PAID` 用户。
-6. 客户端只拿到公开题目信息，不包含正确答案。
-7. 客户端按题提交所选 option id。
-8. 提交考试后，服务端评分并保存结果，同时返回错题解析。
-9. 成绩页展示分数、通过/失败状态、按科目拆分的结果和所有错题解释。
-10. 已登录用户可以在 Mission Log 中看到已提交的考试记录。
+1. A learner visits `/en` or `/zh`.
+2. Guests can access `/[locale]/intro` to see the company intro, services, and course intro.
+3. Users can log in with Google, Apple, or a local account. Local registration requires email, password, and an email verification code; login accepts email, phone, or username plus password.
+4. Registered users are `FREE` by default and can start a Basic mock exam, but only with `difficulty: 0` free questions.
+5. The full question bank and the Advanced mock exam are reserved for `PAID` users.
+6. The client only receives public question data — never the correct answers.
+7. The client submits the selected option ids per question.
+8. After submission, the server grades and stores the result and returns review data for the missed questions.
+9. The results page shows the score, pass/fail status, the per-subject breakdown, and explanations for all missed questions.
+10. Logged-in users can see their submitted exams in the Mission Log.
 
 Registered users are `FREE` by default. Free users can access free lessons and questions marked `difficulty: 0`; paid users can access the full question bank. Local users must verify email before password login.
 
-## 项目结构
+## Project structure
 
 ```text
 rpas-lms/
@@ -111,230 +111,229 @@ rpas-lms/
 └── vitest.config.ts
 ```
 
-## 目录说明
+## Directory guide
 
 ### `app/`
 
-Next.js App Router 页面目录。
+The Next.js App Router pages directory.
 
-- `app/layout.tsx` 是根 HTML layout，负责加载字体和全局 CSS。
-- `app/[locale]/layout.tsx` 是本地化页面 layout，负责接入 `NextIntlClientProvider`、HUD 背景层和顶部 header。
-- `app/[locale]/page.tsx` 是主 dashboard 页面。
-- `app/[locale]/intro/page.tsx` 是 guest 可访问的免费介绍模块。
-- `app/[locale]/exam/page.tsx` 是考试启动页。
-- `app/[locale]/exam/[id]/page.tsx` 在服务端读取考试元数据，然后渲染客户端考试 UI。
-- `app/[locale]/exam/[id]/ExamClient.tsx` 是交互式计时考试界面。
-- `app/[locale]/exam/[id]/results/page.tsx` 展示成绩和科目拆分。
-- `app/[locale]/exam/[id]/review/page.tsx` 展示提交后的逐题解析。
-- `app/[locale]/signin/page.tsx` 和 `app/[locale]/register/page.tsx` 是登录/注册页面。
-- `app/globals.css` 包含主要 HUD 视觉系统和页面布局样式。
+- `app/layout.tsx` is the root HTML layout — loads fonts and global CSS.
+- `app/[locale]/layout.tsx` is the localized page layout — wires up `NextIntlClientProvider`, the HUD background layer, and the top header.
+- `app/[locale]/page.tsx` is the main dashboard page.
+- `app/[locale]/intro/page.tsx` is the guest-accessible free intro module.
+- `app/[locale]/exam/page.tsx` is the exam start page.
+- `app/[locale]/exam/[id]/page.tsx` reads exam metadata on the server, then renders the client exam UI.
+- `app/[locale]/exam/[id]/ExamClient.tsx` is the interactive timed exam interface.
+- `app/[locale]/exam/[id]/results/page.tsx` shows the score and subject breakdown.
+- `app/[locale]/exam/[id]/review/page.tsx` shows the post-submission per-question review.
+- `app/[locale]/signin/page.tsx` and `app/[locale]/register/page.tsx` are the login/registration pages.
+- `app/globals.css` contains the main HUD visual system and page layout styles.
 
 ### `app/api/`
 
-前端调用的 API route handler。
+The API route handlers the frontend calls.
 
-- `app/api/auth/[...nextauth]/route.ts` 暴露 Auth.js handlers。
-- `app/api/auth/register/route.ts` 是已停用的旧邮箱密码注册入口；新注册必须走验证码或 OAuth。
-- `app/api/auth/code/request/route.ts` 请求邮箱/手机 6 位验证码。
-- `app/api/auth/code/verify/route.ts` 校验验证码并创建或复用免费用户。
-- `app/api/auth/register/username/route.ts` 通过已验证联系方式或当前登录 session 绑定用户名。
-- `app/api/auth/username/check/route.ts` 检查用户名是否可用。
-- `app/api/exam/route.ts` 创建模拟考试 session。
-- `app/api/exam/[id]/questions/route.ts` 返回某个 session 的公开题目。
-- `app/api/exam/[id]/answer/route.ts` 保存用户选择的 option ids。
-- `app/api/exam/[id]/submit/route.ts` 提交并评分考试。
-- `app/api/exam/[id]/result/route.ts` 返回已保存的成绩结果。
-- `app/api/exam/[id]/review/route.ts` 返回提交后的逐题解析数据。
-- 该目录下的 `*.test.ts` 文件用于在不启动服务器的情况下测试 route handler 行为。
+- `app/api/auth/[...nextauth]/route.ts` exposes the Auth.js handlers.
+- `app/api/auth/register/route.ts` is the deprecated legacy email/password registration entry; new registration must go through a verification code or OAuth.
+- `app/api/auth/code/request/route.ts` requests an email/phone 6-digit verification code.
+- `app/api/auth/code/verify/route.ts` verifies a code and creates or reuses a free user.
+- `app/api/auth/register/username/route.ts` binds a username via a verified contact method or the current logged-in session.
+- `app/api/auth/username/check/route.ts` checks whether a username is available.
+- `app/api/exam/route.ts` creates a mock-exam session.
+- `app/api/exam/[id]/questions/route.ts` returns the public questions for a session.
+- `app/api/exam/[id]/answer/route.ts` saves the user's selected option ids.
+- `app/api/exam/[id]/submit/route.ts` submits and grades the exam.
+- `app/api/exam/[id]/result/route.ts` returns the saved result.
+- `app/api/exam/[id]/review/route.ts` returns the post-submission per-question review data.
+- The `*.test.ts` files in this directory test route-handler behavior without starting a server.
 
 ### `src/components/`
 
-可复用 UI 组件。
+Reusable UI components.
 
-- `auth/` 放认证相关 UI 辅助组件，例如退出登录按钮。
-- `dashboard/` 放 dashboard 卡片、考试历史、侧边栏和进度环。
-- `exam/` 放考试界面组件，例如题目导航、题目卡片和计时器。
-- `layout/` 放 HUD header。
-- `results/` 放成绩页组件，例如按科目拆分结果。
+- `auth/` — auth-related UI helpers, e.g. the sign-out button.
+- `dashboard/` — dashboard cards, exam history, sidebar, and progress rings.
+- `exam/` — exam UI components, e.g. question navigation, question cards, and the timer.
+- `layout/` — the HUD header.
+- `results/` — results-page components, e.g. the per-subject breakdown.
 
 ### `src/lib/exam/`
 
-考试引擎目录，也是当前最重要的业务逻辑目录。
+The exam engine — currently the most important business-logic directory.
 
-- `config.ts` 定义 Basic/Advanced 的题目数量、时间限制、通过线和科目权重。
-- `quota.ts` 根据权重表计算各科目抽题配额。
-- `rng.ts` 提供可复现的 seeded random。
-- `generate.ts` 根据证书等级选择 eligible questions，并生成加权试卷。
-- `grade.ts` 判断用户选择的 option ids 是否与正确答案集合完全一致。
-- `score.ts` 生成总分、通过/失败状态和按科目拆分的成绩。
-- `serialize.ts` 在题目发给客户端前移除敏感字段。
-- `review.ts` 在提交后生成逐题解析，包括正确答案和解释。
-- `store.ts` 定义 `SessionStore` 接口和用于测试的内存 store。
-- `prismaStore.ts` 通过 Prisma 把考试 session 持久化到 PostgreSQL。
-- `service.ts` 编排完整考试生命周期：创建、取题、答题、提交、结果、解析。
-- `instance.ts` 创建全应用共享的 `ExamService` 实例。
+- `config.ts` defines the question counts, time limits, pass marks, and subject weights for Basic/Advanced.
+- `quota.ts` computes per-subject draw quotas from the weight table.
+- `rng.ts` provides a reproducible seeded random.
+- `generate.ts` selects eligible questions by certification level and generates a weighted paper.
+- `grade.ts` decides whether the user's selected option ids exactly match the correct-answer set.
+- `score.ts` produces the total score, pass/fail status, and per-subject breakdown.
+- `serialize.ts` strips sensitive fields before questions are sent to the client.
+- `review.ts` produces the post-submission per-question review, including correct answers and explanations.
+- `store.ts` defines the `SessionStore` interface and an in-memory store for tests.
+- `prismaStore.ts` persists exam sessions to PostgreSQL via Prisma.
+- `service.ts` orchestrates the full exam lifecycle: create, fetch questions, answer, submit, result, review.
+- `instance.ts` creates the app-wide shared `ExamService` instance.
 
 ### `src/lib/content/`
 
-题库领域模型和校验逻辑。
+Question-bank domain model and validation logic.
 
-- `types.ts` 定义模块、证书等级、题型和题库 TypeScript 类型。
-- `schema.ts` 使用 Zod 校验 JSON 题库，并检查正确答案数量等不变量。
-- `loadBank.ts` 加载并缓存 `content/question-bank.json`。
-- `*.test.ts` 文件验证 schema 和 loader 行为。
+- `types.ts` defines the modules, certification levels, question types, and question-bank TypeScript types.
+- `schema.ts` uses Zod to validate the question bank and check invariants such as the correct-answer count.
+- `loadBank.ts` loads the ACTIVE question bank for a certification level from the database.
+- The `*.test.ts` files validate schema and loader behavior.
 
 ### `src/lib/auth/`
 
-认证与账号服务。
+Authentication and account services.
 
-- `password.ts` 使用 `bcryptjs` 哈希和校验密码。
-- `types.ts` 定义认证 provider、验证码 channel 和访问等级类型。
-- `verificationCode.ts` 生成、哈希、校验、消费邮箱/手机 6 位验证码，并限制失败次数。
-- `delivery.ts` 封装验证码发送接口；开发/测试环境会输出到控制台，后续可替换为真实邮件或短信服务。
-- `account.ts` 创建/复用邮箱、手机号、用户名和 OAuth 用户，并维护 `UserIdentity`。
+- `password.ts` hashes and verifies passwords with `bcryptjs`.
+- `types.ts` defines auth provider, verification-code channel, and access-tier types.
+- `verificationCode.ts` generates, hashes, verifies, and consumes email/phone 6-digit codes, with a failed-attempt limit.
+- `delivery.ts` abstracts the code-sending interface; in dev/test it logs to the console and can later be swapped for a real email or SMS service.
+- `account.ts` creates/reuses email, phone, username, and OAuth users, and maintains `UserIdentity`.
 
 ### `src/lib/db.ts`
 
-Prisma client 单例。开发环境下它会把 client 缓存在 `globalThis` 上，避免热更新时反复创建数据库连接。
+The Prisma client singleton. In development it caches the client on `globalThis` to avoid recreating database connections on every hot reload.
 
 ### `src/i18n/`
 
-国际化配置。
+Internationalization configuration.
 
-- `routing.ts` 定义支持的 locale：`en` 和 `zh`。
-- `request.ts` 把 `next-intl` 接入 App Router 请求处理。
+- `routing.ts` defines the supported locales: `en` and `zh`.
+- `request.ts` wires `next-intl` into App Router request handling.
 
 ### `content/`
 
-内容相关说明文件（题库本身已迁移到数据库，通过 `/coriander` 后台 CMS 维护，不再是 JSON 文件）。
+Content-related reference files (the question bank itself has been migrated to the database and is managed via the `/coriander` admin CMS — no longer JSON files).
 
-- `question-bank-README.md` 说明题目编写规则、schema、当前覆盖情况和题库容量缺口。
-- `content/lessons/` 保留课程 MDX 的初始种子素材，由 `pnpm seed:content` 导入数据库。
+- `question-bank-README.md` documents the question-authoring rules, schema, current coverage, and capacity gaps.
+- `content/lessons/` keeps the initial lesson MDX seed material, imported into the database by `pnpm seed:content`.
 
-题目包含双语题干、选项、解释和参考来源。正确答案存在数据库里，但考试进行中永远不会发送给客户端（见 `serialize.ts`）。
+Questions include bilingual stems, options, explanations, and references. Correct answers live in the database but are never sent to the client during an exam (see `serialize.ts`).
 
 ### `messages/`
 
-UI 翻译文案。
+UI translation copy.
 
-- `en.json` 保存英文 UI 文案。
-- `zh.json` 保存中文 UI 文案。
+- `en.json` holds the English UI copy.
+- `zh.json` holds the Chinese UI copy.
 
-这些文件驱动按钮、标签、dashboard 文本、考试文本、成绩页文本和解析页文本。
+These files drive buttons, labels, dashboard text, exam text, results text, and review text.
 
 ### `prisma/`
 
-数据库 schema（PostgreSQL）。
+The database schema (PostgreSQL).
 
-- `schema.prisma` 定义身份（分离的 `Admin` / `Customer`，无共享 role 字段）、`UserIdentity`、`VerificationCode`、`RateLimit`、`ExamSession`、支付与权限（`Payment` / `Entitlement` / `WebhookEvent`）、flight-review（`FlightReviewSlot` / `FlightReviewBooking`）、按等级拆分的题库（`Basic/AdvancedQuestionBank` + options）、`CheckpointQuestion`，以及课程与进度（`Basic/AdvancedLesson` + `*LessonProgress`）。
+- `schema.prisma` defines identity (separate `Admin` / `Customer`, no shared role field), `UserIdentity`, `VerificationCode`, `RateLimit`, `ExamSession`, payments and entitlements (`Payment` / `Entitlement` / `WebhookEvent`), flight-review (`FlightReviewSlot` / `FlightReviewBooking`), the cert-level-split question banks (`Basic/AdvancedQuestionBank` + options), `CheckpointQuestion`, and lessons with progress (`Basic/AdvancedLesson` + `*LessonProgress`).
 
-题库、课程、checkpoint 都是数据库表，不再来自 JSON 文件。
+The question banks, lessons, and checkpoints are all database tables — no longer JSON files.
 
 ### `docs/`
 
-项目说明、设计和历史记录。
+Project notes, design, and history.
 
-- `technical-design.md` 是更完整的 LMS + 考试平台技术设计文档。
-- `PROGRESS.md` 记录已完成计划、实现历史和已知缺口。
-- `ui-prototype.html` 是较早的静态 UI 原型。
-- `docs/superpowers/` 保存之前实现过程中的计划文档。
+- `technical-design.md` is the fuller LMS + exam-platform technical design doc.
+- `PROGRESS.md` records completed plans, implementation history, and known gaps.
+- `ui-prototype.html` is an early static UI prototype.
+- `docs/superpowers/` keeps the planning docs from previous implementation work.
 
 ### `types/`
 
-项目级 TypeScript 类型扩展。
+Project-level TypeScript type extensions.
 
-- `next-auth.d.ts` 扩展 NextAuth session/user 类型，让 `session.user.id` 可用。
+- `next-auth.d.ts` extends the NextAuth session/user types so `session.user.id` is available.
 
-## 核心概念
+## Core concepts
 
-### Guest Session
+### Guest session
 
-Guest 用户不登录只能访问免费介绍模块，不能启动考试。考试 session 现在要求登录后创建。免费注册用户默认是 `FREE` 访问等级，可以使用 Basic 中标记为 `difficulty: 0` 的免费题目；完整题库和 Advanced 考试预留给 `PAID` 访问等级。
+Guests (not logged in) can only access the free intro module and cannot start an exam. Exam sessions now require login. Free registered users default to the `FREE` access tier and can use Basic questions marked `difficulty: 0`; the full question bank and the Advanced exam are reserved for the `PAID` tier.
 
-### 注册和登录
+### Registration and login
 
-支持的注册/登录方式包括：
+Supported registration/login methods:
 
 - Google OAuth
 - Apple OAuth
-- 邮箱 6 位验证码
-- 手机 6 位验证码
-- 用户名注册，其中用户名必须绑定一个已验证邮箱或手机号
-- 旧版邮箱密码登录仍保留，用于兼容已有且邮箱已验证的本地账号
+- Email 6-digit verification code
+- Phone 6-digit verification code
+- Username registration, where the username must be bound to a verified email or phone
+- Legacy email/password login is retained for existing local accounts with a verified email
 
-验证码目前通过 `delivery.ts` 抽象发送。开发和测试环境不会连接真实短信/邮件供应商，只会生成本地可验证的验证码记录；生产接入供应商时应替换该发送层。
+Verification codes are currently sent through the `delivery.ts` abstraction. Dev and test never connect to a real SMS/email provider — they only produce locally verifiable code records; replace this delivery layer when integrating a provider in production.
 
-### 服务端评分边界
+### Server-side grading boundary
 
-考试进行中，正确答案必须留在服务端。前端调用 `/api/exam/[id]/questions` 时，拿到的是由 `serialize.ts` 生成的公开题目数据。它会去掉 `isCorrect`、`explanation` 和 `reference`。
+During an exam, correct answers must stay on the server. When the frontend calls `/api/exam/[id]/questions`, it receives public question data produced by `serialize.ts`, which strips `isCorrect`, `explanation`, and `reference`.
 
-只有在考试提交后，应用才会通过 review 逻辑展示正确答案和解释。
+Only after submission does the app reveal correct answers and explanations through the review logic.
 
 ### Exam Result vs. Exam Review
 
-Result 是成绩汇总：
+The Result is the score summary:
 
-- 总题数
-- 答对数量
-- 百分比
-- 通过/失败
-- 按科目拆分
+- Total questions
+- Number correct
+- Percentage
+- Pass/fail
+- Per-subject breakdown
 
-Review 是逐题解释视图。提交接口会直接返回错题 review，成绩页也会直接展示错题解释；完整 review 页仍然可以查看全部题目：
+The Review is the per-question explanation view. The submit endpoint returns the review for missed questions directly, and the results page also shows missed-question explanations directly; the full review page can still show every question:
 
-- 题干
-- 用户选择的 option ids
-- 正确 option ids
-- 所有选项及正确性
-- 解释
-- 参考来源
+- Stem
+- The user's selected option ids
+- The correct option ids
+- All options and their correctness
+- Explanation
+- Reference
 
-当前代码里这两个流程是有意分开的。
+These two flows are intentionally kept separate in the current code.
 
-## 测试
+## Testing
 
-项目使用 Vitest，并从 `src/` 和 `app/` 两个目录收集测试。
+The project uses Vitest, collecting tests from both `src/` and `app/`.
 
 ```bash
 pnpm test
 ```
 
-测试跑在真实的本地 Postgres 上（与 prod 一致），不是内存库。默认连 `postgresql://postgres:postgres@localhost:5433/postgres`，可用 `TEST_DATABASE_URL` 覆盖。起一个一次性容器：
+Tests run against a real local Postgres (matching prod), not an in-memory DB. The default is `postgresql://postgres:postgres@localhost:5433/postgres`, overridable via `TEST_DATABASE_URL`. Spin up a disposable container:
 
 ```bash
 docker run -d --name rpas-test-pg -e POSTGRES_PASSWORD=postgres -p 5433:5432 postgres:16
 ```
 
-配置见 `vitest.config.mts`。`vitest.globalSetup.ts` 会在测试前重置并 `db push` schema。所有测试文件共用一个库，因此串行执行（`fileParallelism: false`）。
+Config is in `vitest.config.mts`. `vitest.globalSetup.ts` resets and `db push`es the schema before the suite. All test files share one database, so they run sequentially (`fileParallelism: false`).
 
-## 已知缺口
+## Known gaps
 
-- Advanced 模拟考试 eligible 题目数量可能少于配置目标。详见 `content/question-bank-README.md`。
-- 支付已接入 Stripe（`paid_access` / `flight_review` 两个产品）；权限以 `Entitlement` 表为准，`Customer.accessTier` 是反规范化缓存。
-- 考试答案目前作为 JSON 存在 `ExamSession` 上，不是独立的 `ExamAnswer` 行。
+- The Advanced mock exam may have fewer eligible questions than the configured target. See `content/question-bank-README.md`.
+- Payments are integrated with Stripe (`paid_access` / `flight_review` products); entitlements are the source of truth via the `Entitlement` table, with `Customer.accessTier` as a denormalized cache.
+- Exam answers are currently stored as JSON on `ExamSession`, not as separate `ExamAnswer` rows.
 
-## 推荐阅读顺序
+## Recommended reading order
 
-如果你想最快理解这个项目，建议按这个顺序读：
+To understand the project fastest, read in this order:
 
-1. 读 `app/[locale]/exam/page.tsx`，理解考试如何启动。
-2. 读 `app/api/exam/route.ts`，理解 session 如何创建。
-3. 读 `src/lib/exam/service.ts`，理解考试生命周期。
-4. 读 `src/lib/exam/serialize.ts`、`score.ts` 和 `review.ts`，理解安全边界。
-5. 读 `prisma/schema.prisma`，理解哪些数据被持久化。
-6. 修改题目前，先读 `content/question-bank-README.md`。
+1. `app/[locale]/exam/page.tsx` — how an exam starts.
+2. `app/api/exam/route.ts` — how a session is created.
+3. `src/lib/exam/service.ts` — the exam lifecycle.
+4. `src/lib/exam/serialize.ts`, `score.ts`, and `review.ts` — the security boundary.
+5. `prisma/schema.prisma` — what data is persisted.
+6. `content/question-bank-README.md` — read before editing questions.
 
-## 本地 / Dev 测试账号
+## Local / dev test accounts
 
-测试账号与密码不放进仓库。凭据见本地（未跟踪、被 `.gitignore` 忽略）的 `password.md`。
+Test accounts and passwords are not kept in the repo. Credentials live in the local `password.md` (untracked, ignored by `.gitignore`).
 
-用脚本重建或改密（脚本在本地 `scripts/`，默认连 `.env` 的 dev 库）：
+Rebuild or change passwords with the scripts (scripts live locally under `scripts/`, defaulting to the `.env` dev database):
 
 ```bash
-# 管理员 → Admin 表，登录 /coriander
+# Admin → Admin table, login at /coriander
 ADMIN_USERNAME=<user> ADMIN_PASSWORD='<password>' ADMIN_EMAIL=<email> pnpm exec tsx scripts/create-admin.ts
 
-# 顾客 → Customer 表（CUSTOMER_TIER 可选 FREE/PAID）
+# Customer → Customer table (CUSTOMER_TIER may be FREE/PAID)
 CUSTOMER_EMAIL=<email> CUSTOMER_PASSWORD='<password>' CUSTOMER_USERNAME=<user> CUSTOMER_TIER=PAID pnpm exec tsx scripts/create-customer.ts
 ```
-
