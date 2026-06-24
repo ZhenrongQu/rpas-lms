@@ -23,6 +23,13 @@
 		A20000000000000000000003 /* ExamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* ExamView.swift */; };
 		A20000000000000000000004 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000013 /* AccountView.swift */; };
 		A20000000000000000000005 /* AuthViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* AuthViewModelTests.swift */; };
+		A30000000000000000000001 /* DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000011 /* DashboardViewModel.swift */; };
+		A30000000000000000000002 /* LearnModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000012 /* LearnModels.swift */; };
+		A30000000000000000000003 /* LessonReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000013 /* LessonReaderView.swift */; };
+		A30000000000000000000004 /* ExamModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000014 /* ExamModels.swift */; };
+		A30000000000000000000005 /* ExamViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000015 /* ExamViewModel.swift */; };
+		A30000000000000000000006 /* DashboardViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000016 /* DashboardViewModelTests.swift */; };
+		A30000000000000000000007 /* ExamViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000017 /* ExamViewModelTests.swift */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
@@ -67,6 +74,13 @@
 		A20000000000000000000011 /* ExamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExamView.swift; sourceTree = "<group>"; };
 		A20000000000000000000013 /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
 		A20000000000000000000014 /* AuthViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModelTests.swift; sourceTree = "<group>"; };
+		A30000000000000000000011 /* DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModel.swift; sourceTree = "<group>"; };
+		A30000000000000000000012 /* LearnModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnModels.swift; sourceTree = "<group>"; };
+		A30000000000000000000013 /* LessonReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LessonReaderView.swift; sourceTree = "<group>"; };
+		A30000000000000000000014 /* ExamModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExamModels.swift; sourceTree = "<group>"; };
+		A30000000000000000000015 /* ExamViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExamViewModel.swift; sourceTree = "<group>"; };
+		A30000000000000000000016 /* DashboardViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModelTests.swift; sourceTree = "<group>"; };
+		A30000000000000000000017 /* ExamViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExamViewModelTests.swift; sourceTree = "<group>"; };
 		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
@@ -174,6 +188,8 @@
 				A10000000000000000000025 /* APIClientTests.swift */,
 				A10000000000000000000026 /* SessionStoreTests.swift */,
 				A20000000000000000000014 /* AuthViewModelTests.swift */,
+				A30000000000000000000016 /* DashboardViewModelTests.swift */,
+				A30000000000000000000017 /* ExamViewModelTests.swift */,
 			);
 			path = AppTests;
 			sourceTree = "<group>";
@@ -182,6 +198,7 @@
 			isa = PBXGroup;
 			children = (
 				A20000000000000000000007 /* HomeView.swift */,
+				A30000000000000000000011 /* DashboardViewModel.swift */,
 			);
 			path = Home;
 			sourceTree = "<group>";
@@ -190,6 +207,8 @@
 			isa = PBXGroup;
 			children = (
 				A20000000000000000000009 /* LearnView.swift */,
+				A30000000000000000000012 /* LearnModels.swift */,
+				A30000000000000000000013 /* LessonReaderView.swift */,
 			);
 			path = Learn;
 			sourceTree = "<group>";
@@ -198,6 +217,8 @@
 			isa = PBXGroup;
 			children = (
 				A20000000000000000000011 /* ExamView.swift */,
+				A30000000000000000000014 /* ExamModels.swift */,
+				A30000000000000000000015 /* ExamViewModel.swift */,
 			);
 			path = Exam;
 			sourceTree = "<group>";
@@ -375,6 +396,11 @@
 				A20000000000000000000002 /* LearnView.swift in Sources */,
 				A20000000000000000000003 /* ExamView.swift in Sources */,
 				A20000000000000000000004 /* AccountView.swift in Sources */,
+				A30000000000000000000001 /* DashboardViewModel.swift in Sources */,
+				A30000000000000000000002 /* LearnModels.swift in Sources */,
+				A30000000000000000000003 /* LessonReaderView.swift in Sources */,
+				A30000000000000000000004 /* ExamModels.swift in Sources */,
+				A30000000000000000000005 /* ExamViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -385,6 +411,8 @@
 				A10000000000000000000010 /* APIClientTests.swift in Sources */,
 				A10000000000000000000011 /* SessionStoreTests.swift in Sources */,
 				A20000000000000000000005 /* AuthViewModelTests.swift in Sources */,
+				A30000000000000000000006 /* DashboardViewModelTests.swift in Sources */,
+				A30000000000000000000007 /* ExamViewModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
