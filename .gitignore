@@ -35,3 +35,16 @@ prisma/*.db-journal
 
 # Assistant eval artifacts
 scripts/eval/results.json
+
+# Internal docs — kept local only. Only root README.md and CLAUDE.md are tracked.
+*.md
+!/README.md
+!/CLAUDE.md
+
+# Operational/seed scripts — kept local only (read secrets from env at runtime).
+# Not a blanket scripts/ ignore: scripts/eval/* is tracked feature code.
+/scripts/create-admin.ts
+/scripts/create-customer.ts
+/scripts/migrate-checkpoints.ts
+/scripts/seed-content.ts
+/scripts/seed-test-fixtures.ts
