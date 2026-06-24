@@ -16,6 +16,7 @@ import {
   listCompletedLessonIds,
   markLessonComplete,
 } from "../lessons/progress";
+import type { LessonMeta } from "../lessons/types";
 
 vi.mock("../lessons/catalog", () => ({
   getCourseLessonCount: vi.fn(),
@@ -29,6 +30,25 @@ vi.mock("../lessons/progress", () => ({
   listCompletedLessonIds: vi.fn(),
   markLessonComplete: vi.fn(),
 }));
+
+function lessonMeta(overrides: Partial<LessonMeta>): LessonMeta {
+  return {
+    lessonId: "basic/mod-1/intro",
+    course: "basic",
+    moduleId: "mod-1",
+    slug: "intro",
+    title: "Intro",
+    order: 1,
+    estMinutes: 5,
+    certLevel: "BASIC",
+    access: "FREE",
+    videoUid: null,
+    videoStatus: null,
+    videoDurationSec: null,
+    videoThumbnailUrl: null,
+    ...overrides,
+  };
+}
 
 describe("mdxToMobileBlocks", () => {
   it("projects the supported MDX subset into mobile blocks", () => {
@@ -73,6 +93,20 @@ Paragraph one.
       { type: "list", ordered: true, items: ["Third", "Fourth"] },
     ]);
   });
+
+  it("drops unsupported jsx component lines", () => {
+    expect(
+      mdxToMobileBlocks(`Paragraph one.
+
+<Checkpoint questionId="cp_1" />
+
+Paragraph two.
+`),
+    ).toEqual([
+      { type: "paragraph", text: "Paragraph one." },
+      { type: "paragraph", text: "Paragraph two." },
+    ]);
+  });
 });
 
 describe("getMobileCourses", () => {
@@ -95,54 +129,27 @@ describe("getMobileCourses", () => {
     vi.mocked(getCourseLessonCount).mockResolvedValueOnce(2).mockResolvedValueOnce(3);
     vi.mocked(getModuleLessons)
       .mockResolvedValueOnce([
-        {
-          lessonId: "basic/mod-1/intro",
-          course: "basic",
-          moduleId: "mod-1",
-          slug: "intro",
-          title: "Intro",
-          order: 1,
-          estMinutes: 5,
-          certLevel: "BASIC",
-          access: "FREE",
-          videoUid: null,
-          videoStatus: null,
-          videoDurationSec: null,
-          videoThumbnailUrl: null,
-        },
-        {
+        lessonMeta({ lessonId: "basic/mod-1/intro" }),
+        lessonMeta({
           lessonId: "basic/mod-1/rules",
-          course: "basic",
-          moduleId: "mod-1",
           slug: "rules",
           title: "Rules",
           order: 2,
           estMinutes: 7,
-          certLevel: "BASIC",
-          access: "FREE",
-          videoUid: null,
-          videoStatus: null,
-          videoDurationSec: null,
-          videoThumbnailUrl: null,
-        },
-      ] as never)
+        }),
+      ])
       .mockResolvedValueOnce([
-        {
+        lessonMeta({
           lessonId: "advanced/mod-2/solo",
           course: "advanced",
           moduleId: "mod-2",
           slug: "solo",
           title: "Solo",
-          order: 1,
           estMinutes: 8,
           certLevel: "ADVANCED",
           access: "PAID",
-          videoUid: null,
-          videoStatus: null,
-          videoDurationSec: null,
-          videoThumbnailUrl: null,
-        },
-      ] as never);
+        }),
+      ]);
 
     await expect(
       getMobileCourses({
@@ -259,6 +266,14 @@ describe("completeMobileLesson", () => {
     await expect(completeMobileLesson("user_1", "basic/mod/missing", "FREE")).resolves.toBe(
       "not_found",
     );
+    expect(markLessonComplete).not.toHaveBeenCalled();
+  });
+
+  it("returns invalid_lesson_id for invalid lesson shapes", async () => {
+    await expect(completeMobileLesson("user_1", "basic/mod", "FREE")).resolves.toBe(
+      "invalid_lesson_id",
+    );
+    expect(lessonExists).not.toHaveBeenCalled();
     expect(markLessonComplete).not.toHaveBeenCalled();
   });
 });

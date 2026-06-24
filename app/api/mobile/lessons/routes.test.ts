@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as coursesGet } from "../courses/route";
-import { GET as lessonGet } from "./[lessonId]/route";
+import { GET as lessonGet } from "./[...lessonId]/route";
 import { POST as progressPost } from "../progress/lesson/route";
 import { requireMobileAccount } from "../../../../src/lib/mobile/account";
 import {
@@ -13,11 +13,27 @@ vi.mock("../../../../src/lib/mobile/account", () => ({
   requireMobileAccount: vi.fn(),
 }));
 
-vi.mock("../../../../src/lib/mobile/lessons", () => ({
-  getMobileCourses: vi.fn(),
-  getMobileLesson: vi.fn(),
-  completeMobileLesson: vi.fn(),
-}));
+vi.mock("../../../../src/lib/mobile/lessons", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../../src/lib/mobile/lessons")>();
+  return {
+    ...actual,
+    getMobileCourses: vi.fn(),
+    getMobileLesson: vi.fn(),
+    completeMobileLesson: vi.fn(),
+  };
+});
+
+function account(accessTier: "FREE" | "PAID" = "FREE") {
+  return {
+    ok: true as const,
+    account: {
+      userId: "user_1",
+      email: "learner@test.com",
+      name: "Learner",
+      accessTier,
+    },
+  };
+}
 
 describe("mobile lesson routes", () => {
   beforeEach(() => {
@@ -38,16 +54,8 @@ describe("mobile lesson routes", () => {
   });
 
   it("returns courses for the authenticated user", async () => {
-    vi.mocked(requireMobileAccount).mockResolvedValue({
-      ok: true,
-      account: {
-        userId: "user_1",
-        email: "learner@test.com",
-        name: "Learner",
-        accessTier: "PAID",
-      },
-    });
-    vi.mocked(getMobileCourses).mockResolvedValue([{ course: "basic", modules: [] }] as never);
+    vi.mocked(requireMobileAccount).mockResolvedValue(account("PAID"));
+    vi.mocked(getMobileCourses).mockResolvedValue([{ course: "basic", modules: [] }]);
 
     const res = await coursesGet(new Request("http://test/api/mobile/courses?locale=zh"));
 
@@ -69,7 +77,7 @@ describe("mobile lesson routes", () => {
     });
 
     const res = await lessonGet(new Request("http://test/api/mobile/lessons/basic%2Fmod%2Fslug"), {
-      params: Promise.resolve({ lessonId: "basic%2Fmod%2Fslug" }),
+      params: Promise.resolve({ lessonId: ["basic%2Fmod%2Fslug"] }),
     });
 
     expect(getMobileLesson).not.toHaveBeenCalled();
@@ -78,18 +86,10 @@ describe("mobile lesson routes", () => {
   });
 
   it("returns invalid lesson id for malformed encoding", async () => {
-    vi.mocked(requireMobileAccount).mockResolvedValue({
-      ok: true,
-      account: {
-        userId: "user_1",
-        email: "learner@test.com",
-        name: "Learner",
-        accessTier: "FREE",
-      },
-    });
+    vi.mocked(requireMobileAccount).mockResolvedValue(account());
 
     const res = await lessonGet(new Request("http://test/api/mobile/lessons/%E0%A4%A"), {
-      params: Promise.resolve({ lessonId: "%E0%A4%A" }),
+      params: Promise.resolve({ lessonId: ["%E0%A4%A"] }),
     });
 
     expect(getMobileLesson).not.toHaveBeenCalled();
@@ -97,20 +97,12 @@ describe("mobile lesson routes", () => {
     await expect(res.json()).resolves.toEqual({ error: "invalid lesson id" });
   });
 
-  it("returns lesson not found when the service returns null", async () => {
-    vi.mocked(requireMobileAccount).mockResolvedValue({
-      ok: true,
-      account: {
-        userId: "user_1",
-        email: "learner@test.com",
-        name: "Learner",
-        accessTier: "FREE",
-      },
-    });
+  it("accepts an encoded full lesson id in catch-all params", async () => {
+    vi.mocked(requireMobileAccount).mockResolvedValue(account());
     vi.mocked(getMobileLesson).mockResolvedValue(null);
 
     const res = await lessonGet(new Request("http://test/api/mobile/lessons/basic%2Fmod%2Fslug"), {
-      params: Promise.resolve({ lessonId: "basic%2Fmod%2Fslug" }),
+      params: Promise.resolve({ lessonId: ["basic%2Fmod%2Fslug"] }),
     });
 
     expect(getMobileLesson).toHaveBeenCalledWith({
@@ -123,20 +115,42 @@ describe("mobile lesson routes", () => {
     await expect(res.json()).resolves.toEqual({ error: "lesson not found" });
   });
 
-  it("returns upgrade required for a locked lesson", async () => {
-    vi.mocked(requireMobileAccount).mockResolvedValue({
-      ok: true,
-      account: {
-        userId: "user_1",
-        email: "learner@test.com",
-        name: "Learner",
-        accessTier: "FREE",
-      },
+  it("accepts unencoded catch-all lesson segments", async () => {
+    vi.mocked(requireMobileAccount).mockResolvedValue(account());
+    vi.mocked(getMobileLesson).mockResolvedValue(null);
+
+    const res = await lessonGet(new Request("http://test/api/mobile/lessons/basic/mod/slug"), {
+      params: Promise.resolve({ lessonId: ["basic", "mod", "slug"] }),
     });
-    vi.mocked(getMobileLesson).mockResolvedValue({ locked: true } as never);
+
+    expect(getMobileLesson).toHaveBeenCalledWith({
+      userId: "user_1",
+      lessonId: "basic/mod/slug",
+      locale: "en",
+      accessTier: "FREE",
+    });
+    expect(res.status).toBe(404);
+    await expect(res.json()).resolves.toEqual({ error: "lesson not found" });
+  });
+
+  it("returns invalid lesson id for malformed lesson shapes", async () => {
+    vi.mocked(requireMobileAccount).mockResolvedValue(account());
+
+    const res = await lessonGet(new Request("http://test/api/mobile/lessons/basic/mod"), {
+      params: Promise.resolve({ lessonId: ["basic", "mod"] }),
+    });
+
+    expect(getMobileLesson).not.toHaveBeenCalled();
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({ error: "invalid lesson id" });
+  });
+
+  it("returns upgrade required for a locked lesson", async () => {
+    vi.mocked(requireMobileAccount).mockResolvedValue(account());
+    vi.mocked(getMobileLesson).mockResolvedValue({ locked: true });
 
     const res = await lessonGet(new Request("http://test/api/mobile/lessons/advanced%2Fmod%2Fslug"), {
-      params: Promise.resolve({ lessonId: "advanced%2Fmod%2Fslug" }),
+      params: Promise.resolve({ lessonId: ["advanced%2Fmod%2Fslug"] }),
     });
 
     expect(res.status).toBe(403);
@@ -144,24 +158,16 @@ describe("mobile lesson routes", () => {
   });
 
   it("returns the projected mobile lesson when available", async () => {
-    vi.mocked(requireMobileAccount).mockResolvedValue({
-      ok: true,
-      account: {
-        userId: "user_1",
-        email: "learner@test.com",
-        name: "Learner",
-        accessTier: "PAID",
-      },
-    });
+    vi.mocked(requireMobileAccount).mockResolvedValue(account("PAID"));
     vi.mocked(getMobileLesson).mockResolvedValue({
       locked: false,
       meta: { lessonId: "advanced/mod/slug", title: "Briefing" },
       completed: true,
       blocks: [{ type: "paragraph", text: "Body" }],
-    } as never);
+    });
 
     const res = await lessonGet(new Request("http://test/api/mobile/lessons/advanced%2Fmod%2Fslug?locale=zh"), {
-      params: Promise.resolve({ lessonId: "advanced%2Fmod%2Fslug" }),
+      params: Promise.resolve({ lessonId: ["advanced%2Fmod%2Fslug"] }),
     });
 
     expect(res.status).toBe(200);
@@ -193,15 +199,7 @@ describe("mobile lesson routes", () => {
   });
 
   it("rejects malformed JSON when recording lesson progress", async () => {
-    vi.mocked(requireMobileAccount).mockResolvedValue({
-      ok: true,
-      account: {
-        userId: "user_1",
-        email: "learner@test.com",
-        name: "Learner",
-        accessTier: "FREE",
-      },
-    });
+    vi.mocked(requireMobileAccount).mockResolvedValue(account());
 
     const res = await progressPost(
       new Request("http://test/api/mobile/progress/lesson", {
@@ -217,15 +215,7 @@ describe("mobile lesson routes", () => {
   });
 
   it("rejects invalid progress bodies", async () => {
-    vi.mocked(requireMobileAccount).mockResolvedValue({
-      ok: true,
-      account: {
-        userId: "user_1",
-        email: "learner@test.com",
-        name: "Learner",
-        accessTier: "FREE",
-      },
-    });
+    vi.mocked(requireMobileAccount).mockResolvedValue(account());
 
     const res = await progressPost(
       new Request("http://test/api/mobile/progress/lesson", {
@@ -240,16 +230,24 @@ describe("mobile lesson routes", () => {
     await expect(res.json()).resolves.toEqual({ error: "invalid body" });
   });
 
+  it("returns invalid lesson id for malformed progress lesson shapes", async () => {
+    vi.mocked(requireMobileAccount).mockResolvedValue(account());
+
+    const res = await progressPost(
+      new Request("http://test/api/mobile/progress/lesson", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ lessonId: "basic/mod" }),
+      }),
+    );
+
+    expect(completeMobileLesson).not.toHaveBeenCalled();
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({ error: "invalid lesson id" });
+  });
+
   it("returns not found when completing an unknown lesson", async () => {
-    vi.mocked(requireMobileAccount).mockResolvedValue({
-      ok: true,
-      account: {
-        userId: "user_1",
-        email: "learner@test.com",
-        name: "Learner",
-        accessTier: "FREE",
-      },
-    });
+    vi.mocked(requireMobileAccount).mockResolvedValue(account());
     vi.mocked(completeMobileLesson).mockResolvedValue("not_found");
 
     const res = await progressPost(
@@ -266,15 +264,7 @@ describe("mobile lesson routes", () => {
   });
 
   it("returns upgrade required when a free user tries to complete an advanced lesson", async () => {
-    vi.mocked(requireMobileAccount).mockResolvedValue({
-      ok: true,
-      account: {
-        userId: "user_1",
-        email: "learner@test.com",
-        name: "Learner",
-        accessTier: "FREE",
-      },
-    });
+    vi.mocked(requireMobileAccount).mockResolvedValue(account());
     vi.mocked(completeMobileLesson).mockResolvedValue("forbidden");
 
     const res = await progressPost(
@@ -291,15 +281,7 @@ describe("mobile lesson routes", () => {
   });
 
   it("records lesson progress for a valid request", async () => {
-    vi.mocked(requireMobileAccount).mockResolvedValue({
-      ok: true,
-      account: {
-        userId: "user_1",
-        email: "learner@test.com",
-        name: "Learner",
-        accessTier: "FREE",
-      },
-    });
+    vi.mocked(requireMobileAccount).mockResolvedValue(account());
     vi.mocked(completeMobileLesson).mockResolvedValue("ok");
 
     const res = await progressPost(

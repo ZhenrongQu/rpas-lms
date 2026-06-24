@@ -1,8 +1,12 @@
 import { requireMobileAccount } from "../../../../../src/lib/mobile/account";
-import { getMobileLesson } from "../../../../../src/lib/mobile/lessons";
+import {
+  getMobileLesson,
+  normalizeMobileLessonIdParam,
+  parseMobileLessonId,
+} from "../../../../../src/lib/mobile/lessons";
 import type { RouteLocale } from "../../../../../src/lib/lessons/types";
 
-type Ctx = { params: Promise<{ lessonId: string }> };
+type Ctx = { params: Promise<{ lessonId: string[] }> };
 
 function localeFrom(req: Request): RouteLocale {
   return new URL(req.url).searchParams.get("locale") === "zh" ? "zh" : "en";
@@ -13,16 +17,14 @@ export async function GET(req: Request, ctx: Ctx): Promise<Response> {
   if (!auth.ok) return auth.response;
 
   const { lessonId } = await ctx.params;
-  let decodedLessonId: string;
-  try {
-    decodedLessonId = decodeURIComponent(lessonId);
-  } catch {
+  const normalizedLessonId = normalizeMobileLessonIdParam(lessonId);
+  if (!normalizedLessonId || !parseMobileLessonId(normalizedLessonId)) {
     return Response.json({ error: "invalid lesson id" }, { status: 400 });
   }
 
   const lesson = await getMobileLesson({
     userId: auth.account.userId,
-    lessonId: decodedLessonId,
+    lessonId: normalizedLessonId,
     locale: localeFrom(req),
     accessTier: auth.account.accessTier,
   });

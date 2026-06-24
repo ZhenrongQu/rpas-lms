@@ -18,6 +18,12 @@ export type MobileLessonBlock =
   | { type: "list"; ordered: boolean; items: string[] }
   | { type: "callout"; tone: "tip" | "caution" | "note"; text: string };
 
+export type ParsedMobileLessonId = {
+  course: Course;
+  moduleId: string;
+  slug: string;
+};
+
 export function mdxToMobileBlocks(body: string): MobileLessonBlock[] {
   const blocks: MobileLessonBlock[] = [];
   const lines = body.split(/\r?\n/);
@@ -90,6 +96,12 @@ export function mdxToMobileBlocks(body: string): MobileLessonBlock[] {
       continue;
     }
 
+    if (line.startsWith("<") && line.endsWith(">")) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
     flushList();
     paragraph.push(line);
   }
@@ -99,13 +111,25 @@ export function mdxToMobileBlocks(body: string): MobileLessonBlock[] {
   return blocks;
 }
 
-function parseLessonId(lessonId: string): { course: Course; moduleId: string; slug: string } | null {
+export function parseMobileLessonId(lessonId: string): ParsedMobileLessonId | null {
   const parts = lessonId.split("/");
   if (parts.length !== 3) return null;
 
   const [course, moduleId, slug] = parts;
   if ((course !== "basic" && course !== "advanced") || !moduleId || !slug) return null;
   return { course, moduleId, slug };
+}
+
+export function normalizeMobileLessonIdParam(lessonId: string | string[]): string | null {
+  const rawParts = Array.isArray(lessonId) ? lessonId : [lessonId];
+
+  try {
+    const decodedParts = rawParts.map((part) => decodeURIComponent(part));
+    if (decodedParts.length === 1) return decodedParts[0];
+    return decodedParts.join("/");
+  } catch {
+    return null;
+  }
 }
 
 export async function getMobileCourses({
@@ -157,7 +181,7 @@ export async function getMobileLesson({
   locale: RouteLocale;
   accessTier: AccessTier;
 }) {
-  const parsed = parseLessonId(lessonId);
+  const parsed = parseMobileLessonId(lessonId);
   if (!parsed) return null;
   if (parsed.course === "advanced" && accessTier !== "PAID") return { locked: true as const };
 
@@ -177,8 +201,9 @@ export async function completeMobileLesson(
   userId: string,
   lessonId: string,
   accessTier: AccessTier,
-): Promise<"ok" | "not_found" | "forbidden"> {
-  const parsed = parseLessonId(lessonId);
+) : Promise<"ok" | "not_found" | "forbidden" | "invalid_lesson_id"> {
+  const parsed = parseMobileLessonId(lessonId);
+  if (!parsed) return "invalid_lesson_id";
   if (parsed?.course === "advanced" && accessTier !== "PAID") return "forbidden";
   if (!(await lessonExists(lessonId))) return "not_found";
   await markLessonComplete(userId, lessonId);
