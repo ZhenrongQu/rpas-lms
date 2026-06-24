@@ -61,6 +61,12 @@ npm run run:android      # build + launch on a connected device/emulator
 npm run run:ios          # build + launch on a simulator/device
 ```
 
+## Native iOS MVP
+
+The iOS app now uses SwiftUI for the learning MVP. Open `mobile/ios/App/App.xcworkspace`
+in Xcode and run the `App` scheme on an iPhone simulator. The SwiftUI app calls
+`/api/mobile/*` endpoints on the configured production or staging host.
+
 ## Testing against a local dev server
 
 Point the shell at your machine instead of prod (use your LAN IP so a device can reach it):
