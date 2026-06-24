@@ -1,0 +1,25 @@
+import { z } from "zod";
+import { requireMobileAccount } from "../../../../../src/lib/mobile/account";
+import { completeMobileLesson } from "../../../../../src/lib/mobile/lessons";
+
+const Body = z.object({ lessonId: z.string().min(1) }).strict();
+
+export async function POST(req: Request): Promise<Response> {
+  const auth = await requireMobileAccount(req);
+  if (!auth.ok) return auth.response;
+
+  let raw: unknown;
+  try {
+    raw = await req.json();
+  } catch {
+    return Response.json({ error: "invalid JSON" }, { status: 400 });
+  }
+
+  const parsed = Body.safeParse(raw);
+  if (!parsed.success) return Response.json({ error: "invalid body" }, { status: 400 });
+
+  const result = await completeMobileLesson(auth.account.userId, parsed.data.lessonId);
+  if (result === "not_found") return Response.json({ error: "lesson not found" }, { status: 404 });
+
+  return Response.json({ ok: true }, { status: 200 });
+}
