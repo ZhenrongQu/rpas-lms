@@ -24,6 +24,19 @@ describe("mobile lesson routes", () => {
     vi.clearAllMocks();
   });
 
+  it("returns 401 for unauthenticated courses requests", async () => {
+    vi.mocked(requireMobileAccount).mockResolvedValue({
+      ok: false,
+      response: Response.json({ error: "authentication required" }, { status: 401 }),
+    });
+
+    const res = await coursesGet(new Request("http://test/api/mobile/courses"));
+
+    expect(getMobileCourses).not.toHaveBeenCalled();
+    expect(res.status).toBe(401);
+    await expect(res.json()).resolves.toEqual({ error: "authentication required" });
+  });
+
   it("returns courses for the authenticated user", async () => {
     vi.mocked(requireMobileAccount).mockResolvedValue({
       ok: true,
@@ -47,6 +60,41 @@ describe("mobile lesson routes", () => {
     await expect(res.json()).resolves.toEqual({
       courses: [{ course: "basic", modules: [] }],
     });
+  });
+
+  it("returns 401 for unauthenticated lesson requests", async () => {
+    vi.mocked(requireMobileAccount).mockResolvedValue({
+      ok: false,
+      response: Response.json({ error: "authentication required" }, { status: 401 }),
+    });
+
+    const res = await lessonGet(new Request("http://test/api/mobile/lessons/basic%2Fmod%2Fslug"), {
+      params: Promise.resolve({ lessonId: "basic%2Fmod%2Fslug" }),
+    });
+
+    expect(getMobileLesson).not.toHaveBeenCalled();
+    expect(res.status).toBe(401);
+    await expect(res.json()).resolves.toEqual({ error: "authentication required" });
+  });
+
+  it("returns invalid lesson id for malformed encoding", async () => {
+    vi.mocked(requireMobileAccount).mockResolvedValue({
+      ok: true,
+      account: {
+        userId: "user_1",
+        email: "learner@test.com",
+        name: "Learner",
+        accessTier: "FREE",
+      },
+    });
+
+    const res = await lessonGet(new Request("http://test/api/mobile/lessons/%E0%A4%A"), {
+      params: Promise.resolve({ lessonId: "%E0%A4%A" }),
+    });
+
+    expect(getMobileLesson).not.toHaveBeenCalled();
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({ error: "invalid lesson id" });
   });
 
   it("returns lesson not found when the service returns null", async () => {
@@ -123,6 +171,25 @@ describe("mobile lesson routes", () => {
       completed: true,
       blocks: [{ type: "paragraph", text: "Body" }],
     });
+  });
+
+  it("returns 401 for unauthenticated progress requests", async () => {
+    vi.mocked(requireMobileAccount).mockResolvedValue({
+      ok: false,
+      response: Response.json({ error: "authentication required" }, { status: 401 }),
+    });
+
+    const res = await progressPost(
+      new Request("http://test/api/mobile/progress/lesson", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ lessonId: "basic/mod/slug" }),
+      }),
+    );
+
+    expect(completeMobileLesson).not.toHaveBeenCalled();
+    expect(res.status).toBe(401);
+    await expect(res.json()).resolves.toEqual({ error: "authentication required" });
   });
 
   it("rejects malformed JSON when recording lesson progress", async () => {

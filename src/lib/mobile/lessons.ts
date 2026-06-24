@@ -75,6 +75,7 @@ export function mdxToMobileBlocks(body: string): MobileLessonBlock[] {
     const bullet = line.match(/^[-*]\s+(.+)$/);
     if (bullet) {
       flushParagraph();
+      if (listItems.length && ordered) flushList();
       ordered = false;
       listItems.push(bullet[1]);
       continue;
@@ -83,6 +84,7 @@ export function mdxToMobileBlocks(body: string): MobileLessonBlock[] {
     const number = line.match(/^\d+\.\s+(.+)$/);
     if (number) {
       flushParagraph();
+      if (listItems.length && !ordered) flushList();
       ordered = true;
       listItems.push(number[1]);
       continue;
@@ -98,7 +100,10 @@ export function mdxToMobileBlocks(body: string): MobileLessonBlock[] {
 }
 
 function parseLessonId(lessonId: string): { course: Course; moduleId: string; slug: string } | null {
-  const [course, moduleId, slug] = lessonId.split("/");
+  const parts = lessonId.split("/");
+  if (parts.length !== 3) return null;
+
+  const [course, moduleId, slug] = parts;
   if ((course !== "basic" && course !== "advanced") || !moduleId || !slug) return null;
   return { course, moduleId, slug };
 }

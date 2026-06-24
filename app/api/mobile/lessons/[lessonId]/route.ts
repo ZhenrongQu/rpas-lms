@@ -13,9 +13,16 @@ export async function GET(req: Request, ctx: Ctx): Promise<Response> {
   if (!auth.ok) return auth.response;
 
   const { lessonId } = await ctx.params;
+  let decodedLessonId: string;
+  try {
+    decodedLessonId = decodeURIComponent(lessonId);
+  } catch {
+    return Response.json({ error: "invalid lesson id" }, { status: 400 });
+  }
+
   const lesson = await getMobileLesson({
     userId: auth.account.userId,
-    lessonId: decodeURIComponent(lessonId),
+    lessonId: decodedLessonId,
     locale: localeFrom(req),
     accessTier: auth.account.accessTier,
   });
