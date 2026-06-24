@@ -3,13 +3,13 @@ import SwiftUI
 struct MainTabView: View {
     var body: some View {
         TabView {
-            Text("Home")
+            HomeView()
                 .tabItem { Label("Home", systemImage: "house") }
-            Text("Learn")
+            LearnView()
                 .tabItem { Label("Learn", systemImage: "book") }
-            Text("Exam")
+            ExamView()
                 .tabItem { Label("Exam", systemImage: "checkmark.circle") }
-            Text("Account")
+            AccountView()
                 .tabItem { Label("Account", systemImage: "person.crop.circle") }
         }
         .accentColor(AppTheme.accent)

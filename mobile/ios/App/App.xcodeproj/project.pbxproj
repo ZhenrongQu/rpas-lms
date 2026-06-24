@@ -18,6 +18,11 @@
 		A10000000000000000000009 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000023 /* MainTabView.swift */; };
 		A10000000000000000000010 /* APIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000025 /* APIClientTests.swift */; };
 		A10000000000000000000011 /* SessionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000026 /* SessionStoreTests.swift */; };
+		A20000000000000000000001 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* HomeView.swift */; };
+		A20000000000000000000002 /* LearnView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* LearnView.swift */; };
+		A20000000000000000000003 /* ExamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* ExamView.swift */; };
+		A20000000000000000000004 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000013 /* AccountView.swift */; };
+		A20000000000000000000005 /* AuthViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* AuthViewModelTests.swift */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
@@ -57,6 +62,11 @@
 		A10000000000000000000025 /* APIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000026 /* SessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000027 /* AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000007 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		A20000000000000000000009 /* LearnView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnView.swift; sourceTree = "<group>"; };
+		A20000000000000000000011 /* ExamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExamView.swift; sourceTree = "<group>"; };
+		A20000000000000000000013 /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
+		A20000000000000000000014 /* AuthViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModelTests.swift; sourceTree = "<group>"; };
 		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
@@ -119,6 +129,10 @@
 				A10000000000000000000019 /* Auth */,
 				A10000000000000000000014 /* Design */,
 				A10000000000000000000016 /* Networking */,
+				A20000000000000000000006 /* Home */,
+				A20000000000000000000008 /* Learn */,
+				A20000000000000000000010 /* Exam */,
+				A20000000000000000000012 /* Account */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -159,8 +173,41 @@
 			children = (
 				A10000000000000000000025 /* APIClientTests.swift */,
 				A10000000000000000000026 /* SessionStoreTests.swift */,
+				A20000000000000000000014 /* AuthViewModelTests.swift */,
 			);
 			path = AppTests;
+			sourceTree = "<group>";
+		};
+		A20000000000000000000006 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000007 /* HomeView.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		A20000000000000000000008 /* Learn */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000009 /* LearnView.swift */,
+			);
+			path = Learn;
+			sourceTree = "<group>";
+		};
+		A20000000000000000000010 /* Exam */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000011 /* ExamView.swift */,
+			);
+			path = Exam;
+			sourceTree = "<group>";
+		};
+		A20000000000000000000012 /* Account */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000013 /* AccountView.swift */,
+			);
+			path = Account;
 			sourceTree = "<group>";
 		};
 		7F8756D8B27F46E3366F6CEA /* Pods */ = {
@@ -324,6 +371,10 @@
 				A10000000000000000000003 /* AppTheme.swift in Sources */,
 				A10000000000000000000004 /* APIModels.swift in Sources */,
 				A10000000000000000000005 /* APIClient.swift in Sources */,
+				A20000000000000000000001 /* HomeView.swift in Sources */,
+				A20000000000000000000002 /* LearnView.swift in Sources */,
+				A20000000000000000000003 /* ExamView.swift in Sources */,
+				A20000000000000000000004 /* AccountView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -333,6 +384,7 @@
 			files = (
 				A10000000000000000000010 /* APIClientTests.swift in Sources */,
 				A10000000000000000000011 /* SessionStoreTests.swift in Sources */,
+				A20000000000000000000005 /* AuthViewModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
