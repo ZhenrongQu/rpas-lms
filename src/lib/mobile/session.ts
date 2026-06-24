@@ -1,14 +1,15 @@
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "../db";
-import type { AccessTier } from "../exam/access";
 
 const MOBILE_SESSION_DAYS = 30;
+
+export type MobileAccessTier = "FREE" | "PAID";
 
 export type MobileAccount = {
   userId: string;
   email: string | null;
   name: string | null;
-  accessTier: AccessTier;
+  accessTier: MobileAccessTier;
 };
 
 export function hashMobileToken(token: string): string {

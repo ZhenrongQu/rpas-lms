@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import {
   bearerToken,
   createMobileSession,
   hashMobileToken,
+  type MobileAccount,
   readMobileSession,
   revokeMobileSession,
 } from "./session";
@@ -20,6 +21,10 @@ vi.mock("../db", () => ({
 }));
 
 describe("mobile sessions", () => {
+  it("exposes only free or paid mobile access tiers", () => {
+    expectTypeOf<MobileAccount["accessTier"]>().toEqualTypeOf<"FREE" | "PAID">();
+  });
+
   it("hashes tokens with sha256 hex", () => {
     expect(hashMobileToken("abc")).toBe(createHash("sha256").update("abc").digest("hex"));
   });
