@@ -8,6 +8,7 @@ import {
   getMobileCourses,
   getMobileLesson,
 } from "../../../../src/lib/mobile/lessons";
+import type { LessonMeta } from "../../../../src/lib/lessons/types";
 
 vi.mock("../../../../src/lib/mobile/account", () => ({
   requireMobileAccount: vi.fn(),
@@ -35,6 +36,37 @@ function account(accessTier: "FREE" | "PAID" = "FREE") {
   };
 }
 
+function lessonMeta(overrides: Partial<LessonMeta> = {}): LessonMeta {
+  return {
+    lessonId: "basic/mod/slug",
+    course: "basic",
+    moduleId: "mod",
+    slug: "slug",
+    title: "Lesson",
+    order: 1,
+    estMinutes: 5,
+    certLevel: "BASIC",
+    access: "FREE",
+    videoUid: null,
+    videoStatus: null,
+    videoDurationSec: null,
+    videoThumbnailUrl: null,
+    ...overrides,
+  };
+}
+
+function mobileCourse(overrides: Partial<Awaited<ReturnType<typeof getMobileCourses>>[number]> = {}) {
+  return {
+    course: "basic" as const,
+    title: "Basic",
+    locked: false,
+    done: 0,
+    total: 0,
+    modules: [],
+    ...overrides,
+  };
+}
+
 describe("mobile lesson routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -55,7 +87,7 @@ describe("mobile lesson routes", () => {
 
   it("returns courses for the authenticated user", async () => {
     vi.mocked(requireMobileAccount).mockResolvedValue(account("PAID"));
-    vi.mocked(getMobileCourses).mockResolvedValue([{ course: "basic", modules: [] }]);
+    vi.mocked(getMobileCourses).mockResolvedValue([mobileCourse()]);
 
     const res = await coursesGet(new Request("http://test/api/mobile/courses?locale=zh"));
 
@@ -66,7 +98,7 @@ describe("mobile lesson routes", () => {
     });
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
-      courses: [{ course: "basic", modules: [] }],
+      courses: [mobileCourse()],
     });
   });
 
@@ -161,7 +193,15 @@ describe("mobile lesson routes", () => {
     vi.mocked(requireMobileAccount).mockResolvedValue(account("PAID"));
     vi.mocked(getMobileLesson).mockResolvedValue({
       locked: false,
-      meta: { lessonId: "advanced/mod/slug", title: "Briefing" },
+      meta: lessonMeta({
+        lessonId: "advanced/mod/slug",
+        course: "advanced",
+        moduleId: "mod",
+        slug: "slug",
+        title: "Briefing",
+        certLevel: "ADVANCED",
+        access: "PAID",
+      }),
       completed: true,
       blocks: [{ type: "paragraph", text: "Body" }],
     });
@@ -173,7 +213,15 @@ describe("mobile lesson routes", () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       locked: false,
-      meta: { lessonId: "advanced/mod/slug", title: "Briefing" },
+      meta: lessonMeta({
+        lessonId: "advanced/mod/slug",
+        course: "advanced",
+        moduleId: "mod",
+        slug: "slug",
+        title: "Briefing",
+        certLevel: "ADVANCED",
+        access: "PAID",
+      }),
       completed: true,
       blocks: [{ type: "paragraph", text: "Body" }],
     });
