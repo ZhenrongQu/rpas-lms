@@ -45,6 +45,7 @@ model Customer {
   updatedAt        DateTime                 @updatedAt
   identities       UserIdentity[]
   examSessions     ExamSession[]
+  mobileSessions   MobileSession[]
   basicProgress    BasicLessonProgress[]
   advancedProgress AdvancedLessonProgress[]
   payments         Payment[]
@@ -63,6 +64,20 @@ model UserIdentity {
 
   @@unique([provider, providerAccountId])
   @@index([userId])
+}
+
+model MobileSession {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      Customer  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
 }
 
 model VerificationCode {
