@@ -79,9 +79,6 @@ describe("mobile sessions", () => {
 
   it("returns the active user for a valid session", async () => {
     vi.mocked(prisma.mobileSession.findUnique).mockResolvedValueOnce({
-      id: "ms_1",
-      userId: "user_1",
-      tokenHash: hashMobileToken("active"),
       expiresAt: new Date("2026-07-24T00:00:00.000Z"),
       revokedAt: null,
       user: { id: "user_1", email: "a@test.com", displayName: "A", accessTier: "PAID" },
@@ -92,6 +89,21 @@ describe("mobile sessions", () => {
       email: "a@test.com",
       name: "A",
       accessTier: "PAID",
+    });
+    expect(prisma.mobileSession.findUnique).toHaveBeenCalledWith({
+      where: { tokenHash: hashMobileToken("active") },
+      select: {
+        expiresAt: true,
+        revokedAt: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            displayName: true,
+            accessTier: true,
+          },
+        },
+      },
     });
   });
 
@@ -105,7 +117,9 @@ describe("mobile sessions", () => {
 
   it("parses bearer tokens", () => {
     expect(bearerToken(new Headers({ authorization: "Bearer abc" }))).toBe("abc");
+    expect(bearerToken(new Headers({ authorization: "bearer abc" }))).toBe("abc");
     expect(bearerToken(new Headers({ authorization: "Basic abc" }))).toBeNull();
+    expect(bearerToken(new Headers({ authorization: "Bearer   " }))).toBeNull();
     expect(bearerToken(new Headers())).toBeNull();
   });
 });

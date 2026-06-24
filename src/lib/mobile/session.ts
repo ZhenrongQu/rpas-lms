@@ -49,7 +49,9 @@ export async function readMobileSession(
 ): Promise<MobileAccount | null> {
   const row = await prisma.mobileSession.findUnique({
     where: { tokenHash: hashMobileToken(token) },
-    include: {
+    select: {
+      expiresAt: true,
+      revokedAt: true,
       user: {
         select: {
           id: true,
@@ -83,7 +85,13 @@ export async function revokeMobileSession(
 
 export function bearerToken(headers: Headers): string | null {
   const header = headers.get("authorization");
-  if (!header?.startsWith("Bearer ")) return null;
-  const token = header.slice("Bearer ".length).trim();
-  return token.length > 0 ? token : null;
+  if (!header) return null;
+  const firstSpace = header.indexOf(" ");
+  if (firstSpace < 0) return null;
+
+  const scheme = header.slice(0, firstSpace);
+  if (scheme.toLowerCase() !== "bearer") return null;
+
+  const token = header.slice(firstSpace + 1).trim();
+  return token ? token : null;
 }
