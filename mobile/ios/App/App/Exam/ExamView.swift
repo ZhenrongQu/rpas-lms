@@ -63,30 +63,11 @@ private struct ExamChooserView: View {
                     .multilineTextAlignment(.center)
             }
 
-            Button {
-                onStart("BASIC")
-            } label: {
-                Text("Start Basic Mock Exam")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-            }
-            .foregroundColor(.white)
-            .background(AppTheme.accent)
-            .cornerRadius(10)
+            Button("Start Basic Mock Exam") { onStart("BASIC") }
+                .buttonStyle(PrimaryButtonStyle())
 
-            Button {
-                onStart("ADVANCED")
-            } label: {
-                Text("Start Advanced Mock Exam")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-            }
-            .foregroundColor(AppTheme.accent)
-            .overlay(
-                RoundedRectangle(cornerRadius: 10).stroke(AppTheme.accent, lineWidth: 1)
-            )
+            Button("Start Advanced Mock Exam") { onStart("ADVANCED") }
+                .buttonStyle(SecondaryButtonStyle())
             Spacer()
         }
         .padding(24)
@@ -146,22 +127,38 @@ private struct ExamAnsweringView: View {
 
     private var footer: some View {
         HStack(spacing: 12) {
-            Button("Previous") { viewModel.previous() }
-                .foregroundColor(viewModel.currentIndex == 0 ? AppTheme.border : AppTheme.accent)
-                .disabled(viewModel.currentIndex == 0)
+            Button { viewModel.previous() } label: {
+                Text("Previous")
+                    .font(.subheadline.bold())
+                    .foregroundColor(viewModel.currentIndex == 0 ? AppTheme.border : AppTheme.accent)
+                    .padding(.horizontal, 20)
+                    .frame(minHeight: 44)
+            }
+            .disabled(viewModel.currentIndex == 0)
+
             Spacer()
+
             if viewModel.isLastQuestion {
-                Button {
-                    Task { await viewModel.submit() }
-                } label: {
-                    Text("Submit").bold().foregroundColor(AppTheme.green)
+                Button { Task { await viewModel.submit() } } label: {
+                    pill("Submit", background: AppTheme.green)
                 }
             } else {
-                Button("Next") { viewModel.next() }
-                    .foregroundColor(AppTheme.accent)
+                Button { viewModel.next() } label: {
+                    pill("Next", background: AppTheme.accent)
+                }
             }
         }
         .padding()
+    }
+
+    private func pill(_ title: String, background: Color) -> some View {
+        Text(title)
+            .font(.subheadline.bold())
+            .foregroundColor(.white)
+            .padding(.horizontal, 24)
+            .frame(minHeight: 44)
+            .background(background)
+            .cornerRadius(AppTheme.cornerSmall)
     }
 
     private var timeString: String {
@@ -224,10 +221,7 @@ private struct ExamResultView: View {
                             .font(.subheadline)
                             .foregroundColor(AppTheme.secondaryInk)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(AppTheme.surface)
-                    .cornerRadius(16)
+                    .cardStyle()
                 }
 
                 if !viewModel.incorrectReview.isEmpty {
@@ -242,17 +236,8 @@ private struct ExamResultView: View {
                         .foregroundColor(AppTheme.secondaryInk)
                 }
 
-                Button {
-                    viewModel.reset()
-                } label: {
-                    Text("Back to Mock Exams")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                }
-                .foregroundColor(.white)
-                .background(AppTheme.accent)
-                .cornerRadius(10)
+                Button("Back to Mock Exams") { viewModel.reset() }
+                    .buttonStyle(PrimaryButtonStyle())
             }
             .padding()
         }
@@ -289,13 +274,7 @@ private struct ExamReviewCard: View {
                     .foregroundColor(AppTheme.secondaryInk)
             }
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.surface)
-        .cornerRadius(14)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14).stroke(AppTheme.border, lineWidth: 1)
-        )
+        .cardStyle()
     }
 
     private func icon(for option: ReviewOption) -> String {

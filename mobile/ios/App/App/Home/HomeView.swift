@@ -108,13 +108,7 @@ private struct CourseProgressCard: View {
             ProgressView(value: Double(progress.pct), total: 100)
                 .accentColor(AppTheme.accent)
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.surface)
-        .cornerRadius(14)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14).stroke(AppTheme.border, lineWidth: 1)
-        )
+        .cardStyle()
     }
 }
 
@@ -135,13 +129,7 @@ private struct MockExamCard: View {
             Image(systemName: "checkmark.circle")
                 .foregroundColor(AppTheme.accent)
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.surface)
-        .cornerRadius(14)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14).stroke(AppTheme.border, lineWidth: 1)
-        )
+        .cardStyle()
     }
 
     private var subtitle: String {
@@ -164,13 +152,7 @@ private struct FlightReviewCard: View {
                 .font(.subheadline)
                 .foregroundColor(AppTheme.secondaryInk)
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.surface)
-        .cornerRadius(14)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14).stroke(AppTheme.border, lineWidth: 1)
-        )
+        .cardStyle()
     }
 
     private var statusText: String {

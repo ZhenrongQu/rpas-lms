@@ -59,12 +59,11 @@ struct LessonContainerView: View {
             } label: {
                 Text(completed ? "Completed" : "Mark Complete")
                     .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, minHeight: AppTheme.controlHeight)
             }
             .foregroundColor(.white)
             .background(completed ? AppTheme.green : AppTheme.accent)
-            .cornerRadius(10)
+            .cornerRadius(AppTheme.cornerSmall)
             .disabled(completed || completing)
             .padding()
         }

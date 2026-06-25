@@ -37,8 +37,12 @@ struct LearnView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: AppTheme.gap) {
                     if viewModel.hasLoaded {
+                        if viewModel.courses.isEmpty {
+                            Text("No courses available yet.")
+                                .foregroundColor(AppTheme.secondaryInk)
+                        }
                         ForEach(viewModel.courses) { course in
                             CourseCard(course: course)
                         }
@@ -105,13 +109,7 @@ private struct CourseCard: View {
                 }
             }
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.surface)
-        .cornerRadius(14)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14).stroke(AppTheme.border, lineWidth: 1)
-        )
+        .cardStyle()
     }
 }
 
