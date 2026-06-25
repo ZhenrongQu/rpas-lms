@@ -25,13 +25,23 @@ struct MobileLessonMeta: Codable, Identifiable, Equatable {
     let lessonId: String
     let title: String
     let estMinutes: Int
-    let completed: Bool
+    // Present in the course/module listing; absent from a single lesson's `meta`
+    // (the lesson response carries completion as a sibling field instead).
+    let completed: Bool?
 }
 
 struct MobileLessonResponse: Codable, Equatable {
     let meta: MobileLessonMeta
     let completed: Bool
     let blocks: [MobileLessonBlock]
+}
+
+struct CompleteLessonRequest: Encodable {
+    let lessonId: String
+}
+
+struct OKResponse: Codable, Equatable {
+    let ok: Bool
 }
 
 enum MobileLessonBlock: Codable, Equatable, Identifiable {
