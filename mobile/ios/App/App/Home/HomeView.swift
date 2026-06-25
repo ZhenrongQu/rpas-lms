@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var auth: AuthViewModel
+    @EnvironmentObject var router: TabRouter
     @StateObject private var viewModel = DashboardViewModel(
         api: APIClient(baseURL: URL(string: "https://pacificdrone.ca")!)
     )
@@ -20,17 +21,34 @@ struct HomeView: View {
                     case .loaded(let dashboard):
                         greeting(for: dashboard)
                         if let resume = dashboard.resume {
-                            ContinueCard(resume: resume)
+                            NavigationLink {
+                                LessonContainerView(lessonId: resume.lessonId, title: resume.title)
+                            } label: {
+                                ContinueCard(resume: resume)
+                            }
+                            .buttonStyle(.plain)
                         }
                         if let basic = dashboard.progress.basic {
-                            CourseProgressCard(title: "Basic", progress: basic)
+                            Button { router.selection = .learn } label: {
+                                CourseProgressCard(title: "Basic", progress: basic)
+                            }
+                            .buttonStyle(.plain)
                         }
                         if let advanced = dashboard.progress.advanced {
-                            CourseProgressCard(title: "Advanced", progress: advanced)
+                            Button { router.selection = .learn } label: {
+                                CourseProgressCard(title: "Advanced", progress: advanced)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        MockExamCard(summary: dashboard.mockExam)
+                        Button { router.selection = .exam } label: {
+                            MockExamCard(summary: dashboard.mockExam)
+                        }
+                        .buttonStyle(.plain)
                         if let flightReview = dashboard.flightReview {
-                            FlightReviewCard(status: flightReview)
+                            Link(destination: URL(string: "https://pacificdrone.ca/en/flight-review")!) {
+                                FlightReviewCard(status: flightReview)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -66,16 +84,22 @@ private struct ContinueCard: View {
     let resume: ResumeLesson
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Continue Learning")
-                .font(.caption.bold())
+        HStack {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Continue Learning")
+                    .font(.caption.bold())
+                    .foregroundColor(AppTheme.accent)
+                Text(resume.title)
+                    .font(.headline)
+                    .foregroundColor(AppTheme.ink)
+                Text("\(resume.courseTitle) · \(resume.pct)% complete")
+                    .font(.subheadline)
+                    .foregroundColor(AppTheme.secondaryInk)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.subheadline.bold())
                 .foregroundColor(AppTheme.accent)
-            Text(resume.title)
-                .font(.headline)
-                .foregroundColor(AppTheme.ink)
-            Text("\(resume.courseTitle) · \(resume.pct)% complete")
-                .font(.subheadline)
-                .foregroundColor(AppTheme.secondaryInk)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -104,6 +128,9 @@ private struct CourseProgressCard: View {
                         .font(.caption)
                         .foregroundColor(AppTheme.secondaryInk)
                 }
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundColor(AppTheme.border)
             }
             ProgressView(value: Double(progress.pct), total: 100)
                 .accentColor(AppTheme.accent)
@@ -128,6 +155,9 @@ private struct MockExamCard: View {
             Spacer()
             Image(systemName: "checkmark.circle")
                 .foregroundColor(AppTheme.accent)
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundColor(AppTheme.border)
         }
         .cardStyle()
     }
@@ -144,13 +174,19 @@ private struct FlightReviewCard: View {
     let status: FlightReviewStatus
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Flight Review")
-                .font(.headline)
-                .foregroundColor(AppTheme.ink)
-            Text(statusText)
-                .font(.subheadline)
-                .foregroundColor(AppTheme.secondaryInk)
+        HStack {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Flight Review")
+                    .font(.headline)
+                    .foregroundColor(AppTheme.ink)
+                Text(statusText)
+                    .font(.subheadline)
+                    .foregroundColor(AppTheme.secondaryInk)
+            }
+            Spacer()
+            Image(systemName: "arrow.up.right")
+                .font(.caption.bold())
+                .foregroundColor(AppTheme.border)
         }
         .cardStyle()
     }
