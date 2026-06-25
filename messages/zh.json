@@ -259,6 +259,20 @@
       "error": "出错了，请稍后再试。"
     }
   },
+  "billing": {
+    "title": "升级你的权限",
+    "subtitle": "一次性购买。解锁完整高级课程与模拟考试,或加购个人飞行考核。",
+    "signInPrompt": "请先登录账户再购买。",
+    "signIn": "登录",
+    "advancedTitle": "高级课程套餐",
+    "advancedBody": "解锁全部高级课程、课节检查点与无限次模拟考试。",
+    "advancedCta": "解锁高级 — 完整权限",
+    "flightTitle": "飞行考核",
+    "flightBody": "预约与加拿大交通部考官的线下飞行考核。",
+    "flightCta": "加购飞行考核",
+    "owned": "✓ 已在你的账户中",
+    "manageOnWeb": "购买在网页端进行。请在浏览器打开 pacificdrone.ca 升级。"
+  },
   "flightReview": {
     "panelTitle": "飞行考核",
     "description": "预约与加拿大交通部考官的线下飞行考核。",

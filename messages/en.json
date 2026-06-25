@@ -259,6 +259,20 @@
       "error": "Something went wrong. Please try again."
     }
   },
+  "billing": {
+    "title": "Upgrade your access",
+    "subtitle": "One-time purchases. Unlock the full Advanced course and exams, or add a personal Flight Review.",
+    "signInPrompt": "Sign in to your account to purchase.",
+    "signIn": "Sign in",
+    "advancedTitle": "Advanced Course Bundle",
+    "advancedBody": "Unlock every Advanced lesson, lesson checkpoints, and unlimited mock exams.",
+    "advancedCta": "Unlock Advanced — full access",
+    "flightTitle": "Flight Review",
+    "flightBody": "Book your in-person flight review with a Transport Canada examiner.",
+    "flightCta": "Add Flight Review",
+    "owned": "✓ Already on your account",
+    "manageOnWeb": "Purchases are managed on the web. Open pacificdrone.ca in your browser to upgrade."
+  },
   "flightReview": {
     "panelTitle": "Flight Review",
     "description": "Schedule your in-person flight review with a Transport Canada examiner.",
