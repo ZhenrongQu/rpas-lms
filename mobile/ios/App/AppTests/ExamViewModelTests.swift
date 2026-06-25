@@ -2,20 +2,32 @@ import XCTest
 @testable import App
 
 final class ExamViewModelTests: XCTestCase {
-    func testStartExamUpdatesStatus() async {
+    func testStartExamLoadsQuestionsAndEntersAnswering() async {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [ExamStubURLProtocol.self]
         ExamStubURLProtocol.handler = { request in
-            XCTAssertEqual(request.url?.path, "/api/mobile/exam")
-            XCTAssertEqual(request.httpMethod, "POST")
-            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer token")
+            let path = request.url?.path ?? ""
+            if path == "/api/mobile/exam" {
+                XCTAssertEqual(request.httpMethod, "POST")
+                XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer token")
+                let response = HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 201,
+                    httpVersion: nil,
+                    headerFields: ["Content-Type": "application/json"]
+                )!
+                return (response, Data(#"{"sessionId":"exam_1","expiresAt":1782267453000,"total":1}"#.utf8))
+            }
+
+            XCTAssertEqual(path, "/api/mobile/exam/exam_1/questions")
             let response = HTTPURLResponse(
                 url: request.url!,
-                statusCode: 201,
+                statusCode: 200,
                 httpVersion: nil,
                 headerFields: ["Content-Type": "application/json"]
             )!
-            return (response, Data(#"{"sessionId":"exam_1","expiresAt":1782267453000,"total":35}"#.utf8))
+            let questions = #"[{"id":"q1","type":"SINGLE","selectCount":1,"stem":"Q?","options":[{"id":"a","label":"A"},{"id":"b","label":"B"}]}]"#
+            return (response, Data(questions.utf8))
         }
 
         let api = APIClient(
@@ -26,8 +38,10 @@ final class ExamViewModelTests: XCTestCase {
 
         await viewModel.start(certLevel: "BASIC", token: "token")
 
-        let status = await viewModel.status
-        XCTAssertEqual(status, "Created exam with 35 questions")
+        let phase = await viewModel.phase
+        let questionCount = await viewModel.questions.count
+        XCTAssertEqual(phase, .answering)
+        XCTAssertEqual(questionCount, 1)
     }
 }
 
