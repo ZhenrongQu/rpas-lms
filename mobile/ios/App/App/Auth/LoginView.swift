@@ -66,6 +66,7 @@ struct LoginView: View {
 
     private func field<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         content()
+            .foregroundColor(AppTheme.ink)
             .padding(12)
             .background(AppTheme.surface)
             .cornerRadius(AppTheme.cornerSmall)
