@@ -70,3 +70,27 @@ struct MockExamSummary: Codable, Equatable {
     let bestPct: Int?
     let recentCount: Int
 }
+
+// Flight Review booking (GET/POST/DELETE /api/mobile/flight-review).
+struct FlightReviewData: Codable, Equatable {
+    let eligible: Bool
+    let booking: FRBooking?
+    let slots: [FRSlot]
+}
+
+struct FRBooking: Codable, Equatable, Identifiable {
+    let id: String
+    let slot: FRSlot
+}
+
+struct FRSlot: Codable, Equatable, Identifiable {
+    let id: String
+    let startsAt: String
+    let durationMin: Int
+    let location: String
+    let examinerName: String
+}
+
+struct BookSlotRequest: Encodable {
+    let slotId: String
+}

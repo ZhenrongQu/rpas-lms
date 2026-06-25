@@ -37,6 +37,16 @@ struct APIClient {
         return try await perform(request)
     }
 
+    /// Bodyless request for verbs that carry no payload (e.g. DELETE).
+    func send<Response: Decodable>(
+        path: String,
+        method: String,
+        token: String? = nil
+    ) async throws -> Response {
+        let request = try self.request(path: path, method: method, token: token)
+        return try await perform(request)
+    }
+
     private func perform<Response: Decodable>(_ request: URLRequest) async throws -> Response {
         let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
