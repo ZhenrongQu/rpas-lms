@@ -2,9 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-RPAS LMS — a Next.js (App Router) learning + mock-exam platform for the Canadian RPAS / drone pilot certification, bilingual EN/ZH. Covers Basic & Advanced courses: lessons, lesson checkpoints, timed mock exams with server-side grading, Stripe payments, and a separate flight-review booking flow.
+RPAS LMS — a Next.js (App Router) learning + mock-exam platform for the Canadian RPAS / drone pilot certification, bilingual EN/ZH. Covers Basic & Advanced courses: lessons, lesson checkpoints, timed mock exams with server-side grading, Stripe payments, a flight-review booking flow, a paid AI study assistant, and a native mobile (iOS) API surface.
 
-> The root `README.md` data-layer facts are now corrected (PostgreSQL + DB-backed CMS), but its `目录说明` predates several subsystems (the `/coriander` admin CMS, payments, lessons, flight-review). For those, trust the schema and the code over the README.
+> Docs: `README.md` is English (default), `README.zh.md` is the Chinese version (linked at the top of each). Its `目录说明` predates several subsystems (the `/coriander` admin CMS, payments, lessons, flight-review, the AI assistant, the native mobile API). For those, trust the schema and the code over the README.
 
 ## Commands
 
@@ -38,7 +38,7 @@ docker run -d --name rpas-test-pg -e POSTGRES_PASSWORD=postgres -p 5433:5432 pos
 
 ## Architecture
 
-Stack: Next.js 15 App Router, React 19, TypeScript (strict), Prisma + **PostgreSQL**, NextAuth v5 (`auth.ts`), next-intl (en/zh), Tailwind, Zod, Vitest, Stripe, Resend (email), Cloudflare Stream (video), Sentry. Path alias `@/*` → `./src/*`.
+Stack: Next.js 15 App Router, React 19, TypeScript (strict), Prisma + **PostgreSQL**, NextAuth v5 (`auth.ts`), next-intl (en/zh), Tailwind, Zod, Vitest, Stripe, Resend (email), Cloudflare Stream (video), Anthropic SDK (AI assistant), Sentry. Path alias `@/*` → `./src/*`.
 
 ### Two-table identity (security boundary)
 
@@ -87,17 +87,26 @@ The codebase tags hardening decisions with `SEC-NN` markers — grep for them an
 - **Exam ownership**: `app/api/exam/sessionAuth.ts` — `requireExamOwner` / `currentAccount`. Anonymous (ownerless) sessions are reachable only by their unguessable id (the free Basic taster).
 - **Test-auth backdoor** (`x-test-user-id` header) is gated on `NODE_ENV==="test"` **and** `ALLOW_TEST_AUTH==="1"` (set only in `vitest.config.mts`) — it can never re-enable in production.
 
-### Mobile
+### Paid AI study assistant (`/api/chat`)
 
-`mobile/` is a Capacitor wrapper (iOS/Android) around the web app. Server components detect native clients via User-Agent: `src/lib/platform.server.ts` (`isNativeRequest`) / `src/lib/platform.ts` (`isNativeUA`). `app/api/mobile/` serves native-specific endpoints.
+`POST /api/chat` (Node runtime, streams plain UTF-8 text deltas). Gating order matters and happens before any tokens are spent: session `userId` required (401) → `hasPaidAccess` paywall (402) → per-user rate limit (429, with `Retry-After`). Returns 503 if `ANTHROPIC_API_KEY` is unset (the rest of the app is unaffected). `src/lib/chat/loop.ts` (`runAssistant`) is a server-side agent loop: model `claude-opus-4-8`, adaptive thinking, `MAX_STEPS` cap; the model calls tools (`src/lib/chat/tools.ts`, executed server-side), only text deltas are forwarded to the client. System prompt in `systemPrompt.ts`. Offline eval harness: `scripts/eval/` via `pnpm eval:assistant` (LLM-judge in `judge.ts`).
+
+### Mobile (native iOS API)
+
+Two distinct things share the `mobile`/native surface:
+
+- **Web wrapper**: `mobile/` is a Capacitor shell (iOS/Android) around the web app. Server components detect native clients via User-Agent: `src/lib/platform.server.ts` (`isNativeRequest`) / `src/lib/platform.ts` (`isNativeUA`).
+- **Native API**: `app/api/mobile/*` is a separate JSON API for the native app (auth, me, dashboard, courses, lessons, exam, checkpoint, progress) — it parallels the web routes but authenticates with a **bearer token, not NextAuth cookies**. `src/lib/mobile/session.ts` manages the `MobileSession` table: opaque token returned at login, stored sha256-hashed, 30-day expiry, revocable; `bearerToken()` parses the `Authorization` header and `readMobileSession()` validates it.
 
 ## Environment
 
-Copy `.env.example` → `.env`. Required for most flows: `DATABASE_URL` (+ `DIRECT_URL` for migrations on pooled Postgres), `AUTH_SECRET`, `APP_URL`, Stripe keys (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_ADVANCED_BUNDLE_PRICE_ID`, optional `STRIPE_FLIGHT_REVIEW_PRICE_ID`), Resend (`RESEND_API_KEY`, `EMAIL_FROM`). OAuth and Sentry vars are optional (features no-op without them). Stripe TEST keys/prices belong in `.env`, LIVE in `.env.production` — price ids must come from the matching Stripe mode.
+Copy `.env.example` → `.env`. Required for most flows: `DATABASE_URL` (+ `DIRECT_URL` for migrations on pooled Postgres), `AUTH_SECRET`, `APP_URL`, Stripe keys (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_ADVANCED_BUNDLE_PRICE_ID`, optional `STRIPE_FLIGHT_REVIEW_PRICE_ID`), Resend (`RESEND_API_KEY`, `EMAIL_FROM`). `ANTHROPIC_API_KEY` powers the AI assistant (route 503s without it; rest of app fine). OAuth, Cloudflare Stream, and Sentry vars are optional (features no-op without them). Stripe TEST keys/prices belong in `.env`, LIVE in `.env.production` — price ids must come from the matching Stripe mode.
 
-Local dev/test admin & customer accounts and the scripts to (re)create them (`scripts/create-admin.ts`, `scripts/create-customer.ts`) are documented at the bottom of `README.md`.
+`.gitignore` note: only `README.md`, `README.zh.md`, `CLAUDE.md`, and `scripts/eval/*` are tracked. Other `.md` docs and the operational scripts (`scripts/create-admin.ts`, `create-customer.ts`, `seed-content.ts`, …) are kept **local-only** (untracked) — they exist on disk but are not in the repo. The admin/customer create scripts read credentials from env vars (`ADMIN_USERNAME`/`ADMIN_PASSWORD`, etc.); usage is in the local `password.md`.
 
 ## Further reading
+
+These docs are **local-only** (untracked, not in the repo) — present on the maintainer's checkout, absent from a fresh clone:
 
 - `docs/technical-design.md` — full platform design.
 - `docs/PROGRESS.md` — implementation history and known gaps.
