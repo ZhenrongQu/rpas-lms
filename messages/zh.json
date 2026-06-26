@@ -247,6 +247,13 @@
     "mockExam": "模拟考试",
     "bestOfAttempts": "{count} 次中的最佳",
     "changePassword": "修改密码",
+    "deleteAccount": "注销账号",
+    "deleteAccountWarning": "这将永久删除你的账号及全部数据(学习进度、考试记录、权限,以及任何飞行考核预约),且不可撤销。",
+    "deleteAccountConfirmLabel": "输入 DELETE 确认",
+    "deleteAccountConfirmWord": "DELETE",
+    "deleteAccountButton": "永久注销我的账号",
+    "deleteAccountWorking": "正在注销…",
+    "deleteAccountFailed": "注销失败,请重试。",
     "assistant": {
       "title": "学习助教",
       "intro": "课程、考试、下一步该学什么，都可以问我。",

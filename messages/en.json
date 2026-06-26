@@ -247,6 +247,13 @@
     "mockExam": "Mock Exam",
     "bestOfAttempts": "best of {count} attempts",
     "changePassword": "Change Password",
+    "deleteAccount": "Delete Account",
+    "deleteAccountWarning": "This permanently deletes your account and all your data (progress, exam history, entitlements, and any flight-review booking). This cannot be undone.",
+    "deleteAccountConfirmLabel": "Type DELETE to confirm",
+    "deleteAccountConfirmWord": "DELETE",
+    "deleteAccountButton": "Permanently delete my account",
+    "deleteAccountWorking": "Deleting…",
+    "deleteAccountFailed": "Couldn't delete your account. Please try again.",
     "assistant": {
       "title": "Study Assistant",
       "intro": "Ask me about lessons, the exam, or what to study next.",

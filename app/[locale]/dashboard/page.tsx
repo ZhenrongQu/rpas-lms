@@ -23,6 +23,7 @@ import FlightReviewPanel from '@/components/dashboard/FlightReviewPanel';
 import MockExamCard from '@/components/dashboard/MockExamCard';
 import ProgressRing from '@/components/dashboard/ProgressRing';
 import ChangePasswordForm from '@/components/dashboard/ChangePasswordForm';
+import DeleteAccountForm from '@/components/dashboard/DeleteAccountForm';
 import StudyAssistant from '@/components/dashboard/StudyAssistant';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -244,6 +245,10 @@ export default async function DashboardPage({ params }: Props) {
             <div className="dash-account-pw">
               <div className="dash-account-pw-title">{t('dashboard.changePassword')}</div>
               <ChangePasswordForm />
+            </div>
+            <div className="dash-account-pw">
+              <div className="dash-account-pw-title">{t('dashboard.deleteAccount')}</div>
+              <DeleteAccountForm locale={locale} />
             </div>
           </div>
         </details>
