@@ -1,10 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as changePassword } from "./password/route";
+import { DELETE as deleteAccount } from "./route";
 import { changeLocalPassword } from "../../../../src/lib/auth/localAccount";
 import { readMobileSession } from "../../../../src/lib/mobile/session";
+import { prisma } from "../../../../src/lib/db";
 
 vi.mock("../../../../src/lib/auth/localAccount", () => ({
   changeLocalPassword: vi.fn(),
+}));
+
+vi.mock("../../../../src/lib/db", () => ({
+  prisma: { customer: { delete: vi.fn() } },
 }));
 
 vi.mock("../../../../src/lib/mobile/session", () => ({
@@ -97,5 +103,41 @@ describe("mobile change-password route", () => {
     expect(res.status).toBe(400);
     expect(changeLocalPassword).not.toHaveBeenCalled();
     await expect(res.json()).resolves.toEqual({ error: "invalid body" });
+  });
+});
+
+describe("mobile delete-account route", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(readMobileSession).mockResolvedValue({
+      userId: "user_1",
+      email: "learner@test.com",
+      name: "Learner",
+      accessTier: "PAID",
+    });
+  });
+
+  it("deletes the authenticated account", async () => {
+    vi.mocked(prisma.customer.delete).mockResolvedValue({ id: "user_1" } as never);
+
+    const res = await deleteAccount(
+      new Request("http://test/api/mobile/account", {
+        method: "DELETE",
+        headers: { authorization: "Bearer mobile-token" },
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(prisma.customer.delete).toHaveBeenCalledWith({ where: { id: "user_1" } });
+    await expect(res.json()).resolves.toEqual({ ok: true });
+  });
+
+  it("rejects a missing bearer token", async () => {
+    const res = await deleteAccount(
+      new Request("http://test/api/mobile/account", { method: "DELETE" }),
+    );
+
+    expect(res.status).toBe(401);
+    expect(prisma.customer.delete).not.toHaveBeenCalled();
   });
 });

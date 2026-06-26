@@ -2,6 +2,11 @@ import SwiftUI
 
 struct AccountView: View {
     @EnvironmentObject var auth: AuthViewModel
+    @State private var showDeleteConfirm = false
+    @State private var deleting = false
+    @State private var deleteError: String?
+
+    private let api = APIClient(baseURL: URL(string: "https://pacificdrone.ca")!)
 
     var body: some View {
         NavigationView {
@@ -52,8 +57,55 @@ struct AccountView: View {
                             .foregroundColor(.red)
                     }
                 }
+
+                Section(footer: deleteFooter) {
+                    Button {
+                        showDeleteConfirm = true
+                    } label: {
+                        Text(deleting ? "Deleting…" : "Delete account")
+                            .foregroundColor(.red)
+                    }
+                    .disabled(deleting)
+                }
             }
             .navigationTitle("Account")
+            .alert(isPresented: $showDeleteConfirm) {
+                Alert(
+                    title: Text("Delete account?"),
+                    message: Text("This permanently deletes your account and all your data. This cannot be undone."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        Task { await deleteAccount() }
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var deleteFooter: some View {
+        if let deleteError = deleteError {
+            Text(deleteError).foregroundColor(.red)
+        } else {
+            Text("Permanently deletes your account and all associated data.")
+        }
+    }
+
+    private func deleteAccount() async {
+        guard let token = auth.token, !deleting else { return }
+        deleting = true
+        deleteError = nil
+        do {
+            let _: OKResponse = try await api.send(
+                path: "/api/mobile/account",
+                method: "DELETE",
+                token: token
+            )
+            // Account gone — sign out drops back to the login screen.
+            await auth.signOut()
+        } catch {
+            deleteError = "Couldn't delete your account. Please try again."
+            deleting = false
         }
     }
 
