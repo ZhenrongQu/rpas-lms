@@ -62,12 +62,25 @@ async function main(): Promise<void> {
       const { decision, tokens } = await runTriage(issue, openTickets);
       await recordStep(run.id, "triage", "stage", decision, tokens);
 
-      if (decision.isDuplicate) {
+      // Trust-but-verify: only treat it as a duplicate if duplicateOf names a
+      // REAL open ticket. A hallucinated key must NOT silently drop an incident —
+      // fall through and file the ticket instead.
+      const realDuplicate =
+        decision.isDuplicate &&
+        !!decision.duplicateOf &&
+        openTickets.some((t) => t.key === decision.duplicateOf);
+      if (decision.isDuplicate && !realDuplicate) {
+        console.warn(
+          `⚠  ${issue.id}  model claimed duplicate of "${decision.duplicateOf ?? "?"}" but no such open ticket — filing anyway.`,
+        );
+      }
+
+      if (realDuplicate) {
         await prisma.agentRun.update({
           where: { id: run.id },
           data: { status: "done", artifacts: JSON.stringify({ decision }) },
         });
-        console.log(`🔁 ${issue.id}  [${decision.severity}] duplicate of ${decision.duplicateOf ?? "?"} — ${decision.summary}`);
+        console.log(`🔁 ${issue.id}  [${decision.severity}] duplicate of ${decision.duplicateOf} — ${decision.summary}`);
         duplicate++;
       } else {
         const ticket = await tracker.create({

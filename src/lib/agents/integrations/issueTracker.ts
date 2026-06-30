@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../db";
 import { assignOwner } from "../sdlc/team";
 
@@ -15,23 +16,31 @@ export interface IssueTracker {
   create(t: NewTicket): Promise<Ticket>;
 }
 
+const MAX_KEY_ATTEMPTS = 25;
+
 export class MockIssueTracker implements IssueTracker {
   async create(t: NewTicket): Promise<Ticket> {
     const assignee = assignOwner(t.area);
-    const key = `SDLC-${(await prisma.mockTicket.count()) + 1}`;
-    await prisma.mockTicket.create({
-      data: {
-        key,
-        runId: t.runId ?? null,
-        title: t.title,
-        body: t.body,
-        area: t.area,
-        assignee,
-      },
-    });
-    // In live mode this is where we'd POST to the real Jira API.
-    console.log(`   📋 ${key} → ${assignee}   ${t.title}`);
-    return { key, title: t.title, assignee, area: t.area };
+
+    // Key allocation must tolerate concurrent creates and deletion gaps: `count`
+    // gives a starting point, and on a unique-constraint clash we bump the suffix
+    // and retry rather than failing or producing a duplicate key.
+    const base = (await prisma.mockTicket.count()) + 1;
+    for (let attempt = 0; attempt < MAX_KEY_ATTEMPTS; attempt++) {
+      const key = `SDLC-${base + attempt}`;
+      try {
+        await prisma.mockTicket.create({
+          data: { key, runId: t.runId ?? null, title: t.title, body: t.body, area: t.area, assignee },
+        });
+        // In live mode this is where we'd POST to the real Jira API.
+        console.log(`   📋 ${key} → ${assignee}   ${t.title}`);
+        return { key, title: t.title, assignee, area: t.area };
+      } catch (e) {
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") continue;
+        throw e;
+      }
+    }
+    throw new Error("could not allocate a unique ticket key after retries");
   }
 }
 

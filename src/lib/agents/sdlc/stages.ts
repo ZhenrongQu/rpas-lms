@@ -1,4 +1,5 @@
-import { runAgent, type AgentResult } from "../runtime";
+import { runAgent } from "../runtime";
+import { registerPipeline, type Stage } from "../pipeline";
 import { MockIssueTracker } from "../integrations/issueTracker";
 import { PRD_PROMPT, RFC_PROMPT, TASKS_PROMPT, TICKETS_PROMPT } from "./prompts";
 import {
@@ -11,31 +12,17 @@ import {
 /**
  * The SDLC pipeline definition — the *policy/data* half (the engine in
  * pipeline.ts is the reusable mechanism). To build a different pipeline you edit
- * this array and the prompts; the engine doesn't change.
+ * this array and the prompts and call registerPipeline; the engine doesn't change.
  *
- * Each stage receives the idea + all prior approved artifacts and returns its own
- * draft. `requiresApproval: true` means the engine stops at a durable gate after
- * this stage. RFC/TASKS use the read-only find_in_codebase tool; TICKETS uses the
- * create_ticket ACTION tool, and runs only after the TASKS plan is approved.
+ * RFC/TASKS use the read-only find_in_codebase tool; TICKETS uses the create_ticket
+ * ACTION tool and runs only after the TASKS plan is approved.
  */
-
-export type StageContext = {
-  runId: string;
-  idea: string;
-  artifacts: Record<string, string>; // prior stage outputs, keyed by stage name
-};
-
-export type Stage = {
-  name: string;
-  requiresApproval: boolean;
-  run: (ctx: StageContext) => Promise<AgentResult>;
-};
 
 export const SDLC_STAGES: Stage[] = [
   {
     name: "PRD",
     requiresApproval: true,
-    run: (ctx) => runAgent({ system: PRD_PROMPT }, `Feature idea:\n${ctx.idea}`),
+    run: (ctx) => runAgent({ system: PRD_PROMPT }, `Feature idea:\n${ctx.input}`),
   },
   {
     name: "RFC",
@@ -43,7 +30,7 @@ export const SDLC_STAGES: Stage[] = [
     run: (ctx) =>
       runAgent(
         { system: RFC_PROMPT, tools: [CODEGRAPH_TOOL], runTool: codegraphRunTool },
-        `Approved PRD:\n\n${ctx.artifacts.PRD ?? "(missing)"}\n\n---\nOriginal idea:\n${ctx.idea}`,
+        `Approved PRD:\n\n${ctx.artifacts.PRD ?? "(missing)"}\n\n---\nOriginal idea:\n${ctx.input}`,
       ),
   },
   {
@@ -82,3 +69,5 @@ export const SDLC_STAGES: Stage[] = [
     },
   },
 ];
+
+registerPipeline("sdlc", SDLC_STAGES);

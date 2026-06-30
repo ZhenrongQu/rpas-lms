@@ -1,76 +1,113 @@
 import { prisma } from "../db";
-import { recordStep } from "./trace";
-import { SDLC_STAGES, type Stage } from "./sdlc/stages";
 
 /**
- * The pipeline engine — a durable, resumable state machine. This is the reusable
- * *mechanism*: it knows about stages, ordering, and gates, but nothing about what
- * a PRD or RFC is (that's stages.ts).
- *
- * The defining property: at every approval gate the engine PERSISTS state to the
- * AgentRun row and returns (the process exits). A later `applyDecision` call runs
- * in a fresh process, reloads the row from the DB, and resumes from the next
- * stage. State lives in the DB, never in process memory — that is what makes the
- * human gate able to wait indefinitely, out of band.
+ * The pipeline engine — a durable, resumable state machine, decoupled from any
+ * specific pipeline. Pipelines register their stages by `kind`; the engine looks
+ * them up by the run's kind, so a cold resume (a fresh `approve` process) finds
+ * the right stages and tests can register stub stages with no LLM.
  *
  * Status machine: running → awaiting_approval → (approve) running → … → done
  *                                             → (reject)  rejected
- *                 running → (stage throws)    → failed
+ *                 running → (stage throws)    → failed   (recoverable via resumeRun)
  */
 
-const KIND = "sdlc";
-const STAGES: Stage[] = SDLC_STAGES;
+export type StageContext = {
+  runId: string;
+  input: string;
+  artifacts: Record<string, string>; // prior stage outputs, keyed by stage name
+};
+
+export type Stage = {
+  name: string;
+  requiresApproval: boolean;
+  run: (ctx: StageContext) => Promise<{ text: string; tokens: number }>;
+};
 
 export type GateAction = "approve" | "reject";
 
+const REGISTRY: Record<string, Stage[]> = {};
+
+export function registerPipeline(kind: string, stages: Stage[]): void {
+  REGISTRY[kind] = stages;
+}
+
+function stagesFor(kind: string): Stage[] {
+  const stages = REGISTRY[kind];
+  if (!stages) throw new Error(`no pipeline registered for kind "${kind}"`);
+  return stages;
+}
+
 /** Start a new run and advance until the first gate (or completion). Returns the run id. */
-export async function startRun(idea: string): Promise<string> {
+export async function startRun(kind: string, input: string): Promise<string> {
   const run = await prisma.agentRun.create({
-    data: { kind: KIND, input: idea, status: "running", artifacts: "{}" },
+    data: { kind, input, status: "running", artifacts: "{}" },
   });
   await advance(run.id, 0);
   return run.id;
 }
 
 /** Apply a human decision at the current gate, then resume (approve) or stop (reject). */
-export async function applyDecision(
-  runId: string,
-  action: GateAction,
-  note?: string,
-): Promise<void> {
+export async function applyDecision(runId: string, action: GateAction, note?: string): Promise<void> {
   const run = await prisma.agentRun.findUniqueOrThrow({ where: { id: runId } });
   if (run.status !== "awaiting_approval" || !run.currentStage) {
     throw new Error(`Run ${runId} is not awaiting approval (status: ${run.status}).`);
   }
 
-  // Record the decision in the audit trail before acting on it.
-  await recordStep(runId, run.currentStage, "gate", { action, note });
-
-  if (action === "reject") {
-    await prisma.agentRun.update({ where: { id: runId }, data: { status: "rejected" } });
-    return;
+  // Atomic claim — only one concurrent decision wins. The conditional update
+  // matches only while the run is still awaiting at THIS stage; a racing second
+  // approve (or a stale decision for an already-advanced stage) sees count === 0
+  // and bails, so there is no double-advance / duplicate side effects.
+  const claimed = await prisma.agentRun.updateMany({
+    where: { id: runId, status: "awaiting_approval", currentStage: run.currentStage },
+    data: { status: action === "approve" ? "running" : "rejected" },
+  });
+  if (claimed.count === 0) {
+    throw new Error(`Run ${runId} was already decided (lost the race).`);
   }
 
-  const idx = STAGES.findIndex((s) => s.name === run.currentStage);
-  await prisma.agentRun.update({ where: { id: runId }, data: { status: "running" } });
-  await advance(runId, idx + 1);
+  await prisma.agentStep.create({
+    data: { runId, stage: run.currentStage, kind: "gate", output: JSON.stringify({ action, note }) },
+  });
+
+  if (action === "approve") {
+    const idx = stagesFor(run.kind).findIndex((s) => s.name === run.currentStage);
+    await advance(runId, idx + 1);
+  }
+}
+
+/**
+ * Recover a run left in "running" by a crash (process died mid-stage, before the
+ * state flip). Re-runs from the first stage that has no artifact yet, so a stage
+ * interrupted mid-draft is simply redone.
+ */
+export async function resumeRun(runId: string): Promise<void> {
+  const run = await prisma.agentRun.findUniqueOrThrow({ where: { id: runId } });
+  if (run.status !== "running") {
+    throw new Error(`Run ${runId} is not stuck running (status: ${run.status}).`);
+  }
+  const stages = stagesFor(run.kind);
+  const artifacts: Record<string, string> = JSON.parse(run.artifacts);
+  const missing = stages.findIndex((s) => !(s.name in artifacts));
+  await advance(runId, missing === -1 ? stages.length : missing);
 }
 
 /**
  * Run stages from `fromIndex` onward. Loads run state fresh from the DB (so it
- * works identically whether called from startRun or from a cold resume). Stops —
- * persisting state and returning — at the first stage that requires approval.
+ * works identically from startRun or a cold resume). Each stage's trace row and
+ * state flip are written in ONE transaction, so a crash can't leave a half-written
+ * gate. Stops — persisting state — at the first stage that requires approval.
  */
 async function advance(runId: string, fromIndex: number): Promise<void> {
   const run = await prisma.agentRun.findUniqueOrThrow({ where: { id: runId } });
+  const stages = stagesFor(run.kind);
   const artifacts: Record<string, string> = JSON.parse(run.artifacts);
 
-  for (let i = fromIndex; i < STAGES.length; i++) {
-    const stage = STAGES[i]!;
+  for (let i = fromIndex; i < stages.length; i++) {
+    const stage = stages[i]!;
 
     let result;
     try {
-      result = await stage.run({ runId, idea: run.input, artifacts });
+      result = await stage.run({ runId, input: run.input, artifacts });
     } catch (e) {
       await prisma.agentRun.update({
         where: { id: runId },
@@ -78,26 +115,27 @@ async function advance(runId: string, fromIndex: number): Promise<void> {
       });
       throw e;
     }
-
     artifacts[stage.name] = result.text;
-    await recordStep(runId, stage.name, "stage", result.text, result.tokens);
-    await prisma.agentRun.update({
-      where: { id: runId },
-      data: { artifacts: JSON.stringify(artifacts) },
-    });
 
-    if (stage.requiresApproval) {
-      await prisma.agentRun.update({
+    const gate = stage.requiresApproval;
+    await prisma.$transaction([
+      prisma.agentStep.create({
+        data: { runId, stage: stage.name, kind: "stage", output: JSON.stringify(result.text), tokens: result.tokens },
+      }),
+      prisma.agentRun.update({
         where: { id: runId },
-        data: { status: "awaiting_approval", currentStage: stage.name },
-      });
-      return; // ← the durable gate: persist + stop. Resume happens in a new process.
-    }
+        data: gate
+          ? { artifacts: JSON.stringify(artifacts), status: "awaiting_approval", currentStage: stage.name }
+          : { artifacts: JSON.stringify(artifacts) },
+      }),
+    ]);
+
+    if (gate) return; // durable gate: persist + stop. Resume happens in a new process.
   }
 
   await prisma.agentRun.update({
     where: { id: runId },
-    data: { status: "done", currentStage: null },
+    data: { artifacts: JSON.stringify(artifacts), status: "done", currentStage: null },
   });
 }
 

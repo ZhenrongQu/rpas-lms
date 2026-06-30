@@ -8,11 +8,13 @@
  *   pnpm sdlc approve <runId> [note]  approve the current gate; resume to the next stage
  *   pnpm sdlc reject  <runId> [note]  reject the current gate; stop the run
  *   pnpm sdlc trace   <runId>         show the append-only step/gate trace (observability)
+ *   pnpm sdlc resume  <runId>         re-drive a run left "running" by a crash
  */
 import "../eval/loadEnv";
 import type { AgentStep } from "@prisma/client";
 import { prisma } from "../../src/lib/db";
-import { startRun, applyDecision, getRun } from "../../src/lib/agents/pipeline";
+import { startRun, applyDecision, resumeRun, getRun } from "../../src/lib/agents/pipeline";
+import "../../src/lib/agents/sdlc/stages"; // registers the "sdlc" pipeline
 
 function usage(): never {
   console.error(
@@ -23,6 +25,7 @@ function usage(): never {
       '  pnpm sdlc approve <runId> [note]',
       '  pnpm sdlc reject  <runId> [note]',
       "  pnpm sdlc trace   <runId>",
+      "  pnpm sdlc resume  <runId>",
     ].join("\n"),
   );
   process.exit(1);
@@ -97,7 +100,7 @@ async function main(): Promise<void> {
       const idea = args.join(" ").trim();
       if (!idea) usage();
       console.log(`\n▶ Starting SDLC run for:\n  ${idea}`);
-      const runId = await startRun(idea);
+      const runId = await startRun("sdlc", idea);
       await printRun(runId);
       break;
     }
@@ -111,6 +114,14 @@ async function main(): Promise<void> {
       const runId = args[0];
       if (!runId) usage();
       await printTrace(runId);
+      break;
+    }
+    case "resume": {
+      const runId = args[0];
+      if (!runId) usage();
+      await resumeRun(runId);
+      console.log(`\n✓ resumed ${runId}.`);
+      await printRun(runId);
       break;
     }
     case "approve":
