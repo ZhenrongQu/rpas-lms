@@ -1,0 +1,38 @@
+[
+  {
+    "id": "SENTRY-1001",
+    "title": "TypeError: Cannot read properties of undefined (reading 'optionId')",
+    "level": "error",
+    "culprit": "scoreExam (src/lib/exam/score.ts)",
+    "count": 342,
+    "userCount": 87,
+    "firstSeen": "2026-06-22T09:14:00Z",
+    "lastSeen": "2026-06-29T07:51:00Z",
+    "metadata": { "type": "TypeError", "value": "Cannot read properties of undefined (reading 'optionId')" },
+    "stacktrace": "TypeError: Cannot read properties of undefined (reading 'optionId')\n    at scoreExam (src/lib/exam/score.ts:34:18)\n    at ExamService.submit (src/lib/exam/service.ts:121:23)\n    at POST (app/api/exam/[id]/submit/route.ts:40:30)"
+  },
+  {
+    "id": "SENTRY-1002",
+    "title": "StripeSignatureVerificationError: No signatures found matching the expected signature",
+    "level": "error",
+    "culprit": "constructEvent (src/lib/payments/stripeClient.ts)",
+    "count": 17,
+    "userCount": 0,
+    "firstSeen": "2026-06-28T22:03:00Z",
+    "lastSeen": "2026-06-29T06:30:00Z",
+    "metadata": { "type": "StripeSignatureVerificationError", "value": "No signatures found matching the expected signature for payload" },
+    "stacktrace": "StripeSignatureVerificationError: No signatures found matching the expected signature for payload\n    at constructEvent (src/lib/payments/stripeClient.ts:58:24)\n    at POST (app/api/payments/webhook/route.ts:28:34)"
+  },
+  {
+    "id": "SENTRY-1077",
+    "title": "TypeError: undefined is not an object (reading 'optionId') while grading exam",
+    "level": "error",
+    "culprit": "scoreExam (src/lib/exam/score.ts)",
+    "count": 12,
+    "userCount": 5,
+    "firstSeen": "2026-06-29T05:00:00Z",
+    "lastSeen": "2026-06-29T08:10:00Z",
+    "metadata": { "type": "TypeError", "value": "Cannot read properties of undefined (reading 'optionId')" },
+    "stacktrace": "TypeError: Cannot read properties of undefined (reading 'optionId')\n    at scoreExam (src/lib/exam/score.ts:34:18)\n    at ExamService.submit (src/lib/exam/service.ts:121:23)"
+  }
+]
