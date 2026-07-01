@@ -168,9 +168,9 @@ Initial repair limits:
 
 The current worker is an on-demand local process. It claims one run with a lease, heartbeats while working, records transitions, and safely resumes or expires abandoned work.
 
-Worktree creation may be concurrent, but database-backed test execution may not be. This repository's Vitest configuration points every worktree at the same Postgres database on port 5433, and global setup force-resets that database. The kernel therefore uses one repository-scoped test-execution mutex covering setup, reproduction, related tests, and full-suite verification.
+Worktree creation may be concurrent, but database-backed test execution may not be. The ordinary developer suite defaults to `postgresql://postgres:postgres@localhost:5433/postgres`, and global setup force-resets that database. A remediation run must instead receive an explicit `TEST_DATABASE_URL` naming a dedicated database, such as `rpas_remediation_test`; it must fail closed if that URL resolves to the ordinary developer database.
 
-For the current repository, the coordinator holds a Postgres advisory lock derived from the canonical repository identity for the entire lifetime of the spawned test process. All worktrees use the same lock key. Process or connection loss releases the lock; lease loss causes the coordinator to terminate the test child before releasing it. A worker must acquire this lock before invoking any command that can reset or use the shared test database.
+The dedicated database removes collisions with a developer running `pnpm test`. Inside the kernel, the coordinator additionally holds a Postgres advisory lock derived from the canonical repository identity for the entire lifetime of each spawned test process. All remediation worktrees use the same database and lock key. Process or connection loss releases the lock; lease loss causes the coordinator to terminate the test child before releasing it. A worker must acquire this lock before invoking any command that can reset or use the remediation test database.
 
 Per-attempt databases or containers are a possible future optimization. They are not part of the current kernel because a single mutex is smaller and matches the repository's actual test infrastructure.
 
@@ -180,7 +180,9 @@ It is not yet a deployed service. Proving lease semantics locally is part of the
 
 The reproduction agent may add or adjust only a bounded test and supporting test fixture in a clean worktree at the fixture deployment commit. It records the command, exit code, bounded logs, and observed failure signature.
 
-A fixture repository must include a known-good commit immediately before the fixture defect. A test is accepted as a reproduction only when:
+A fixture repository must include a known-good commit immediately before the fixture defect. This intentionally limits the kernel milestone to regression-shaped incidents. Latent defects that have no known-good revision are a separate, harder class and produce `NEEDS_HUMAN` in this milestone.
+
+A test is accepted as a reproduction only when:
 
 1. it passes on the known-good control commit;
 2. it fails on the fixture deployment commit;
@@ -209,6 +211,8 @@ Verification is ordinary code. It checks:
 7. accepted reproduction hashes are unchanged and no test, configuration, or policy weakening occurred.
 
 The verifier can prove these observations. It cannot prove semantic correctness in general.
+
+“Related tests” is a revision-bound deterministic set, not a model-selected list. At the repair revision, the kernel starts from every changed source file and walks CodeGraph's static reverse-import edges until it reaches test files. Every reached test file is included; the accepted reproduction is included independently. The resulting file list, revision, and graph evidence are persisted before execution. Model suggestions may add tests but cannot remove tests from this set. Dynamic relationships missed by the static graph remain covered by the trusted test set.
 
 ### 5.9 Mock Publisher and Escalation Sink
 
@@ -239,6 +243,8 @@ The first kernel version accepts a reproduction only at high confidence:
 
 Symbol and source-location evidence is mandatory when it exists in either signature. Matching only by module is classified as low confidence and cannot authorize auto-fix. Missing or unusable source maps likewise produce `NEEDS_HUMAN`; the kernel does not compensate by broadening the matcher.
 
+A reviewed line-range matcher exists only in a version-controlled fixture manifest, is limited to five source lines, and requires ordinary human code review before use. The agent cannot create or widen one during a run.
+
 This remains a heuristic. The first question in the human review checklist is therefore: “Does the red test fail for the same underlying reason as the incident?” The Draft PR artifact must show the incident and test signatures side by side.
 
 ## 7. Two-Worktree Flow and Test Portability
@@ -267,6 +273,14 @@ The mechanism kernel uses explicit records rather than a generic artifact blob:
 
 State transitions use compare-and-set guards. A worker must hold the active lease to advance a run. Expired work may be reclaimed; external actions remain idempotent across retries.
 
+The phase state machine is:
+
+```text
+RECEIVED → TRIAGING → CLASSIFIED → REPRODUCING → FIXING → VERIFYING → PROPOSING
+```
+
+Valid terminal states are `PROPOSED`, `ALREADY_FIXED`, `NOT_REPRODUCIBLE`, `NEEDS_HUMAN`, `FAILED`, and `CANCELLED`. A transition table explicitly enumerates valid edges; CAS updates require the expected current phase and active lease owner. Escalation is a parallel, idempotent flag/action and does not replace the remediation phase.
+
 ## 9. Recurrence and Draft PR Idempotency
 
 The stable key for an active remediation is:
@@ -274,6 +288,8 @@ The stable key for an active remediation is:
 ```text
 (repository, default branch, incident fingerprint)
 ```
+
+The default branch is included so a repository default-branch rename or a future independently remediated long-lived branch cannot reuse an active proposal key accidentally.
 
 Rules:
 
@@ -300,7 +316,7 @@ This design does not remove or redesign the SDLC ticket stage.
 
 Before the kernel can produce a verified Draft PR artifact:
 
-- each test in the hard-gate trusted set must pass in 60 consecutive controlled baseline runs; this gives less than a 5% chance of missing a test that flakes independently 5% of the time;
+- each test in the hard-gate trusted set must pass in 60 consecutive controlled baseline runs; this gives less than a 5% chance of missing a test that flakes independently 5% of the time, but still misses about 55% of tests that flake independently 1% of the time;
 - subsequent runs retain per-test pass/fail history, and any unexplained failure removes that test from the trusted set pending human review;
 - required local services and fixture data must be reproducible;
 - known flaky tests must be fixed or explicitly quarantined through human-reviewed, version-controlled test configuration;
@@ -310,6 +326,8 @@ The accepted reproduction and related tests are always hard gates. The full trus
 
 This qualification is evidence about observed stability, not proof that a test can never flake.
 
+Certification is keyed by the test-file content hash plus the hashes of shared Vitest configuration and global setup. Unchanged tests retain their history across main revisions. A new or modified test is certified incrementally; changing shared test configuration or global setup invalidates the complete trusted set. Runtime history and quarantine review remain the primary defense against low-frequency flakes.
+
 ## 12. Testing Strategy
 
 Unit coverage includes fingerprinting, signature matching, policy decisions, transition guards, leases, path limits, verification classifications, and recurrence keys.
@@ -318,7 +336,8 @@ Integration scenarios include:
 
 - duplicate fixtures produce one Incident;
 - two workers race for one lease;
-- two different attempts contend for the repository test mutex without overlapping database resets;
+- two different attempts contend for the remediation-database lock without overlapping database resets;
+- a developer suite using the default database cannot collide with the dedicated remediation database;
 - a worker expires and another resumes safely;
 - the red test matches the incident;
 - the test is red for the wrong reason;
@@ -348,7 +367,8 @@ fixture signal
 - preserve the existing SDLC pipeline and user changes;
 - define versioned incident and repository fixtures;
 - qualify the initial trusted test set with 60 controlled runs and record per-test outcomes;
-- add the repository-scoped test-execution mutex around the shared Postgres lifecycle;
+- provision and validate a dedicated remediation test database;
+- add the repository-scoped advisory lock around its reset and test lifecycle;
 - document test-service setup and known non-hermetic tests.
 
 Exit: the verification gate has a stable baseline.
@@ -461,10 +481,12 @@ No Sentry route, GitHub client, deployed-worker entry point, repository ruleset,
 - Fixture duplicates create one Incident and increment occurrences.
 - Policy decisions are reproducible and cannot be overridden by model output.
 - Worker recovery does not duplicate attempts or external-action artifacts.
-- Database-backed tests from separate worktrees never overlap against the shared test database.
+- Remediation worktrees use a dedicated test database and cannot reset the ordinary developer test database.
+- Database-backed remediation tests from separate worktrees never overlap against the dedicated database.
 - Every fixture reproduction passes on its mandatory known-good control commit before failing on the defective commit.
 - Reproduction requires a stable failure whose signature matches the incident.
 - Module-only signature similarity cannot authorize repair.
+- Related hard-gate tests are derived from a persisted, revision-bound reverse-import graph rather than model choice.
 - A wrong-reason red test cannot reach repair.
 - A non-portable test becomes `NEEDS_HUMAN`.
 - An already-fixed case becomes `ALREADY_FIXED` without a proposal.
