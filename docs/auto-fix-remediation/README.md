@@ -1,114 +1,119 @@
-# Production Auto-Fix Remediation Framework
+# Auto-Fix Remediation Kernel
 
-Status: Design draft for review
-Scope: `rpas-lms` production health signals, triage, isolated remediation, verification, and GitHub Draft PR creation
+Status: Revised design draft for review
 
-## 1. Objective
+Current milestone: learning sandbox with mock adapters
 
-Build a production-oriented remediation system that detects unhealthy application states, gathers evidence, decides whether an automated repair attempt is safe, reproduces the issue, prepares a verified fix in isolation, and opens a GitHub Draft PR for human review.
+Future milestone: production integrations, explicitly frozen
 
-The system never merges, deploys, changes branch protection, writes repository secrets, or performs destructive production data operations.
+## 1. Scope Decision
 
-The primary value is not autonomous deployment. It is reducing the time from a production signal to a reproducible, reviewed, evidence-backed repair proposal.
+This project is currently a mechanism-learning sandbox, not a production incident-remediation service. `rpas-lms` has not accumulated production incidents, so building and operating real Sentry ingestion, a GitHub App, a deployed worker, repository rulesets, and production secrets now would be premature.
 
-## 2. Confirmed Decisions
+The work is split into two independent milestones:
 
-- The maximum autonomous action is pushing an isolated branch and opening a Draft PR.
-- A human always decides whether to merge.
-- When an incident requires senior or privileged human involvement, escalation happens immediately while an isolated repair attempt may continue in parallel.
-- Auto-fix eligibility is capability-based, not determined only by incident severity or model confidence.
-- A Draft PR requires a reproducible failing test, a fix, and successful verification.
-- Reproduction uses the exact production deployment commit.
-- The final repair uses a clean worktree from the latest default branch.
-- If the issue no longer reproduces on the latest default branch, the result is `ALREADY_FIXED` and no repair PR is created.
-- Production ingestion uses both signed Sentry webhooks and periodic polling reconciliation.
-- Long-running work executes in a separate worker, not inside a Next.js request or serverless function.
-- Sentry and GitHub are real production integrations in the first complete production slice.
-- The bot cannot merge or deploy: the worker exposes no merge/deploy operation and repository rulesets prevent the bot identity from bypassing human review or pushing to the default branch.
+### Build now: mechanism kernel
 
-## 3. Why the Current Prototype Is Not the Production Framework
+- mock health signals and incident fixtures;
+- durable Incident and RemediationRun state;
+- deterministic policy decisions;
+- lease, heartbeat, retry, and state-transition behavior;
+- production-SHA-style reproduction using fixture commits;
+- latest-main-style repair in a second clean worktree;
+- constrained repair and deterministic verification;
+- mock escalation and mock Draft PR publication.
 
-The current implementation proves useful primitives:
+This milestone proves whether the mechanism is safe, understandable, recoverable, and useful. It does not require production infrastructure.
 
-- a generic LLM tool loop;
-- structured triage output;
-- CodeGraph-based code lookup;
-- worktree isolation;
-- persisted run and step records;
-- mock issue creation;
-- local patch generation.
+### Frozen: production adapters and operations
 
-However, the current triage and auto-fix CLIs each own an entire transaction script. They mix event ingestion, model decisions, database state, side effects, recovery, and presentation. This works for a sandbox but creates production gaps:
+- signed Sentry webhook ingestion and polling reconciliation;
+- a continuously deployed remediation worker;
+- GitHub App authentication and real Draft PR publication;
+- repository rulesets and bot identity restrictions;
+- production secrets, test services, cleanup jobs, quotas, and rollout.
 
-- webhook and polling races can process one issue more than once;
-- a process crash can leave ambiguous or unrecoverable state;
-- model recommendations and authority decisions are not cleanly separated;
-- no production-commit reproduction gate exists;
-- the current fix agent does not prove a red-to-green regression test cycle;
-- external actions do not have durable idempotency records;
-- one generic `AgentRun.artifacts` payload cannot clearly represent incidents, attempts, evidence, test results, and PRs;
-- the current mock ticket acts as both an external ticket and internal workflow glue.
+Frozen work must not be pulled into the current implementation merely because interfaces for it exist.
 
-The proposed work is therefore a framework-level addition around reusable existing primitives, not a wholesale rewrite of every agent.
+Production work may be reconsidered only after all of these conditions are true:
 
-## 4. Target Architecture
+1. `rpas-lms` is launched and emits trustworthy production signals.
+2. At least three real, repository-local incidents have been reproduced manually.
+3. `pnpm autofix` has produced a valid repair proposal for at least one real defect.
+4. The team still judges automation more valuable than improving ordinary diagnostics and tests.
+
+The number three is an activation checkpoint, not evidence that three incidents form a useful classifier. The decision remains a human design review based on the incidents themselves.
+
+## 2. Intended Value and Operating Characteristic
+
+The current system's primary value is:
+
+1. triage and evidence collection;
+2. consistent escalation and handoff;
+3. a verified Draft PR proposal for the small subset of suitable incidents.
+
+This is deliberately a high-precision, low-recall system. Concurrency failures, environment configuration, dirty data, external-service behavior, performance failures, and production-only authorization boundaries will often end in `NOT_REPRODUCIBLE` or `NEEDS_HUMAN`. That is a safe and useful result when accompanied by strong evidence.
+
+The initial Draft PR conversion rate may be in the single-digit percentages. This is a planning assumption, not a success target. The system must not weaken its gates to increase that number.
+
+## 3. Authority and Safety Decisions
+
+- The model recommends; deterministic code authorizes.
+- The maximum future autonomous action is an isolated branch and GitHub Draft PR.
+- A human always decides whether to merge or deploy.
+- Escalation can happen immediately while an eligible isolated repair attempt continues.
+- Eligibility is based on required capabilities and environmental constraints, not severity alone.
+- No repair is presented as verified without a matching reproduction and red-to-green evidence.
+- The worker cannot access production data, production credentials, merge APIs, deploy APIs, repository settings, or branch-protection controls.
+- Current-milestone publishers and escalation sinks are mocks.
+
+## 4. Current-Milestone Architecture
 
 ```mermaid
 flowchart TD
-    SW["Signed Sentry Webhook"] --> IN["Signal Ingress"]
-    SP["Sentry Poller"] --> IN
-    IN --> IS["Incident Store and Deduplication"]
+    FS["Fixture Signal Adapter"] --> IS["Incident Store and Deduplication"]
     IS --> TA["Triage Agent"]
-    TA --> PE["Policy Engine"]
-    PE --> ES["Escalation Sink"]
-    PE --> RW["Remediation Worker"]
-    RW --> PW["Production-SHA Reproduction Worktree"]
-    PW --> RG{"Regression test fails?"}
-    RG -- "No" --> NR["NOT_REPRODUCIBLE"]
-    RG -- "Yes" --> MW["Latest-main Repair Worktree"]
-    MW --> AF["Auto-Fix Agent"]
-    AF --> VE["Verification Engine"]
+    TA --> PE["Deterministic Policy Engine"]
+    PE --> ME["Mock Escalation Sink"]
+    PE --> RW["Local Remediation Worker"]
+    RW --> PW["Fixture Production-SHA Worktree"]
+    PW --> RM{"Failure signature matches incident?"}
+    RM -- "No failure" --> NR["NOT_REPRODUCIBLE"]
+    RM -- "Wrong failure" --> NH1["NEEDS_HUMAN"]
+    RM -- "Matches" --> MW["Latest-main Worktree"]
+    MW --> TP{"Test applies and compiles?"}
+    TP -- "No" --> NH2["NEEDS_HUMAN"]
+    TP -- "Yes, already green" --> AF["ALREADY_FIXED"]
+    TP -- "Yes, still red" --> FX["Constrained Auto-Fix Agent"]
+    FX --> VE["Deterministic Verification"]
     VE --> VG{"All gates pass?"}
-    VG -- "No" --> NH["NEEDS_HUMAN"]
-    VG -- "Yes" --> GP["Push Branch and Open Draft PR"]
+    VG -- "No" --> NH3["NEEDS_HUMAN"]
+    VG -- "Yes" --> MP["Mock Draft PR Artifact"]
 ```
 
-The database owns durable workflow state. The worker owns temporary execution. Sentry, GitHub, email, and future Jira integrations are external projections, not the source of truth.
+The database owns workflow state. Temporary worktrees are disposable execution environments. External systems are adapters, never the source of truth.
 
 ## 5. Component Responsibilities
 
-### 5.1 Signal Ingress
+### 5.1 Fixture Signal Adapter
 
-Accepts health signals from Sentry and future providers.
+Loads versioned incident fixtures that contain:
 
-Responsibilities:
+- a stable fingerprint;
+- a fixture deployment commit;
+- error type and stack frames;
+- bounded event metadata;
+- expected routing outcome.
 
-- verify webhook signatures before parsing payloads;
-- enforce request size and content-type limits;
-- normalize webhook and polling payloads into `HealthSignal`;
-- compute a stable incident fingerprint;
-- store or update one Incident idempotently;
-- enqueue or wake remediation work;
-- return quickly without invoking an LLM.
-
-Webhook and polling use the same normalization and deduplication path. Polling exists to reconcile missed or delayed webhooks.
+Fixtures must include reproducible, already-fixed, wrong-failure, non-portable-test, policy-denied, and human-only cases.
 
 ### 5.2 Triage Agent
 
-The triage agent is the diagnostic and routing layer. It does not write code, create its own permissions, merge, deploy, or close incidents based only on model confidence.
+Triage is the diagnostic and routing layer. It correlates signals, inspects runtime evidence and code, proposes the likely cause, identifies ownership and required capabilities, and produces a validated assessment.
 
-Responsibilities:
+It does not edit code, grant itself authority, publish a PR, merge, deploy, or close an incident based on model confidence.
 
-- correlate related signals and detect likely duplicates;
-- inspect stack traces, releases, deployment metadata, existing incidents, and CodeGraph evidence;
-- identify likely root causes and affected modules;
-- estimate user and business impact;
-- identify the owning team and requested reviewers;
-- describe the capabilities required to attempt repair;
-- recommend escalation and auto-fix eligibility;
-- emit a validated `TriageAssessment`.
-
-Suggested output shape:
+Its useful output exists even when no repair is attempted:
 
 ```ts
 type TriageAssessment = {
@@ -118,7 +123,6 @@ type TriageAssessment = {
   suspectedFiles: string[];
   deployedCommit: string;
   owningTeam: string;
-  duplicateOf?: string;
   reproducibility: "likely" | "unknown" | "unlikely";
   requiredCapabilities: string[];
   escalationRecommended: boolean;
@@ -127,23 +131,11 @@ type TriageAssessment = {
 };
 ```
 
-The model recommendation is evidence for the Policy Engine, not authorization.
-
 ### 5.3 CodeGraph Evidence Provider
 
-CodeGraph is a read-only grounding tool used to connect runtime evidence to real code.
+CodeGraph is a read-only grounding tool. It helps triage locate stack symbols and callers, helps reproduction find test seams, and helps review explain blast radius. It is neither a runtime oracle nor proof that a repair works.
 
-Uses by phase:
-
-- triage: locate stack symbols, callers, tests, ownership, and probable blast radius;
-- reproduction: find the best test seam and relevant fixtures;
-- repair: inspect callers and invariants before editing;
-- verification: compare the changed files with the expected blast radius;
-- Draft PR: publish affected-module and call-path evidence.
-
-CodeGraph is not proof of runtime behavior and cannot replace a failing test.
-
-Every query must be bound to a repository root and revision:
+Every query must be bound to the actual worktree and revision:
 
 ```ts
 interface CodeSearch {
@@ -155,482 +147,315 @@ interface CodeSearch {
 }
 ```
 
-This corrects the current `process.cwd()` behavior, which can query the wrong checkout when auto-fix runs inside a worktree.
+Using `process.cwd()` implicitly is unsafe when multiple worktrees exist.
 
-### 5.4 Policy Engine
+### 5.4 Deterministic Policy Engine
 
-The Policy Engine is deterministic code, not an LLM agent.
+The Policy Engine decides whether escalation is required, whether an attempt may start, and which limits apply. LLM output is evidence, not authorization.
 
-It decides:
+An attempt is denied or escalated when it requires production credentials, production data mutation, destructive schema work, infrastructure changes, secret changes, deployment changes, an unbounded edit surface, or an unavailable local environment.
 
-- whether immediate escalation is required;
-- whether an automated repair attempt may start;
-- which capability profile the attempt receives;
-- which budgets and file restrictions apply;
-- which reviewer group is required.
+Initial repair limits:
 
-Auto-fix eligibility requires:
+- at most five changed files;
+- at most 200 changed lines including the test;
+- at most two model repair iterations;
+- no writes to `.git`, `.env*`, `.github/workflows`, deployment files, infrastructure configuration, secrets, or `prisma/migrations`.
 
-- a known repository and production commit;
-- a repository-local change;
-- an isolated, non-production test environment;
-- no production credential requirement;
-- no destructive production data operation;
-- no branch-protection, secret, or deployment modification;
-- bounded files, diff size, execution time, and model/tool budgets.
+### 5.5 Local Remediation Worker
 
-Incident severity controls notification urgency. It does not by itself determine whether a safe isolated repair attempt is possible.
+The current worker is an on-demand local process. It claims one run with a lease, heartbeats while working, records transitions, and safely resumes or expires abandoned work.
 
-### 5.5 Remediation Worker
-
-A separate long-running worker claims and executes remediation attempts.
-
-Responsibilities:
-
-- atomically claim eligible work;
-- maintain a lease with owner and expiry;
-- heartbeat during long-running stages;
-- resume expired attempts safely;
-- enforce per-repository and global concurrency limits;
-- enforce attempt and retry budgets;
-- invoke phase-specific components;
-- persist phase transitions, evidence, errors, and artifacts;
-- clean up temporary worktrees.
-
-The worker must not rely on an in-memory queue for correctness.
+It is not yet a deployed service. Proving lease semantics locally is part of the mechanism exercise; operating a self-hosted runner is not.
 
 ### 5.6 Reproduction Agent
 
-The reproduction agent operates in a clean worktree at the exact production deployment commit.
+The reproduction agent may add or adjust only a bounded test and supporting test fixture in a clean worktree at the fixture deployment commit. It records the command, exit code, bounded logs, and observed failure signature.
 
-Allowed actions:
+A test is accepted as a reproduction only when:
 
-- read repository files;
-- query revision-bound CodeGraph evidence;
-- create or modify test files;
-- run allowlisted test and diagnostic commands;
-- write reproduction notes and logs.
+1. it passes before the fixture defect is introduced, when that control is available;
+2. it fails on the fixture deployment commit;
+3. its observed failure signature matches the incident signature;
+4. the failure is stable across repeated execution;
+5. unrelated baseline tests do not fail.
 
-Required result:
+Failure to meet these conditions produces evidence and stops automated repair.
 
-- a deterministic regression test that fails for the expected reason.
+### 5.7 Constrained Auto-Fix Agent
 
-If no stable failing test can be produced, the result is `NOT_REPRODUCIBLE` or `NEEDS_HUMAN`. It cannot proceed to a verified Draft PR.
+The fix agent receives a fresh latest-main worktree plus the accepted reproduction test. It may edit only policy-approved repository paths. It cannot weaken, skip, delete, or replace the accepted test merely to make it pass.
 
-### 5.7 Auto-Fix Agent
+### 5.8 Deterministic Verification
 
-The auto-fix agent operates in a second clean worktree based on the latest default branch.
+Verification is ordinary code. It checks:
 
-Before editing:
+1. the accepted test failed with a matching signature before the fix;
+2. the same test passes after the fix;
+3. related tests pass;
+4. the complete trusted suite passes;
+5. type and schema checks pass;
+6. diff and path policies pass;
+7. no test, configuration, or policy weakening occurred.
 
-- apply the reproduction test;
-- run it against latest main;
-- return `ALREADY_FIXED` if it already passes;
-- continue only if it fails for the same reason.
+The verifier can prove these observations. It cannot prove semantic correctness in general.
 
-During repair:
+### 5.9 Mock Publisher and Escalation Sink
 
-- modify only repository-local files;
-- use a restricted read/write toolset;
-- use allowlisted commands only;
-- obey file-count, diff-size, time, token, and tool-call budgets;
-- avoid unrelated formatting or refactoring;
-- preserve the regression test;
-- stop and request human help if the repair exceeds its capability profile.
+The current publisher writes a durable Draft PR-shaped artifact without network access. The mock escalation sink records who would be notified and why. These artifacts make idempotency and audit behavior testable without creating operational dependencies.
 
-The auto-fix agent does not own worktree lifecycle, GitHub publishing, policy, or final verification.
+## 6. Matching a Reproduction to the Incident
 
-### 5.8 Verification Engine
+“Fails for the expected reason” is not treated as a deterministic proof. It is a constrained matching rule.
 
-The Verification Engine is deterministic code.
+The normalized incident signature contains:
 
-Required gates:
-
-1. The regression test fails on the original production code.
-2. The same regression test fails on latest main before the patch, unless classified `ALREADY_FIXED`.
-3. The regression test passes after the patch.
-4. Related tests pass.
-5. The complete test suite passes.
-6. Type checking and schema validation pass.
-7. The diff stays within the granted file and size budgets.
-8. Forbidden paths and generated secrets are absent.
-9. The changed modules agree with the expected CodeGraph blast radius.
-
-An LLM may summarize verification evidence but cannot override a failed deterministic gate.
-
-### 5.9 GitHub Publisher
-
-The GitHub publisher executes only after all verification gates pass.
-
-Responsibilities:
-
-- create a deterministic branch name;
-- commit the regression test and repair;
-- push the isolated branch;
-- create one Draft PR idempotently;
-- attach incident, evidence, test, risk, and CodeGraph summaries;
-- request the owning reviewers;
-- store the branch, commit, and PR identifiers as external actions.
-
-The GitHub App receives only the repository permissions required to push repair branches and manage pull requests. Repository rulesets must independently block the bot identity from pushing to the default branch or bypassing required human review. The worker exposes no merge operation and receives no deployment or repository-administration credential.
-
-### 5.10 Escalation Sink
-
-Escalation is independent from auto-fix execution.
-
-For urgent or privileged incidents:
-
-- notify the responsible human immediately;
-- include current evidence and production impact;
-- continue an eligible isolated repair attempt in parallel;
-- update the notification when reproduction, verification, or Draft PR status changes.
-
-Initial sinks may include GitHub reviewer requests and email. Slack or PagerDuty can be added behind the same interface.
-
-## 6. Worktree Strategy
-
-Each attempt uses two short-lived worktrees:
-
-```text
-/tmp/remediation/<runId>/reproduce  # exact production commit
-/tmp/remediation/<runId>/fix        # latest default branch
+```ts
+type FailureSignature = {
+  errorType: string;
+  normalizedMessageClass?: string;
+  applicationFrames: Array<{
+    module: string;
+    symbol?: string;
+  }>;
+};
 ```
 
-The reproduction worktree proves the observed production failure. The repair worktree ensures the proposed PR applies to current code.
+The first kernel version accepts a reproduction only when the error type matches and at least two of the first three available application frames match by normalized module and, when available, symbol. Fixtures with fewer frames must define an explicit reviewed matcher.
 
-Both worktrees must:
+This remains a heuristic. The first question in the human review checklist is therefore: “Does the red test fail for the same underlying reason as the incident?” The Draft PR artifact must show the incident and test signatures side by side.
 
-- receive no production secrets;
-- use an isolated test database and service dependencies;
-- reject absolute paths and path escapes;
-- reject `.git`, `.env`, secret, deployment, and credential paths;
-- be cleaned by a finally path and a periodic orphan sweeper;
-- record their base SHA before execution.
+## 7. Two-Worktree Flow and Test Portability
 
-## 7. Durable State Model
+1. Create a clean reproduction worktree at the fixture deployment commit.
+2. Produce and validate the matching red test there.
+3. Create a separate clean worktree at latest main.
+4. Attempt to apply only the reproduction test and required fixture changes.
+5. Classify the result:
+   - test applies, compiles, and is green: `ALREADY_FIXED`;
+   - test applies, compiles, and remains red: continue to repair;
+   - test cannot apply or compile because the seam changed: `NEEDS_HUMAN`;
+   - test fails with a different signature: `NEEDS_HUMAN`.
 
-The production framework should add dedicated models instead of overloading `AgentRun.artifacts`.
+The non-portable case is not evidence of an existing fix.
 
-### Incident
+## 8. Durable State and Recovery
 
-- source and external ID;
-- stable fingerprint;
-- environment and release SHA;
-- first/last seen timestamps;
-- occurrence and affected-user counts;
-- lifecycle status;
-- raw signal digest and normalized data.
+The mechanism kernel uses explicit records rather than a generic artifact blob:
 
-### RemediationRun
+- `Incident`: normalized identity, fingerprint, occurrence count, status, and latest evidence;
+- `RemediationRun`: one workflow cycle and its phase;
+- `RemediationAttempt`: lease, heartbeat, budgets, worktrees, and outcome;
+- `Evidence`: immutable commands, bounded logs, signatures, code references, and test results;
+- `ExternalAction`: idempotent mock publication or escalation intent.
 
-- incident relation;
-- policy decision;
-- escalation state;
-- production and default-branch SHAs;
-- current phase and terminal result;
-- Draft PR reference, when present.
+State transitions use compare-and-set guards. A worker must hold the active lease to advance a run. Expired work may be reclaimed; external actions remain idempotent across retries.
 
-### RemediationAttempt
+## 9. Recurrence and Draft PR Idempotency
 
-- attempt number;
-- lease owner and expiry;
-- phase, start, finish, and heartbeat timestamps;
-- capability profile and budgets;
-- failure category and sanitized error.
-
-### Evidence
-
-- evidence type and phase;
-- source revision;
-- structured metadata;
-- bounded text or artifact reference.
-
-### ExternalAction
-
-- action type;
-- stable idempotency key;
-- provider and external ID;
-- request status and result metadata.
-
-Required uniqueness includes:
-
-- `(source, externalId)`;
-- stable incident fingerprint policy;
-- `(runId, attemptNumber)`;
-- `(runId, actionType, idempotencyKey)`.
-
-## 8. Workflow State Machine
+The stable key for an active remediation is:
 
 ```text
-RECEIVED
-→ TRIAGING
-→ CLASSIFIED
-→ REPRODUCING
-→ FIXING
-→ VERIFYING
-→ DRAFT_PR_OPENED
-
-Alternative terminal states:
-ALREADY_FIXED
-NOT_REPRODUCIBLE
-NEEDS_HUMAN
-FAILED
-CANCELLED
+(repository, default branch, incident fingerprint)
 ```
 
-Escalation is a parallel timestamp and status, not a terminal workflow state.
+Rules:
 
-Every phase transition must be conditional on the expected previous phase and current lease owner.
+- repeated signals increment the occurrence count and attach new evidence to the same Incident;
+- at most one open Draft PR artifact exists for that key;
+- a newly verified attempt may supersede the artifact for the open remediation cycle rather than create another;
+- an unverified recurrence is recorded but does not rewrite the proposal;
+- if an earlier PR was merged or closed and the defect later recurs, create a new numbered remediation cycle linked to the prior cycle.
 
-## 9. MockTicket Position
+Future GitHub branch names include the fingerprint plus remediation-cycle number. They are not keyed by transient run ID.
 
-The current `MockTicket` is useful as a sandbox Jira adapter and test fixture. It currently also connects triage to auto-fix through `ticketKey → runId → decision`.
+## 10. MockTicket Has Two Separate Roles
 
-That coupling must not become the production workflow contract.
+`MockTicket` must not be discussed as one global concept:
 
-Target position:
+1. In the existing SDLC `TICKETS` stage, it is a planning artifact and remains unchanged.
+2. In the remediation prototype, it currently acts as glue between triage and auto-fix. That role is replaced by `Incident` and `RemediationRun` in the kernel.
 
-- retain `MockIssueTracker` for unit and integration tests;
-- optionally project an Incident into Jira in the future;
-- never use ticket existence as the source of remediation state;
-- connect triage and auto-fix through Incident and RemediationRun IDs;
-- treat Jira tickets, GitHub issues, and Draft PRs as external actions.
+This design does not remove or redesign the SDLC ticket stage.
 
-## 10. Permission Matrix
+## 11. Trusted Test-Suite Prerequisite
 
-| Component | Read code | Write code | Run tests | Network | Push branch | Merge/deploy |
-|---|---:|---:|---:|---:|---:|---:|
-| Signal ingress | No | No | No | Sentry only | No | No |
-| Triage agent | Yes | No | No | Read-only integrations | No | No |
-| Policy Engine | No | No | No | No | No | No |
-| Reproduction agent | Yes | Tests only | Allowlist | No production services | No | No |
-| Auto-fix agent | Yes | Scoped worktree | Allowlist | Restricted | No | No |
-| Verification Engine | Yes | No | Allowlist | Test dependencies only | No | No |
-| GitHub publisher | Repository metadata | No edits | No | GitHub only | Yes | No |
-| Escalation sink | Evidence only | No | No | Approved sinks | No | No |
+“The full suite passes” is a meaningful gate only when the suite and its environment are sufficiently hermetic.
 
-## 11. Error Handling and Recovery
+Before the kernel can produce a verified Draft PR artifact:
 
-- Webhook processing stores signals idempotently before returning success.
-- Polling retries provider failures without creating duplicate incidents.
-- Worker claims use database leases with heartbeats and expiry.
-- A crashed worker cannot commit a later phase after losing its lease.
-- External actions use durable idempotency keys.
-- Worktree cleanup failure is recorded and retried by an orphan sweeper.
-- Provider errors distinguish retryable, permanent, authorization, and policy failures.
-- Sensitive command output and environment values are redacted before persistence.
-- Retry limits are explicit per phase; exhausted attempts become `NEEDS_HUMAN`.
+- the full suite must pass in three consecutive clean runs on the baseline;
+- required local services and fixture data must be reproducible;
+- known flaky tests must be fixed or explicitly quarantined through human-reviewed test configuration;
+- the auto-fix system may not silently ignore, retry away, or newly quarantine a failure.
+
+An unrelated suite failure stops publication as `NEEDS_HUMAN` and is reported separately from repair failure.
 
 ## 12. Testing Strategy
 
-### Unit tests
+Unit coverage includes fingerprinting, signature matching, policy decisions, transition guards, leases, path limits, verification classifications, and recurrence keys.
 
-- signal normalization and fingerprinting;
-- policy eligibility and capability profiles;
-- state transition guards;
-- lease ownership and expiry;
-- tool input and path validation;
-- verification result classification;
-- Draft PR idempotency keys.
+Integration scenarios include:
 
-### Integration tests
+- duplicate fixtures produce one Incident;
+- two workers race for one lease;
+- a worker expires and another resumes safely;
+- the red test matches the incident;
+- the test is red for the wrong reason;
+- latest main already contains a fix;
+- the test cannot be ported to latest main;
+- an eligible repair becomes a verified mock Draft PR;
+- a recurrence updates one active cycle rather than producing duplicate proposals;
+- a flaky unrelated test prevents publication with an honest classification.
 
-- webhook and polling delivery of the same Sentry issue;
-- two workers racing for one attempt;
-- worker crash and lease recovery;
-- production-SHA reproduction followed by latest-main repair;
-- `ALREADY_FIXED` detection;
-- failure after external action request and safe retry;
-- orphaned worktree cleanup;
-- GitHub adapter against a fake server or recorded contract fixture.
-
-### End-to-end test
+The end-to-end current-milestone path is:
 
 ```text
-Sentry fixture
-→ one Incident
-→ structured triage
-→ policy approval
-→ failing regression test
-→ verified repair
-→ one mock Draft PR
+fixture signal
+→ Incident
+→ triage evidence
+→ deterministic policy
+→ matching red test
+→ constrained repair
+→ deterministic verification
+→ one mock Draft PR artifact
 ```
-
-### Security tests
-
-- invalid webhook signatures;
-- path traversal and symlink escapes;
-- writes to forbidden files;
-- disallowed shell commands;
-- secret redaction;
-- GitHub token permission assumptions;
-- prompt-injected Sentry fields attempting to alter policy or tools.
 
 ## 13. Delivery Plan
 
-### Phase 0: Preserve the Current Baseline
+### K0: Establish a trustworthy baseline
 
-- finish or separately commit the current agent hardening work;
-- keep the SDLC pipeline operational;
-- document current fixture-based triage and mock auto-fix behavior;
-- avoid mixing remediation architecture changes with unrelated SDLC stages.
+- preserve the existing SDLC pipeline and user changes;
+- define versioned incident and repository fixtures;
+- prove three consecutive clean full-suite runs;
+- document test-service setup and known non-hermetic tests.
 
-Exit criterion: clean baseline with existing tests passing.
+Exit: the verification gate has a stable baseline.
 
-### Phase 1: Remediation Domain and Worker Kernel
+### K1: Build the state and policy kernel
 
-- add Incident, RemediationRun, RemediationAttempt, Evidence, and ExternalAction models;
-- implement phase transitions, lease claims, heartbeat, expiry, and cancellation;
-- add mock signal and mock external-action adapters;
-- make the existing CLI invoke the coordinator instead of owning workflow state.
+- add the minimal Incident, RemediationRun, Attempt, Evidence, and ExternalAction representation;
+- implement transition guards, leases, heartbeat, expiry, retry, and cancellation;
+- implement fixture ingress, deterministic policy, mock escalation, and mock publication.
 
-Exit criterion: crash-recoverable mock workflow with no duplicate attempt or external action.
+Exit: crashes and duplicate fixture delivery do not create duplicate work or actions.
 
-### Phase 2: Triage and Policy Separation
+### K2: Prove reproduction semantics
 
-- convert triage output to `TriageAssessment`;
-- add revision-bound CodeGraph evidence;
-- implement deterministic Policy Engine;
-- remove ticket creation and workflow transitions from the triage agent;
-- add immediate escalation as a parallel action.
+- create fixture commits for reproducible, wrong-reason, already-fixed, and non-portable cases;
+- implement revision-bound CodeGraph access;
+- implement failure-signature matching;
+- implement the two-worktree classification flow.
 
-Exit criterion: model recommendations cannot grant capabilities or bypass policy.
+Exit: only a stable matching failure reaches repair.
 
-### Phase 3: Reproduction and Verification
+### K3: Prove constrained repair and verification
 
-- implement production-SHA and latest-main worktree lifecycle;
-- add the reproduction agent and red-test evidence;
-- constrain auto-fix writes and command execution;
-- implement deterministic verification gates;
-- record test commands, exit codes, and bounded logs.
+- adapt the existing auto-fix primitive to the latest-main fixture worktree;
+- enforce file, diff, command, iteration, and time budgets;
+- implement deterministic gates and the human-review artifact;
+- run the complete fixture matrix.
 
-Exit criterion: no Draft PR artifact is possible without verified red-to-green evidence and passing gates.
+Exit: a mock Draft PR artifact is impossible without matching red-to-green evidence and every trusted gate passing.
 
-### Phase 4: Real Sentry Ingress
+## 14. Frozen Production Plan
 
-- implement signed webhook endpoint;
-- implement Sentry API poller;
-- normalize and deduplicate both paths;
-- extract release SHA and reject auto-fix when revision identity is unavailable;
-- retain fixture adapters for tests.
+After the activation conditions in Section 1 are met, production work requires a new design review. The likely sequence is:
 
-Exit criterion: webhook loss is repaired by polling without duplicate incidents.
+1. real Sentry webhook plus polling reconciliation in shadow mode;
+2. a separately deployed worker and real GitHub Draft PR publisher;
+3. local-patch mode followed by restricted Draft PR mode.
 
-### Phase 5: GitHub Draft PR Publisher
+That review must cover the operational surface currently out of scope:
 
-- push deterministic branches;
-- create idempotent Draft PRs;
-- attach evidence, verification, risk, and reviewer information;
-- validate the least-privilege GitHub credential;
-- persist every external action.
+- worker host, sandboxing, concurrency, cleanup, and availability;
+- repository checkout and worktree storage;
+- hermetic Postgres and other test services;
+- GitHub App private key, webhook secret, and Sentry token storage and rotation;
+- GitHub permissions and repository rulesets;
+- per-incident model, compute, storage, and external API cost;
+- quotas, abuse controls, audit retention, alerting, and disaster recovery.
 
-Exit criterion: retries create at most one branch/PR, and repository rulesets plus worker capabilities prevent bot merge or deployment.
+Interfaces may anticipate these adapters, but current code must not implement them speculatively.
 
-### Phase 6: Production Rollout
+## 15. Metrics and Feedback
 
-1. Shadow mode: triage, policy, and evidence only.
-2. Local patch mode: reproduce and repair, but do not push.
-3. Draft PR mode: push and create real Draft PRs.
+Report two value streams separately.
 
-Measure:
+Triage and evidence value:
 
-- duplicate incident rate;
-- reproducible incident rate;
-- verified repair rate;
-- false-fix rate during human review;
-- time to diagnosis and Draft PR;
-- human rejection reasons;
-- worker retry and recovery rate;
-- model, test, and compute cost per incident.
+- percentage of incidents with useful ownership and evidence;
+- time to first structured diagnosis;
+- duplicate correlation rate;
+- escalation usefulness and human correction rate;
+- `NOT_REPRODUCIBLE` and `NEEDS_HUMAN` reason distribution.
 
-## 14. Expected File-Level Changes
+Repair value:
 
-New framework area:
+- percentage reaching reproduction;
+- percentage reaching a verified proposal;
+- human acceptance, rejection, and false-fix rate;
+- time from matching reproduction to proposal;
+- cost per attempted and accepted repair.
+
+The first version has no automatic policy-learning loop. Review outcomes are inspected periodically and policy configuration is changed manually through normal code review. High rejection rates in a module should cause humans to narrow or disable its eligibility.
+
+## 16. Current-Milestone File Boundary
+
+Expected new framework area:
 
 ```text
 src/lib/agents/remediation/
   types.ts
   coordinator.ts
-  worker.ts
   lease.ts
   policy.ts
   worktrees.ts
   reproduction.ts
   verification.ts
-  trace.ts
 ```
 
-New integrations:
+Expected adapters:
 
 ```text
-src/lib/agents/integrations/sentry/
-  client.ts
-  normalize.ts
-  poller.ts
-  webhook.ts
-
-src/lib/agents/integrations/github/
-  client.ts
-  publisher.ts
-
-app/api/integrations/sentry/webhook/route.ts
-scripts/agents/remediation-worker.ts
+src/lib/agents/remediation/adapters/
+  fixtureSignal.ts
+  mockEscalation.ts
+  mockPublisher.ts
 ```
 
-Existing code to adapt:
+Existing code may be adapted only where needed:
 
-- `src/lib/agents/runtime.ts`: structured output, cancellation, capability and budget hooks;
-- `src/lib/agents/triage/*`: evidence-producing triage only;
-- `src/lib/agents/autofix/*`: reproduction and repair stages only;
-- `scripts/agents/triage.ts`: local/admin trigger, not workflow owner;
-- `scripts/agents/autofix.ts`: local/admin trigger, not workflow owner;
-- `prisma/schema.prisma`: dedicated remediation models and constraints.
+- triage becomes evidence-producing and revision-aware;
+- auto-fix becomes a constrained repair primitive;
+- local CLI commands trigger the coordinator;
+- the SDLC PRD/RFC/TICKETS pipeline remains intact.
 
-Existing code to retain:
+No Sentry route, GitHub client, deployed-worker entry point, repository ruleset, or production secret is part of this milestone.
 
-- SDLC PRD/RFC pipeline;
-- CodeGraph integration concept;
-- Zod validation patterns;
-- Prisma client;
-- current test infrastructure;
-- MockIssueTracker as a test adapter.
+## 17. Current-Milestone Acceptance Criteria
 
-## 15. Non-Goals
+- Fixture duplicates create one Incident and increment occurrences.
+- Policy decisions are reproducible and cannot be overridden by model output.
+- Worker recovery does not duplicate attempts or external-action artifacts.
+- Reproduction requires a stable failure whose signature matches the incident.
+- A wrong-reason red test cannot reach repair.
+- A non-portable test becomes `NEEDS_HUMAN`.
+- An already-fixed case becomes `ALREADY_FIXED` without a proposal.
+- A repair demonstrates matching red-to-green behavior and passes the trusted suite.
+- Recurrence creates at most one open proposal per fingerprint and cycle.
+- MockTicket remains available to the SDLC `TICKETS` stage but is not remediation workflow state.
+- Every model call, tool action, command, transition, decision, and result is auditable.
+- All current-milestone tests run without Sentry, GitHub, deployed workers, or production credentials.
 
-- automatic merge;
-- automatic production deployment;
-- production database repair;
-- automatic infrastructure changes;
-- automatic secret rotation;
-- broad multi-repository repair in the first release;
-- replacing human incident command;
-- using an LLM as the final verification or authorization mechanism.
+## 18. Non-Goals of the Current Milestone
 
-## 16. Acceptance Criteria
-
-- Repeated webhook and polling events create one Incident.
-- A production release maps to an exact repository commit.
-- P0/P1 incidents notify humans immediately without necessarily stopping an eligible isolated repair attempt.
-- Reproduction proves a failing test on production code.
-- Latest main is checked before modification.
-- Already-fixed issues do not produce redundant PRs.
-- A verified repair demonstrates red-to-green behavior.
-- Related tests, full tests, type checking, schema checks, and diff policy pass.
-- Worker crashes recover through leases without duplicate attempts or external actions.
-- GitHub retries create at most one Draft PR.
-- Repository rulesets plus worker capability restrictions prevent bot merge, deployment, default-branch push, and repository-setting changes.
-- Every model call, tool action, command, phase transition, verification result, and external action is auditable.
-
-## 17. Initial Production Defaults
-
-The first capability profile uses these explicit defaults:
-
-- escalation uses email plus GitHub reviewer requests; Slack or PagerDuty is a later adapter;
-- Sentry release data must resolve to an exact Git commit; otherwise auto-fix is blocked and the incident is escalated with diagnostics;
-- forbidden repair paths include `.git`, `.env*`, secret files, `.github/workflows`, deployment manifests, infrastructure configuration, and `prisma/migrations`;
-- a repair attempt may change at most five files and 200 total diff lines, including its regression test;
-- a repair attempt may perform at most two model repair iterations;
-- failure to reproduce produces diagnostic evidence only; no unverified patch is retained or presented as a repair;
-- repository rulesets require human approval and prevent the bot identity from pushing to the default branch or bypassing review.
-
-These defaults are intentionally conservative and can be changed through reviewed policy configuration after production evidence exists.
+- real Sentry ingestion;
+- real GitHub publication;
+- a continuously deployed worker;
+- automatic merge or deployment;
+- production database or infrastructure repair;
+- secret or repository-setting changes;
+- maximizing the number of generated patches;
+- automatic learning from reviewer feedback;
+- broad multi-repository remediation.
