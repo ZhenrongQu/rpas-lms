@@ -2,6 +2,7 @@ import "../eval/loadEnv";
 import { prisma } from "../../src/lib/db";
 import { createRegressionFixture } from "../../src/lib/agents/remediation/fixtures";
 import { claimRun, ingestIncident, transitionRun } from "../../src/lib/agents/remediation/store";
+import { driveReproduction } from "../../src/lib/agents/remediation/driver";
 
 async function main(): Promise<void> {
   const fixture = await createRegressionFixture();
@@ -14,6 +15,7 @@ async function main(): Promise<void> {
         ...fixture.incident,
         knownGoodCommit: fixture.knownGoodCommit,
         defectiveCommit: fixture.defectiveCommit,
+        mainCommit: fixture.mainCommit,
       },
     });
     const run = await prisma.remediationRun.create({ data: { incidentId: incident.id } });
@@ -21,12 +23,15 @@ async function main(): Promise<void> {
 
     await transitionRun(run.id, "smoke-worker", "RECEIVED", "TRIAGING");
     await transitionRun(run.id, "smoke-worker", "TRIAGING", "CLASSIFIED");
-    await transitionRun(run.id, "smoke-worker", "CLASSIFIED", "REPRODUCING");
+
+    const outcome = await driveReproduction(run.id, "smoke-worker", fixture);
+    const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: run.id } });
 
     console.log(JSON.stringify({
       incidentId: incident.id,
       runId: run.id,
-      phase: "REPRODUCING",
+      outcome,
+      phase: stored.phase,
       knownGoodCommit: fixture.knownGoodCommit,
       defectiveCommit: fixture.defectiveCommit,
     }));
