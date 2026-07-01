@@ -6,26 +6,44 @@ describe("remediation test database", () => {
   it("rejects a missing or ordinary developer database URL", () => {
     expect(() => remediationDatabaseUrl(undefined)).toThrow("REMEDIATION_TEST_DATABASE_URL is required");
     expect(() => remediationDatabaseUrl("postgresql://postgres:postgres@localhost:5433/postgres")).toThrow(
-      "dedicated local database",
+      "dedicated database",
     );
   });
 
   it("rejects a remote host even when the name looks dedicated", () => {
     expect(() => remediationDatabaseUrl("postgresql://user:pw@production-host:5432/prod_remediation")).toThrow(
-      "dedicated local database",
+      "dedicated database",
     );
   });
 
-  it("rejects an unexpected port", () => {
+  it("rejects a database on a different port than the test baseline", () => {
     expect(() => remediationDatabaseUrl("postgresql://postgres:postgres@localhost:5432/rpas_remediation_test")).toThrow(
-      "dedicated local database",
+      "dedicated database",
     );
   });
 
-  it("accepts the exact dedicated local remediation database", () => {
+  it("accepts the dedicated remediation database on the baseline server", () => {
     expect(remediationDatabaseUrl("postgresql://postgres:postgres@localhost:5433/rpas_remediation_test")).toContain(
       "/rpas_remediation_test",
     );
+  });
+
+  it("derives the allowed host/port from TEST_DATABASE_URL (override contract)", () => {
+    const saved = process.env.TEST_DATABASE_URL;
+    process.env.TEST_DATABASE_URL = "postgresql://postgres:postgres@localhost:5544/postgres";
+    try {
+      // The dedicated DB on the overridden server is accepted...
+      expect(
+        remediationDatabaseUrl("postgresql://postgres:postgres@localhost:5544/rpas_remediation_test"),
+      ).toContain("/rpas_remediation_test");
+      // ...while the old default port is now rejected (it no longer matches the baseline).
+      expect(() =>
+        remediationDatabaseUrl("postgresql://postgres:postgres@localhost:5433/rpas_remediation_test"),
+      ).toThrow("dedicated database");
+    } finally {
+      if (saved === undefined) delete process.env.TEST_DATABASE_URL;
+      else process.env.TEST_DATABASE_URL = saved;
+    }
   });
 
   it("serializes two holders of the same advisory lock", async () => {

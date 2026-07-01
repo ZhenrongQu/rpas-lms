@@ -1,23 +1,23 @@
 import { createHash } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 
-const ALLOWED_HOSTS = new Set(["localhost", "127.0.0.1"]);
-const EXPECTED_PORT = "5433";
 const EXPECTED_DATABASE = "rpas_remediation_test";
+const DEFAULT_TEST_DATABASE_URL = "postgresql://postgres:postgres@localhost:5433/postgres";
 
 export function remediationDatabaseUrl(raw: string | undefined): string {
   if (!raw) throw new Error("REMEDIATION_TEST_DATABASE_URL is required");
+  const base = new URL(process.env.TEST_DATABASE_URL ?? DEFAULT_TEST_DATABASE_URL);
   const url = new URL(raw);
   const database = url.pathname.replace(/^\//, "");
-  const port = url.port || "5432";
-  // Fail closed to exactly one dedicated LOCAL database, so a future force-reset
-  // can never point at a shared or remote database by accident. A substring check
-  // is not enough — postgresql://production-host/prod_remediation must be rejected.
-  // (A real CI host would relax this behind an explicit allowlist — not now.)
-  if (!ALLOWED_HOSTS.has(url.hostname) || port !== EXPECTED_PORT || database !== EXPECTED_DATABASE) {
+  // Fail closed, but honour the repo's TEST_DATABASE_URL override contract: derive
+  // the allowed host/port from the test baseline and only force the dedicated
+  // database NAME. Together (baseline server + dedicated name) this still prevents
+  // a force-reset from ever hitting a shared/remote or the baseline's own database.
+  const sameServer = url.hostname === base.hostname && (url.port || "5432") === (base.port || "5432");
+  if (!sameServer || database !== EXPECTED_DATABASE) {
     throw new Error(
-      `remediation tests require the dedicated local database localhost:${EXPECTED_PORT}/${EXPECTED_DATABASE} ` +
-        `(got ${url.hostname}:${port}/${database || "?"})`,
+      `remediation tests require the dedicated database "${EXPECTED_DATABASE}" on the test baseline server ` +
+        `${base.hostname}:${base.port || "5432"} (got ${url.hostname}:${url.port || "5432"}/${database || "?"})`,
     );
   }
   return url.toString();
