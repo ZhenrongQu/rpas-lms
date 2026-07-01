@@ -463,3 +463,36 @@ model MockTicket {
 
   @@index([runId])
 }
+
+// Remediation kernel — durable state for the auto-fix remediation pipeline, kept
+// deliberately separate from the SDLC AgentRun pipeline. An Incident is the
+// deduplicated identity of a production signal; a RemediationRun is one
+// lease-guarded workflow cycle whose phase advances via CAS transitions.
+model Incident {
+  id              String           @id @default(cuid())
+  repository      String
+  defaultBranch   String
+  fingerprint     String
+  occurrenceCount Int              @default(1)
+  latestPayload   String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  runs            RemediationRun[]
+
+  @@unique([repository, defaultBranch, fingerprint])
+}
+
+model RemediationRun {
+  id             String    @id @default(cuid())
+  incidentId     String
+  incident       Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  phase          String    @default("RECEIVED")
+  leaseOwner     String?
+  leaseExpiresAt DateTime?
+  escalatedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([incidentId])
+  @@index([phase, leaseExpiresAt])
+}
