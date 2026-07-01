@@ -6,11 +6,23 @@ describe("remediation test database", () => {
   it("rejects a missing or ordinary developer database URL", () => {
     expect(() => remediationDatabaseUrl(undefined)).toThrow("REMEDIATION_TEST_DATABASE_URL is required");
     expect(() => remediationDatabaseUrl("postgresql://postgres:postgres@localhost:5433/postgres")).toThrow(
-      "dedicated database",
+      "dedicated local database",
     );
   });
 
-  it("accepts an explicitly named remediation database", () => {
+  it("rejects a remote host even when the name looks dedicated", () => {
+    expect(() => remediationDatabaseUrl("postgresql://user:pw@production-host:5432/prod_remediation")).toThrow(
+      "dedicated local database",
+    );
+  });
+
+  it("rejects an unexpected port", () => {
+    expect(() => remediationDatabaseUrl("postgresql://postgres:postgres@localhost:5432/rpas_remediation_test")).toThrow(
+      "dedicated local database",
+    );
+  });
+
+  it("accepts the exact dedicated local remediation database", () => {
     expect(remediationDatabaseUrl("postgresql://postgres:postgres@localhost:5433/rpas_remediation_test")).toContain(
       "/rpas_remediation_test",
     );

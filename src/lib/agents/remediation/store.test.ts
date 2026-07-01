@@ -68,4 +68,30 @@ describe("remediation store", () => {
     expect(await heartbeatRun(run.id, "worker-b", 60_000)).toBe(false);
     expect(await heartbeatRun(run.id, "worker-a", 60_000)).toBe(true);
   });
+
+  it("increments to exactly N under concurrent first-ingest of a new fingerprint", async () => {
+    const ingest = () =>
+      ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: "concurrent-new", payload: {} });
+    await Promise.all(Array.from({ length: 5 }, ingest));
+    const rows = await prisma.incident.findMany({ where: { fingerprint: "concurrent-new" } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.occurrenceCount).toBe(5);
+  });
+
+  it("refuses to claim a run already in a terminal phase", async () => {
+    const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: "terminal-claim", payload: {} });
+    const run = await prisma.remediationRun.create({ data: { incidentId: incident.id, phase: "PROPOSED" } });
+    expect(await claimRun(run.id, "worker-a", 60_000)).toBe(false);
+  });
+
+  it("releases the lease when a run enters a terminal phase", async () => {
+    const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: "terminal-lease", payload: {} });
+    const run = await prisma.remediationRun.create({ data: { incidentId: incident.id } });
+    await claimRun(run.id, "worker-a", 60_000);
+    await transitionRun(run.id, "worker-a", "RECEIVED", "CANCELLED");
+    const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: run.id } });
+    expect(stored.phase).toBe("CANCELLED");
+    expect(stored.leaseOwner).toBeNull();
+    expect(stored.leaseExpiresAt).toBeNull();
+  });
 });
