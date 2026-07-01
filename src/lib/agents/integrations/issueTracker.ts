@@ -22,10 +22,14 @@ export class MockIssueTracker implements IssueTracker {
   async create(t: NewTicket): Promise<Ticket> {
     const assignee = assignOwner(t.area);
 
-    // Key allocation must tolerate concurrent creates and deletion gaps: `count`
-    // gives a starting point, and on a unique-constraint clash we bump the suffix
-    // and retry rather than failing or producing a duplicate key.
-    const base = (await prisma.mockTicket.count()) + 1;
+    // Key allocation must tolerate concurrent creates and deletion gaps. We start
+    // from max(suffix)+1 — hole-immune, unlike count()+1, which a large block of
+    // deletions below a contiguous run could push back into occupied keys — and on
+    // a unique-constraint clash (a concurrent create grabbed it) we bump and retry.
+    const [{ max }] = await prisma.$queryRaw<{ max: number | null }[]>`
+      SELECT MAX(CAST(SUBSTRING(key FROM 6) AS INTEGER)) AS max FROM "MockTicket"
+    `;
+    const base = (max ?? 0) + 1;
     for (let attempt = 0; attempt < MAX_KEY_ATTEMPTS; attempt++) {
       const key = `SDLC-${base + attempt}`;
       try {

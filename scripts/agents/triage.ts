@@ -12,6 +12,7 @@ import { getSentrySource } from "../../src/lib/agents/triage/sentry";
 import { runTriage } from "../../src/lib/agents/triage/triage";
 import { recordStep } from "../../src/lib/agents/trace";
 import { MockIssueTracker } from "../../src/lib/agents/integrations/issueTracker";
+import { shouldTriage } from "../../src/lib/agents/triage/recovery";
 
 async function main(): Promise<void> {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -28,11 +29,13 @@ async function main(): Promise<void> {
   let skipped = 0;
 
   for (const issue of issues) {
-    // Idempotency: an issue already triaged successfully is skipped. A previous
-    // FAILED attempt is retried (reusing its row, since externalId is unique).
+    // Idempotency + crash recovery: a successful ("done") triage is skipped; a
+    // failed one is retried; a "running" one is reclaimed only once it's stale, so
+    // a process that crashed mid-triage can no longer leave the issue ticket-less
+    // forever. Reuses the existing row (externalId is unique).
     const seen = await prisma.agentRun.findUnique({ where: { externalId: issue.id } });
-    if (seen && seen.status !== "failed") {
-      console.log(`⏭  ${issue.id}  already triaged (run ${seen.id}) — skipping`);
+    if (!shouldTriage(seen)) {
+      console.log(`⏭  ${issue.id}  already triaged (run ${seen!.id}) — skipping`);
       skipped++;
       continue;
     }

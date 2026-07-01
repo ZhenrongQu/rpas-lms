@@ -76,4 +76,42 @@ describe("pipeline gate state machine", () => {
     expect(run?.currentStage).toBe("B"); // resumed at the next missing stage
     expect(calls).toEqual(["B"]); // only B re-ran; A was not redone
   });
+
+  it("recovers a run left in failed by a thrown stage", async () => {
+    // A stage that throws sets status=failed; that must still be resumable.
+    const crashed = await prisma.agentRun.create({
+      data: { kind: KIND, input: "idea", status: "failed", artifacts: JSON.stringify({ A: "A:idea" }) },
+    });
+    await resumeRun(crashed.id);
+    const run = await getRun(crashed.id);
+    expect(run?.status).toBe("awaiting_approval");
+    expect(run?.currentStage).toBe("B");
+    expect(calls).toEqual(["B"]);
+  });
+
+  it("concurrent resumes: exactly one re-runs the stage (optimistic claim)", async () => {
+    const crashed = await prisma.agentRun.create({
+      data: { kind: KIND, input: "idea", status: "running", artifacts: JSON.stringify({ A: "A:idea" }) },
+    });
+    const results = await Promise.allSettled([resumeRun(crashed.id), resumeRun(crashed.id)]);
+    expect(results.filter((r) => r.status === "fulfilled").length).toBe(1);
+    expect(calls.filter((c) => c === "B").length).toBe(1); // B re-ran once, not twice
+    const run = await getRun(crashed.id);
+    expect(run?.currentStage).toBe("B");
+  });
+
+  it("rolls back the gate claim if the audit write fails (one transaction)", async () => {
+    const id = await startRun(KIND, "idea"); // gated at A
+    // Pre-seed the deterministic gate-step id so the audit insert collides (P2002),
+    // forcing the claim+trace transaction to roll back as a unit.
+    await prisma.agentStep.create({
+      data: { id: `gate:${id}:A`, runId: id, stage: "A", kind: "gate", output: "{}" },
+    });
+    await expect(applyDecision(id, "approve")).rejects.toThrow();
+    const run = await getRun(id);
+    expect(run?.status).toBe("awaiting_approval"); // claim rolled back with the failed trace
+    expect(run?.currentStage).toBe("A");
+    expect(calls).toEqual(["A"]); // B never ran
+    expect(run!.steps.filter((s) => s.kind === "gate").length).toBe(1); // only the pre-seeded row
+  });
 });

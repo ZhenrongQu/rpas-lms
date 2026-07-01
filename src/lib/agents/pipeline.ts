@@ -53,37 +53,56 @@ export async function applyDecision(runId: string, action: GateAction, note?: st
     throw new Error(`Run ${runId} is not awaiting approval (status: ${run.status}).`);
   }
 
-  // Atomic claim — only one concurrent decision wins. The conditional update
-  // matches only while the run is still awaiting at THIS stage; a racing second
-  // approve (or a stale decision for an already-advanced stage) sees count === 0
-  // and bails, so there is no double-advance / duplicate side effects.
-  const claimed = await prisma.agentRun.updateMany({
-    where: { id: runId, status: "awaiting_approval", currentStage: run.currentStage },
-    data: { status: action === "approve" ? "running" : "rejected" },
-  });
-  if (claimed.count === 0) {
-    throw new Error(`Run ${runId} was already decided (lost the race).`);
-  }
-
-  await prisma.agentStep.create({
-    data: { runId, stage: run.currentStage, kind: "gate", output: JSON.stringify({ action, note }) },
+  const stage = run.currentStage;
+  // Claim + record the decision in ONE transaction so a crash can't leave the run
+  // advanced with no audit row (or an audit row with no advance). The conditional
+  // update matches only while the run is still awaiting at THIS stage; a racing
+  // second approve sees count === 0 and the whole transaction rolls back, so there
+  // is no double-advance / duplicate side effect. The gate step's id is derived
+  // from (run, stage) so the decision is recorded at most once even on a retry.
+  await prisma.$transaction(async (tx) => {
+    const claimed = await tx.agentRun.updateMany({
+      where: { id: runId, status: "awaiting_approval", currentStage: stage },
+      data: { status: action === "approve" ? "running" : "rejected" },
+    });
+    if (claimed.count === 0) {
+      throw new Error(`Run ${runId} was already decided (lost the race).`);
+    }
+    await tx.agentStep.create({
+      data: { id: `gate:${runId}:${stage}`, runId, stage, kind: "gate", output: JSON.stringify({ action, note }) },
+    });
   });
 
   if (action === "approve") {
-    const idx = stagesFor(run.kind).findIndex((s) => s.name === run.currentStage);
+    const idx = stagesFor(run.kind).findIndex((s) => s.name === stage);
     await advance(runId, idx + 1);
   }
 }
 
 /**
- * Recover a run left in "running" by a crash (process died mid-stage, before the
- * state flip). Re-runs from the first stage that has no artifact yet, so a stage
- * interrupted mid-draft is simply redone.
+ * Recover a run left mid-flight by a crash — either still "running" (died before
+ * the state flip) or "failed" (a stage threw). Re-runs from the first stage that
+ * has no artifact yet, so a stage interrupted mid-draft is simply redone.
+ *
+ * Concurrency: the claim is pinned on the observed (status, updatedAt), so two
+ * near-simultaneous resumes can't both proceed — the first bumps updatedAt and the
+ * second's conditional update matches nothing. (A second resume that starts AFTER
+ * the first is already executing a stage is a narrow operator-error window for a
+ * manual recovery command; the only harmful replay — duplicate tickets — is itself
+ * neutralised by TicketFiler's per-run reset. A heartbeat lease is the production
+ * upgrade, out of scope for the sandbox.)
  */
 export async function resumeRun(runId: string): Promise<void> {
   const run = await prisma.agentRun.findUniqueOrThrow({ where: { id: runId } });
-  if (run.status !== "running") {
-    throw new Error(`Run ${runId} is not stuck running (status: ${run.status}).`);
+  if (run.status !== "running" && run.status !== "failed") {
+    throw new Error(`Run ${runId} is not recoverable (status: ${run.status}).`);
+  }
+  const claimed = await prisma.agentRun.updateMany({
+    where: { id: runId, status: run.status, updatedAt: run.updatedAt },
+    data: { status: "running" },
+  });
+  if (claimed.count === 0) {
+    throw new Error(`Run ${runId} is already being resumed (lost the race).`);
   }
   const stages = stagesFor(run.kind);
   const artifacts: Record<string, string> = JSON.parse(run.artifacts);

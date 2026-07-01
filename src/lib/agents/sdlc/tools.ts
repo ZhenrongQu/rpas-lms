@@ -77,5 +77,3 @@ export const CREATE_TICKET_TOOL: Anthropic.Tool = {
     required: ["title", "body", "area"],
   },
 };
-
-export type CreateTicketInput = { title: string; body: string; area: string };
