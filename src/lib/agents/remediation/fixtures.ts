@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-export type FixtureVariant = "reproducible" | "already-fixed" | "non-portable";
+export type FixtureVariant = "reproducible" | "already-fixed" | "non-portable" | "control-broken";
 
 export type RegressionFixture = {
   repoRoot: string;
@@ -17,9 +17,9 @@ export type RegressionFixture = {
   mainCommit: string;
   incident: {
     fingerprint: string;
-    errorType: "TypeError";
-    sourceFile: "src/score.mjs";
-    symbol: "score";
+    errorType: string;
+    sourceFile: string;
+    symbol: string;
   };
   cleanup: () => Promise<void>;
 };
@@ -39,6 +39,13 @@ const BAD_SOURCE = `export function score(answers, index) {
 
 const RENAMED_SOURCE = `export function computeScore(answers, index) {
   return answers[index]?.score ?? 0;
+}
+`;
+
+// A control that is itself broken (throws on the empty-array control input), but
+// textually distinct from BAD_SOURCE so the later defective commit still diffs.
+const CONTROL_BROKEN_SOURCE = `export function score(answers, index) {
+  return answers[index].score + 0;
 }
 `;
 
@@ -63,7 +70,10 @@ export async function createRegressionFixture(
     await git(["config", "user.name", "Remediation Fixture"]);
     await git(["config", "user.email", "fixture@example.invalid"]);
 
-    await writeFile(join(repoRoot, "src/score.mjs"), GOOD_SOURCE);
+    // control-broken: the "known-good" control is itself defective, so a
+    // reproduction must refuse to proceed (the negative control is mandatory).
+    const controlSource = variant === "control-broken" ? CONTROL_BROKEN_SOURCE : GOOD_SOURCE;
+    await writeFile(join(repoRoot, "src/score.mjs"), controlSource);
     await writeFile(join(repoRoot, "src/check.mjs"), CHECK_SOURCE);
     await git(["add", "src/score.mjs", "src/check.mjs"]);
     await git(["commit", "-m", "fixture: known good"]);
