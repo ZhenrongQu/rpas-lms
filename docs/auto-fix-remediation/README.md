@@ -39,7 +39,7 @@ Production work may be reconsidered only after all of these conditions are true:
 
 1. `rpas-lms` is launched and emits trustworthy production signals.
 2. At least three real, repository-local incidents have been reproduced manually.
-3. `pnpm autofix` has produced a valid repair proposal for at least one real defect.
+3. The new remediation-kernel CLI has completed its reproduction, repair, and verification path for at least one real defect. This refers to the redesigned kernel path, not the current legacy `pnpm autofix` prototype.
 4. The team still judges automation more valuable than improving ordinary diagnostics and tests.
 
 The number three is an activation checkpoint, not evidence that three incidents form a useful classifier. The decision remains a human design review based on the incidents themselves.
@@ -84,7 +84,9 @@ flowchart TD
     MW --> TP{"Test applies and compiles?"}
     TP -- "No" --> NH2["NEEDS_HUMAN"]
     TP -- "Yes, already green" --> AF["ALREADY_FIXED"]
-    TP -- "Yes, still red" --> FX["Constrained Auto-Fix Agent"]
+    TP -- "Yes, still red" --> MM{"Signature still matches?"}
+    MM -- "No" --> NH4["NEEDS_HUMAN"]
+    MM -- "Yes" --> FX["Constrained Auto-Fix Agent"]
     FX --> VE["Deterministic Verification"]
     VE --> VG{"All gates pass?"}
     VG -- "No" --> NH3["NEEDS_HUMAN"]
@@ -166,25 +168,33 @@ Initial repair limits:
 
 The current worker is an on-demand local process. It claims one run with a lease, heartbeats while working, records transitions, and safely resumes or expires abandoned work.
 
+Worktree creation may be concurrent, but database-backed test execution may not be. This repository's Vitest configuration points every worktree at the same Postgres database on port 5433, and global setup force-resets that database. The kernel therefore uses one repository-scoped test-execution mutex covering setup, reproduction, related tests, and full-suite verification.
+
+For the current repository, the coordinator holds a Postgres advisory lock derived from the canonical repository identity for the entire lifetime of the spawned test process. All worktrees use the same lock key. Process or connection loss releases the lock; lease loss causes the coordinator to terminate the test child before releasing it. A worker must acquire this lock before invoking any command that can reset or use the shared test database.
+
+Per-attempt databases or containers are a possible future optimization. They are not part of the current kernel because a single mutex is smaller and matches the repository's actual test infrastructure.
+
 It is not yet a deployed service. Proving lease semantics locally is part of the mechanism exercise; operating a self-hosted runner is not.
 
 ### 5.6 Reproduction Agent
 
 The reproduction agent may add or adjust only a bounded test and supporting test fixture in a clean worktree at the fixture deployment commit. It records the command, exit code, bounded logs, and observed failure signature.
 
-A test is accepted as a reproduction only when:
+A fixture repository must include a known-good commit immediately before the fixture defect. A test is accepted as a reproduction only when:
 
-1. it passes before the fixture defect is introduced, when that control is available;
+1. it passes on the known-good control commit;
 2. it fails on the fixture deployment commit;
 3. its observed failure signature matches the incident signature;
 4. the failure is stable across repeated execution;
 5. unrelated baseline tests do not fail.
 
-Failure to meet these conditions produces evidence and stops automated repair.
+There is no missing-control exception in the mechanism kernel. A future production design may classify an incident without a known-good commit as `NEEDS_HUMAN`, but it may not silently waive the control. Failure to meet these conditions produces evidence and stops automated repair.
 
 ### 5.7 Constrained Auto-Fix Agent
 
-The fix agent receives a fresh latest-main worktree plus the accepted reproduction test. It may edit only policy-approved repository paths. It cannot weaken, skip, delete, or replace the accepted test merely to make it pass.
+The fix agent receives a fresh latest-main worktree plus the accepted reproduction test. At acceptance time, the kernel records the byte-level hash of every test and fixture file that constitutes the reproduction. Those paths are removed from the fix agent's writable set, even if their parent directory would otherwise be allowed.
+
+Before and after every repair iteration, and again during final verification, the kernel recomputes the hashes. A missing file, changed byte, symlink substitution, or path replacement fails the attempt immediately. The agent cannot weaken, skip, delete, or replace the accepted reproduction to make it pass.
 
 ### 5.8 Deterministic Verification
 
@@ -193,10 +203,10 @@ Verification is ordinary code. It checks:
 1. the accepted test failed with a matching signature before the fix;
 2. the same test passes after the fix;
 3. related tests pass;
-4. the complete trusted suite passes;
+4. the complete trusted test set passes while holding the repository test mutex;
 5. type and schema checks pass;
 6. diff and path policies pass;
-7. no test, configuration, or policy weakening occurred.
+7. accepted reproduction hashes are unchanged and no test, configuration, or policy weakening occurred.
 
 The verifier can prove these observations. It cannot prove semantic correctness in general.
 
@@ -221,7 +231,13 @@ type FailureSignature = {
 };
 ```
 
-The first kernel version accepts a reproduction only when the error type matches and at least two of the first three available application frames match by normalized module and, when available, symbol. Fixtures with fewer frames must define an explicit reviewed matcher.
+The first kernel version accepts a reproduction only at high confidence:
+
+- the error type matches;
+- the top application frame maps through source maps to the same source file and either the same symbol or reviewed line range;
+- when a second application frame exists, its mapped source file and symbol or line range also match.
+
+Symbol and source-location evidence is mandatory when it exists in either signature. Matching only by module is classified as low confidence and cannot authorize auto-fix. Missing or unusable source maps likewise produce `NEEDS_HUMAN`; the kernel does not compensate by broadening the matcher.
 
 This remains a heuristic. The first question in the human review checklist is therefore: “Does the red test fail for the same underlying reason as the incident?” The Draft PR artifact must show the incident and test signatures side by side.
 
@@ -263,7 +279,7 @@ Rules:
 
 - repeated signals increment the occurrence count and attach new evidence to the same Incident;
 - at most one open Draft PR artifact exists for that key;
-- a newly verified attempt may supersede the artifact for the open remediation cycle rather than create another;
+- a newly verified attempt may append a new artifact version and mark the previous version `superseded`; evidence and prior artifact versions are never overwritten or deleted;
 - an unverified recurrence is recorded but does not rewrite the proposal;
 - if an earlier PR was merged or closed and the defect later recurs, create a new numbered remediation cycle linked to the prior cycle.
 
@@ -278,18 +294,21 @@ Future GitHub branch names include the fingerprint plus remediation-cycle number
 
 This design does not remove or redesign the SDLC ticket stage.
 
-## 11. Trusted Test-Suite Prerequisite
+## 11. Trusted Test Sets and Flakiness
 
-“The full suite passes” is a meaningful gate only when the suite and its environment are sufficiently hermetic.
+“The full suite passes” is a meaningful gate only when the suite and its environment are sufficiently hermetic. Three clean runs do not establish that property.
 
 Before the kernel can produce a verified Draft PR artifact:
 
-- the full suite must pass in three consecutive clean runs on the baseline;
+- each test in the hard-gate trusted set must pass in 60 consecutive controlled baseline runs; this gives less than a 5% chance of missing a test that flakes independently 5% of the time;
+- subsequent runs retain per-test pass/fail history, and any unexplained failure removes that test from the trusted set pending human review;
 - required local services and fixture data must be reproducible;
-- known flaky tests must be fixed or explicitly quarantined through human-reviewed test configuration;
+- known flaky tests must be fixed or explicitly quarantined through human-reviewed, version-controlled test configuration;
 - the auto-fix system may not silently ignore, retry away, or newly quarantine a failure.
 
-An unrelated suite failure stops publication as `NEEDS_HUMAN` and is reported separately from repair failure.
+The accepted reproduction and related tests are always hard gates. The full trusted set is also a hard gate. Quarantined tests are still executed as a separate diagnostic set, but their failures create visible warnings rather than changing a valid repair to `NEEDS_HUMAN`. A new failure outside the reviewed quarantine is reported separately from repair failure and stops publication.
+
+This qualification is evidence about observed stability, not proof that a test can never flake.
 
 ## 12. Testing Strategy
 
@@ -299,6 +318,7 @@ Integration scenarios include:
 
 - duplicate fixtures produce one Incident;
 - two workers race for one lease;
+- two different attempts contend for the repository test mutex without overlapping database resets;
 - a worker expires and another resumes safely;
 - the red test matches the incident;
 - the test is red for the wrong reason;
@@ -306,7 +326,7 @@ Integration scenarios include:
 - the test cannot be ported to latest main;
 - an eligible repair becomes a verified mock Draft PR;
 - a recurrence updates one active cycle rather than producing duplicate proposals;
-- a flaky unrelated test prevents publication with an honest classification.
+- a new flaky unrelated test prevents publication, while a reviewed quarantined failure remains a visible warning.
 
 The end-to-end current-milestone path is:
 
@@ -327,7 +347,8 @@ fixture signal
 
 - preserve the existing SDLC pipeline and user changes;
 - define versioned incident and repository fixtures;
-- prove three consecutive clean full-suite runs;
+- qualify the initial trusted test set with 60 controlled runs and record per-test outcomes;
+- add the repository-scoped test-execution mutex around the shared Postgres lifecycle;
 - document test-service setup and known non-hermetic tests.
 
 Exit: the verification gate has a stable baseline.
@@ -342,9 +363,10 @@ Exit: crashes and duplicate fixture delivery do not create duplicate work or act
 
 ### K2: Prove reproduction semantics
 
-- create fixture commits for reproducible, wrong-reason, already-fixed, and non-portable cases;
+- create known-good and defective fixture commits for reproducible, wrong-reason, already-fixed, and non-portable cases;
 - implement revision-bound CodeGraph access;
 - implement failure-signature matching;
+- pin accepted reproduction files by hash and exclude them from the repair writable set;
 - implement the two-worktree classification flow.
 
 Exit: only a stable matching failure reaches repair.
@@ -429,6 +451,7 @@ Existing code may be adapted only where needed:
 - triage becomes evidence-producing and revision-aware;
 - auto-fix becomes a constrained repair primitive;
 - local CLI commands trigger the coordinator;
+- `prisma/schema.prisma` adds the minimal durable remediation models and uniqueness constraints;
 - the SDLC PRD/RFC/TICKETS pipeline remains intact.
 
 No Sentry route, GitHub client, deployed-worker entry point, repository ruleset, or production secret is part of this milestone.
@@ -438,12 +461,17 @@ No Sentry route, GitHub client, deployed-worker entry point, repository ruleset,
 - Fixture duplicates create one Incident and increment occurrences.
 - Policy decisions are reproducible and cannot be overridden by model output.
 - Worker recovery does not duplicate attempts or external-action artifacts.
+- Database-backed tests from separate worktrees never overlap against the shared test database.
+- Every fixture reproduction passes on its mandatory known-good control commit before failing on the defective commit.
 - Reproduction requires a stable failure whose signature matches the incident.
+- Module-only signature similarity cannot authorize repair.
 - A wrong-reason red test cannot reach repair.
 - A non-portable test becomes `NEEDS_HUMAN`.
 - An already-fixed case becomes `ALREADY_FIXED` without a proposal.
 - A repair demonstrates matching red-to-green behavior and passes the trusted suite.
+- Accepted reproduction files remain byte-identical throughout repair and verification.
 - Recurrence creates at most one open proposal per fingerprint and cycle.
+- Superseding a proposal appends an auditable version and preserves all prior evidence.
 - MockTicket remains available to the SDLC `TICKETS` stage but is not remediation workflow state.
 - Every model call, tool action, command, transition, decision, and result is auditable.
 - All current-milestone tests run without Sentry, GitHub, deployed workers, or production credentials.
