@@ -14,29 +14,46 @@ const DEFAULT_MAX_TOKENS = 4096;
 const DEFAULT_MAX_TOTAL_TOKENS = 200_000; // hard cost ceiling so a runaway loop is bounded
 const MAX_LIST_FILES = 200;
 const MAX_TOOL_OUTPUT_BYTES = 8192; // cap list/check output fed back into the model context
-const MAX_REASONING_CHARS = 500; // truncate persisted reasoning summaries
+const TRUNC_MARK = "\n…(truncated)";
+// Persisted-trace bounds — every field is capped so the stored trace is bounded
+// regardless of model output. Total ≤ MAX_TRACE_STEPS × (reasoning + tools).
+const MAX_REASONING_BYTES = 500; // truncate persisted reasoning summaries
+const MAX_NAME_BYTES = 64; // tool name (defensive; our schema names are short)
+const MAX_PATH_BYTES = 256; // tool path
+const MAX_TOOLS_PER_STEP = 16; // tool calls recorded per step
+const MAX_TRACE_STEPS = 24; // steps recorded overall (raw `steps` still holds all)
 
 function reqString(v: unknown, field: string): string {
   if (typeof v !== "string" || v.length === 0) throw new Error(`"${field}" must be a non-empty string`);
   return v;
 }
+/** Truncate to at most maxBytes of UTF-8, never splitting a multi-byte codepoint. */
+function byteTruncate(s: string, maxBytes: number): string {
+  const buf = Buffer.from(s, "utf8");
+  if (buf.length <= maxBytes) return s;
+  let end = maxBytes;
+  while (end > 0 && (buf[end]! & 0xc0) === 0x80) end--; // back off UTF-8 continuation bytes
+  return buf.toString("utf8", 0, end);
+}
 function clip(s: string): string {
-  return Buffer.byteLength(s) <= MAX_TOOL_OUTPUT_BYTES ? s : `${s.slice(0, MAX_TOOL_OUTPUT_BYTES)}\n…(truncated)`;
+  if (Buffer.byteLength(s) <= MAX_TOOL_OUTPUT_BYTES) return s;
+  return byteTruncate(s, MAX_TOOL_OUTPUT_BYTES - Buffer.byteLength(TRUNC_MARK)) + TRUNC_MARK; // total ≤ MAX_TOOL_OUTPUT_BYTES
 }
 
-/** Redact a raw step into a persist-safe trace entry: no raw file content or full
- *  model text — only a byte-count + short hash of written content, truncated reasoning. */
+/** Redact a raw step into a persist-safe, byte-bounded trace entry: no raw file
+ *  content or full model text — only a byte-count + short hash of written content,
+ *  and byte-truncated reasoning/path (all fields explicitly capped). */
 function redactStep(s: AgentStepInfo): RepairTraceStep {
   return {
     step: s.index,
     tokens: s.tokens,
-    reasoning: s.text.slice(0, MAX_REASONING_CHARS),
-    tools: s.toolCalls.map((t) => {
+    reasoning: byteTruncate(s.text, MAX_REASONING_BYTES),
+    tools: s.toolCalls.slice(0, MAX_TOOLS_PER_STEP).map((t) => {
       const a = (t.input ?? {}) as Record<string, unknown>;
-      const path = typeof a.path === "string" ? a.path : undefined;
+      const path = typeof a.path === "string" ? byteTruncate(a.path, MAX_PATH_BYTES) : undefined;
       const content = typeof a.content === "string" ? a.content : undefined;
       return {
-        name: t.name,
+        name: byteTruncate(t.name, MAX_NAME_BYTES),
         ...(path !== undefined ? { path } : {}),
         ...(content !== undefined
           ? { contentBytes: Buffer.byteLength(content), contentSha256: createHash("sha256").update(content).digest("hex").slice(0, 16) }
@@ -88,7 +105,7 @@ export class LlmRepairer implements Repairer {
       createMessage: this.opts.createMessage,
       onStep: (s) => {
         this.steps.push(s);
-        trace.push(redactStep(s));
+        if (trace.length < MAX_TRACE_STEPS) trace.push(redactStep(s)); // bound total persisted trace
         this.opts.onStep?.(s);
       },
     };

@@ -106,6 +106,26 @@ describe("LlmRepairer", () => {
     expect(report.trace[0]!.reasoning).toContain("Reading"); // reasoning summary kept
   });
 
+  it("byte-bounds the persisted trace (multibyte reasoning, long path, many tools)", async () => {
+    const fixture = await newFixture();
+    const ctx = makeRepairContext(fixture.repoRoot, POLICY, new AbortController().signal);
+    const bigReasoning = "字".repeat(1000); // 3000 UTF-8 bytes of 3-byte codepoints
+    const longPath = "src/" + "a".repeat(1000) + ".mjs";
+    const manyTools = Array.from({ length: 50 }, (_, i) => toolBlock(`r${i}`, "read_file", { path: `src/f${i}.mjs` }));
+    const repairer = new LlmRepairer({
+      createMessage: scripted([
+        msg([textBlock(bigReasoning), toolBlock("w", "write_file", { path: longPath, content: "x" }), ...manyTools], "tool_use"),
+        msg([textBlock("done")], "end_turn"),
+      ]),
+    });
+    const report = await repairer.repair(ctx);
+    const step0 = report.trace[0]!;
+    expect(Buffer.byteLength(step0.reasoning)).toBeLessThanOrEqual(500); // true UTF-8 byte cap, no split codepoint
+    expect(step0.reasoning.endsWith("�")).toBe(false); // no dangling replacement char
+    expect(step0.tools.length).toBeLessThanOrEqual(16); // per-step tool count capped
+    expect(Buffer.byteLength(step0.tools[0]!.path!)).toBeLessThanOrEqual(256); // path byte-capped
+  });
+
   it("propagates an abort (lease lost)", async () => {
     const fixture = await newFixture();
     const ctrl = new AbortController();
