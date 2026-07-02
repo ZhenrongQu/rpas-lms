@@ -18,13 +18,19 @@ import { driveRepair, driveReproduction } from "../../src/lib/agents/remediation
 
 const WORKER = "repair-eval";
 const LEASE_MS = 180_000;
+// A dedicated namespace so the eval can NEVER upsert onto or delete a real
+// business incident (dedup key is repository+defaultBranch+fingerprint).
+const EVAL_REPO = "__repair_eval__";
 
 function assertLocalDb(): void {
-  const url = process.env.DATABASE_URL ?? "";
-  if (!/@(localhost|127\.0\.0\.1)[:/]/.test(url)) {
-    throw new Error(
-      `repair-eval refuses to run against a non-local DB. Set DATABASE_URL to the local test Postgres. Got: ${url.replace(/:[^:@/]*@/, ":***@") || "(unset)"}`,
-    );
+  let host: string;
+  try {
+    host = new URL(process.env.DATABASE_URL ?? "").hostname.replace(/^\[|\]$/g, ""); // strip IPv6 brackets
+  } catch {
+    throw new Error("repair-eval: DATABASE_URL is unset or unparseable; set it to the local test Postgres");
+  }
+  if (!["localhost", "127.0.0.1", "::1"].includes(host)) {
+    throw new Error(`repair-eval refuses to run against a non-local DB (host: ${host}). Set DATABASE_URL to the local test Postgres.`);
   }
 }
 
@@ -39,9 +45,9 @@ type CaseResult = {
   ms: number;
 };
 
-async function evalCase(c: RepairCase, model?: string): Promise<CaseResult> {
+async function evalCase(c: RepairCase, model?: string): Promise<CaseResult & { incidentId: string }> {
   const started = Date.now();
-  const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: c.incident.fingerprint, payload: {} });
+  const incident = await ingestIncident({ repository: EVAL_REPO, defaultBranch: "main", fingerprint: c.incident.fingerprint, payload: {} });
   const run = await createRemediationRun(incident.id);
   await claimRun(run.id, WORKER, LEASE_MS);
   await transitionRun(run.id, WORKER, "RECEIVED", "TRIAGING");
@@ -65,6 +71,7 @@ async function evalCase(c: RepairCase, model?: string): Promise<CaseResult> {
     steps: repairer.steps.length,
     tokens: repairer.steps.reduce((s, x) => s + x.tokens, 0),
     ms: Date.now() - started,
+    incidentId: incident.id,
   };
 }
 
@@ -95,14 +102,19 @@ async function main(): Promise<void> {
   const model = process.env.REPAIR_EVAL_MODEL;
 
   const cases = await createRepairCases();
-  const fingerprints = cases.map((c) => c.incident.fingerprint);
+  const createdIds: string[] = [];
   try {
     const results: CaseResult[] = [];
-    for (const c of cases) results.push(await evalCase(c, model));
+    for (const c of cases) {
+      const r = await evalCase(c, model);
+      createdIds.push(r.incidentId);
+      results.push(r);
+    }
     report(results);
   } finally {
     await Promise.all(cases.map((c) => c.cleanup()));
-    await prisma.incident.deleteMany({ where: { fingerprint: { in: fingerprints } } }); // cascade removes runs/proposals
+    // Only the incidents THIS run created, by id — never a fingerprint-wide delete.
+    if (createdIds.length) await prisma.incident.deleteMany({ where: { id: { in: createdIds } } }); // cascade removes runs/proposals
   }
 }
 
