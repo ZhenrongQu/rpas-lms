@@ -52,14 +52,14 @@ describe("nodeStackStrategy", () => {
   const strat = nodeStackStrategy(incident);
 
   it("parses + matches a red check's stderr against the baked-in incident", () => {
-    const observed = strat.parse({ exitCode: 1, stdout: "", stderr: TYPE_ERROR_STACK })!;
+    const observed = strat.parse({ kind: "completed", exitCode: 1, stdout: "", stderr: TYPE_ERROR_STACK })!;
     expect(observed.errorType).toBe("TypeError");
     expect(strat.match(observed)).toBe("match");
   });
 
   it("returns null on a green/unrecognizable check and serializes deterministically", () => {
-    expect(strat.parse({ exitCode: 0, stdout: "", stderr: "" })).toBeNull();
-    const observed = strat.parse({ exitCode: 1, stdout: "", stderr: TYPE_ERROR_STACK })!;
+    expect(strat.parse({ kind: "completed", exitCode: 0, stdout: "", stderr: "" })).toBeNull();
+    const observed = strat.parse({ kind: "completed", exitCode: 1, stdout: "", stderr: TYPE_ERROR_STACK })!;
     expect(strat.serialize(observed)).toBe(strat.serialize(observed)); // stable for stability comparison
   });
 });

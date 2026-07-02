@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RegressionFixture } from "./fixtures";
 import { makeRepairContext, type RepairPolicy, type Repairer, type RepairTraceStep } from "./repair";
-import type { CheckResult, CheckRunner } from "./substrate";
+import { expectCompleted, type CheckRunner, type CompletedCheck } from "./substrate";
 
 const execFileAsync = promisify(execFile);
 const PATCH_PREVIEW_BYTES = 2000;
@@ -61,14 +61,16 @@ async function hashPinned(worktree: string, relPaths: string[]): Promise<string>
   return h.digest("hex");
 }
 
-async function runCheck(worktree: string, signal: AbortSignal, runner: CheckRunner): Promise<CheckResult> {
+async function runCheck(worktree: string, signal: AbortSignal, runner: CheckRunner): Promise<CompletedCheck> {
+  let result;
   try {
-    return await runner(worktree, signal);
+    result = await runner(worktree, signal);
   } catch (e) {
     const err = e as { code?: number | string; name?: string };
     if (signal.aborted || err.name === "AbortError" || err.code === "ABORT_ERR") throw new LeaseLost();
     throw e;
   }
+  return expectCompleted(result); // infra failure → InfrastructureFailure (propagates, run stays retriable)
 }
 
 async function numstat(worktree: string): Promise<{ changedFiles: string[]; diffLines: number; hasBinaryDiff: boolean }> {

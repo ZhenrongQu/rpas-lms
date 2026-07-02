@@ -1,6 +1,6 @@
 import { readFile as fsReadFile, writeFile as fsWriteFile, lstat, readdir, realpath, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { scriptCheckRunner, type CheckResult, type CheckRunner } from "./substrate";
+import { expectCompleted, scriptCheckRunner, type CheckRunner, type CompletedCheck } from "./substrate";
 
 const DEFAULT_MAX_READ_BYTES = 64 * 1024;
 const DEFAULT_CHECK = "src/check.mjs";
@@ -25,7 +25,7 @@ export type RepairContext = {
   readFile(rel: string): Promise<string>;
   writeFile(rel: string, content: string): Promise<void>;
   listFiles(): Promise<string[]>;
-  runCheck(): Promise<CheckResult>;
+  runCheck(): Promise<CompletedCheck>;
   signal: AbortSignal;
 };
 
@@ -125,9 +125,10 @@ export function makeRepairContext(
       await walk(worktreeRoot);
       return out.sort();
     },
-    // The runner returns a red/green CheckResult and throws only on abort, which
-    // propagates (lease loss) exactly as before.
-    runCheck: () => checkRunner(worktreeRoot, signal),
+    // The runner returns a red/green CheckResult and throws only on abort (→
+    // propagates as lease loss). An infrastructure failure becomes a thrown
+    // InfrastructureFailure so the LLM never sees it as a red/green test.
+    runCheck: async () => expectCompleted(await checkRunner(worktreeRoot, signal)),
   };
 }
 

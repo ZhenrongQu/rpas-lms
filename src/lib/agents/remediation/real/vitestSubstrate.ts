@@ -3,7 +3,7 @@ import { access, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
-import type { CheckResult, CheckRunner, SignatureStrategy } from "../substrate";
+import type { CheckRunner, CompletedCheck, SignatureStrategy } from "../substrate";
 
 const execFileAsync = promisify(execFile);
 const ADAPTER_CONFIG = "vitest.adapter.config.mts";
@@ -54,11 +54,12 @@ export function vitestCheckRunner(
     const args = ["run", ...tests, "--config", ADAPTER_CONFIG, "--reporter=json", `--outputFile=${outFile}`];
     try {
       await exec(vitestBin, args, { cwd: worktreeRoot, signal, maxBuffer: 32 * 1024 * 1024 });
-      return { exitCode: 0, stdout: await readFile(outFile, "utf8").catch(() => ""), stderr: "" };
+      return { kind: "completed", exitCode: 0, stdout: await readFile(outFile, "utf8").catch(() => ""), stderr: "" };
     } catch (e) {
       const err = e as { code?: number | string; stderr?: string; name?: string };
       if (signal?.aborted || err.name === "AbortError" || err.code === "ABORT_ERR") throw e;
       return {
+        kind: "completed",
         exitCode: typeof err.code === "number" ? err.code : 1,
         stdout: await readFile(outFile, "utf8").catch(() => ""),
         stderr: err.stderr ?? String(e),
@@ -112,7 +113,7 @@ function errorNameOf(msg: string | undefined): string {
  *  JSON reporter output and match it against the incident's declared failing test. */
 export function vitestJsonStrategy(incident: VitestIncident): SignatureStrategy<VitestSignature> {
   return {
-    parse: (result: CheckResult) => {
+    parse: (result: CompletedCheck) => {
       let json: VitestJson;
       try {
         json = JSON.parse(result.stdout) as VitestJson;

@@ -1,5 +1,5 @@
 import { basename } from "node:path";
-import type { CheckResult, SignatureStrategy } from "./substrate";
+import type { CompletedCheck, SignatureStrategy } from "./substrate";
 
 /**
  * A normalized failure fingerprint (design §6). Deterministic and conservative:
@@ -47,7 +47,7 @@ export function matchSignature(
  *  parsed from stderr, matched conservatively against the incident. */
 export function nodeStackStrategy(incident: IncidentSignature): SignatureStrategy<FailureSignature> {
   return {
-    parse: (result: CheckResult) => parseFailureSignature(result.stderr),
+    parse: (result: CompletedCheck) => parseFailureSignature(result.stderr),
     match: (observed) => matchSignature(observed, incident),
     serialize: (observed) => JSON.stringify(observed),
   };

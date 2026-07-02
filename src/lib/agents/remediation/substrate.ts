@@ -13,12 +13,38 @@ const execFileAsync = promisify(execFile);
  * dependency-free `node` fixtures and a real repo's real toolchain (vitest).
  */
 
-export type CheckResult = { exitCode: number; stdout: string; stderr: string };
+/** A check that actually ran to completion — a real red/green test signal. */
+export type CompletedCheck = { kind: "completed"; exitCode: number; stdout: string; stderr: string };
+/** The check could NOT be trusted to produce a red/green signal (docker missing,
+ *  OOM/kill, timeout, missing report, runtime error). Fail-closed: NEVER conflate
+ *  this with a real test result — an infra failure that looks like exit 1 would be
+ *  a false reproduction, exit 0 a false fix. */
+export type InfraFailure = { kind: "infrastructure-failure"; reason: string };
+export type CheckResult = CompletedCheck | InfraFailure;
+
+/** Thrown at a consumer boundary when a CheckRunner returns an infrastructure
+ *  failure — a typed signal so the run propagates (never PROPOSED) and leaves the
+ *  phase un-advanced (retriable), rather than a wrong terminal conclusion. */
+export class InfrastructureFailure extends Error {
+  constructor(readonly reason: string) {
+    super(`check infrastructure failure: ${reason}`);
+    this.name = "InfrastructureFailure";
+  }
+}
+
+/** Narrow a CheckResult to a completed check, throwing InfrastructureFailure on an
+ *  infra failure. Used at every boundary that reads a check's exit/output. */
+export function expectCompleted(result: CheckResult): CompletedCheck {
+  if (result.kind !== "completed") throw new InfrastructureFailure(result.reason);
+  return result;
+}
 
 /**
  * Runs a check against an already-prepared worktree. Returns a red/green result
- * WITHOUT throwing on a non-zero exit (a red check is the expected signal); THROWS
- * only on an abort, so the caller decides LeaseLost-vs-propagate.
+ * (`kind: "completed"`) WITHOUT throwing on a non-zero exit (a red check is the
+ * expected signal), or `kind: "infrastructure-failure"` when it could not produce a
+ * trustworthy signal; THROWS only on an abort, so the caller decides
+ * LeaseLost-vs-propagate.
  */
 export type CheckRunner = (worktreeRoot: string, signal?: AbortSignal) => Promise<CheckResult>;
 
@@ -27,10 +53,11 @@ export type CheckRunner = (worktreeRoot: string, signal?: AbortSignal) => Promis
  * parse/match/serialize, so it is agnostic to the signature's SHAPE — a Node stack
  * frame (script fixtures) or a failing-test identity (real vitest). The incident is
  * baked into the strategy at construction, so `match` needs no incident argument.
+ * `parse` only ever sees a COMPLETED check (consumers narrow infra failures first).
  */
 export interface SignatureStrategy<S = unknown> {
   /** Derive a failure signature from a red check, or null if none is recognizable. */
-  parse(result: CheckResult): S | null;
+  parse(result: CompletedCheck): S | null;
   match(observed: S): "match" | "low-confidence" | "mismatch";
   /** Stable string form, for the reproduction's cross-run stability comparison. */
   serialize(observed: S): string;
@@ -44,11 +71,12 @@ export function scriptCheckRunner(relPath: string): CheckRunner {
   return async (worktreeRoot, signal) => {
     try {
       const { stdout, stderr } = await execFileAsync("node", [relPath], { cwd: worktreeRoot, signal });
-      return { exitCode: 0, stdout, stderr };
+      return { kind: "completed", exitCode: 0, stdout, stderr };
     } catch (e) {
       const err = e as { code?: number | string; stdout?: string; stderr?: string; name?: string };
       if (signal?.aborted || err.name === "AbortError" || err.code === "ABORT_ERR") throw e; // abort → caller decides
       return {
+        kind: "completed",
         exitCode: typeof err.code === "number" ? err.code : 1,
         stdout: err.stdout ?? "",
         stderr: err.stderr ?? String(e),

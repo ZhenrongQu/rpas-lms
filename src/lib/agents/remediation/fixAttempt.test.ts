@@ -6,6 +6,9 @@ import { promisify } from "node:util";
 import { createRegressionFixture, type RegressionFixture } from "./fixtures";
 import { fixtureRepairerFor, type Repairer } from "./repair";
 import { LeaseLost, runFixAttempt } from "./fixAttempt";
+import { InfrastructureFailure, type CheckRunner } from "./substrate";
+
+const infraRunner: CheckRunner = async () => ({ kind: "infrastructure-failure", reason: "docker unavailable" });
 
 const execFileAsync = promisify(execFile);
 const POLICY = { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"], readAllowlist: ["src/"] };
@@ -129,5 +132,15 @@ describe("runFixAttempt", () => {
       _tamperCheckAfterRepair: async (wt) => writeFile(join(wt, "src/check.mjs"), "process.exit(0)\n"),
     });
     expect(evidence.reproductionIntact).toBe(false);
+  });
+
+  it("propagates an InfrastructureFailure instead of producing a false red/green", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const down = { ...fixture, substrate: { ...fixture.substrate, runCheck: infraRunner } };
+    await expect(
+      runFixAttempt(down, fixtureRepairerFor(fixture), { policy: POLICY, maxPatchBytes: 1_000_000 }),
+    ).rejects.toBeInstanceOf(InfrastructureFailure);
+    expect(await worktreeCount(fixture.repoRoot)).toBe(1); // worktree still cleaned up
   });
 });

@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createRegressionFixture, type RegressionFixture } from "./fixtures";
 import { classifyOnLatestMain, reproduce } from "./reproduce";
 import { nodeStackStrategy, type FailureSignature } from "./signature";
+import { InfrastructureFailure, type CheckRunner } from "./substrate";
+
+const infraRunner: CheckRunner = async () => ({ kind: "infrastructure-failure", reason: "docker unavailable" });
 
 const created: RegressionFixture[] = [];
 
@@ -40,6 +43,13 @@ describe("reproduce", () => {
     const result = await reproduce(fixture, { repeats: 2 });
     expect(result.accepted).toBe(false);
     expect(result.reason).toBe("control-failed");
+  });
+
+  it("throws InfrastructureFailure (never a false 'not-reproduced') when the check infra fails", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const down = { ...fixture, substrate: { ...fixture.substrate, runCheck: infraRunner } };
+    await expect(reproduce(down, { repeats: 2 })).rejects.toBeInstanceOf(InfrastructureFailure);
   });
 });
 

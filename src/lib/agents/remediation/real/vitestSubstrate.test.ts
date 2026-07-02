@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { expectCompleted } from "../substrate";
 import { vitestCheckRunner, vitestJsonStrategy, type VitestExec } from "./vitestSubstrate";
 
 // Hermetic: NO real vitest is spawned. The JSON strategy is fed sample reporter
@@ -42,7 +43,7 @@ describe("vitestJsonStrategy", () => {
   const strat = vitestJsonStrategy(incident);
 
   it("fingerprints the first failing test and matches the incident", () => {
-    const observed = strat.parse({ exitCode: 1, stdout: FAILING_JSON, stderr: "" })!;
+    const observed = strat.parse({ kind: "completed", exitCode: 1, stdout: FAILING_JSON, stderr: "" })!;
     expect(observed).toEqual({
       testFile: "grade.test.ts",
       testName: "isAnswerCorrect matches an exact multi-select set",
@@ -52,14 +53,14 @@ describe("vitestJsonStrategy", () => {
   });
 
   it("mismatches on a different error class or a different failing test", () => {
-    const observed = strat.parse({ exitCode: 1, stdout: FAILING_JSON, stderr: "" })!;
+    const observed = strat.parse({ kind: "completed", exitCode: 1, stdout: FAILING_JSON, stderr: "" })!;
     expect(vitestJsonStrategy({ ...incident, errorName: "TypeError" }).match(observed)).toBe("mismatch");
     expect(vitestJsonStrategy({ ...incident, testName: "some other test" }).match(observed)).toBe("mismatch");
   });
 
   it("returns null on a green report or unparseable stdout", () => {
-    expect(strat.parse({ exitCode: 0, stdout: PASSING_JSON, stderr: "" })).toBeNull();
-    expect(strat.parse({ exitCode: 1, stdout: "not json", stderr: "" })).toBeNull();
+    expect(strat.parse({ kind: "completed", exitCode: 0, stdout: PASSING_JSON, stderr: "" })).toBeNull();
+    expect(strat.parse({ kind: "completed", exitCode: 1, stdout: "not json", stderr: "" })).toBeNull();
   });
 });
 
@@ -88,7 +89,7 @@ describe("vitestCheckRunner", () => {
     };
 
     const runner = vitestCheckRunner(origin, ["src/lib/exam/grade.test.ts"], fakeExec);
-    const result = await runner(worktree);
+    const result = expectCompleted(await runner(worktree));
 
     expect(result.exitCode).toBe(1);
     expect(JSON.parse(result.stdout).numFailedTests).toBe(1); // report read back from the temp file

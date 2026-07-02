@@ -4,6 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRegressionFixture, type RegressionFixture } from "./fixtures";
 import { fixtureRepairerFor, makeRepairContext } from "./repair";
+import { InfrastructureFailure, type CheckRunner } from "./substrate";
+
+const infraRunner: CheckRunner = async () => ({ kind: "infrastructure-failure", reason: "docker unavailable" });
 
 const created: RegressionFixture[] = [];
 const dirs: string[] = [];
@@ -17,6 +20,13 @@ const POLICY = { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"]
 const never = new AbortController().signal;
 
 describe("FixtureRepairer + capability context", () => {
+  it("surfaces an infrastructure failure from run_check as InfrastructureFailure (not a red/green)", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const ctx = makeRepairContext(fixture.repoRoot, POLICY, never, infraRunner);
+    await expect(ctx.runCheck()).rejects.toBeInstanceOf(InfrastructureFailure);
+  });
+
   it("applies the fixture's fixed source to the source path", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);

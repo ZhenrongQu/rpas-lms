@@ -2,9 +2,10 @@ import { createHash } from "node:crypto";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BudgetExhausted, runAgent, type AgentConfig, type AgentStepInfo, type MessageCreator } from "../../runtime";
 import type { RepairContext, Repairer, RepairReport, RepairToolStatus, RepairTraceStep } from "../repair";
+import { InfrastructureFailure } from "../substrate";
+import { REPAIR_SYSTEM_PROMPT, REPAIR_TASK, REPAIR_TOOLS } from "./prompt";
 
 type RedactedTool = RepairTraceStep["tools"][number];
-import { REPAIR_SYSTEM_PROMPT, REPAIR_TASK, REPAIR_TOOLS } from "./prompt";
 
 // DEFAULT author model: Haiku is a deliberately modest author (cheap, and MORE
 // likely to err/over-reach — which stress-tests the deterministic verify +
@@ -153,7 +154,9 @@ export class LlmRepairer implements Repairer {
       this.pending.push(redactTool(name, args, "executed"));
       return out;
     } catch (e) {
-      if (ctx.signal.aborted) throw e; // abort is not a tool error — propagate (no trace entry)
+      // Abort (lease) and infrastructure failures are NOT tool errors — propagate
+      // them (no trace entry) rather than feeding them back to the model as "denied".
+      if (ctx.signal.aborted || e instanceof InfrastructureFailure) throw e;
       this.pending.push(redactTool(name, args, "denied"));
       return `Error: ${e instanceof Error ? e.message : String(e)}`;
     }
