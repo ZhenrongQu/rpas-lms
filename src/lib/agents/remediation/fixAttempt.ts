@@ -1,16 +1,14 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RegressionFixture } from "./fixtures";
 import { makeRepairContext, type RepairPolicy, type Repairer, type RepairTraceStep } from "./repair";
-import { matchSignature, parseFailureSignature, type FailureSignature } from "./signature";
-import { scriptCheckRunner, type CheckResult, type CheckRunner } from "./substrate";
+import type { CheckResult, CheckRunner } from "./substrate";
 
 const execFileAsync = promisify(execFile);
-const CHECK = "src/check.mjs";
 const PATCH_PREVIEW_BYTES = 2000;
 
 export class LeaseLost extends Error {
@@ -25,7 +23,7 @@ export type RepairEvidence = {
   reproductionHash: string;
   reproductionIntact: boolean;
   redBeforeMatches: boolean;
-  redBeforeSignature: FailureSignature | null;
+  redBeforeSignature: unknown; // substrate-shaped failure signature (or null)
   greenAfter: boolean;
   changedFiles: string[];
   diffLines: number;
@@ -55,8 +53,12 @@ function delay(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-async function sha256(path: string): Promise<string> {
-  return createHash("sha256").update(await readFile(path)).digest("hex");
+/** Hash the pinned reproduction file(s) — path names + contents — so any tamper
+ *  (edit or rename) to the reproduction is detectable after the repair. */
+async function hashPinned(worktree: string, relPaths: string[]): Promise<string> {
+  const h = createHash("sha256");
+  for (const rel of [...relPaths].sort()) h.update(rel + "\0").update(await readFile(join(worktree, rel)));
+  return h.digest("hex");
 }
 
 async function runCheck(worktree: string, signal: AbortSignal, runner: CheckRunner): Promise<CheckResult> {
@@ -137,34 +139,33 @@ export async function runFixAttempt(
 
     const throwIfLost = () => { if (work.signal.aborted) throw new LeaseLost(); };
 
-    const reproductionHash = await sha256(join(worktree, CHECK));
+    const { runCheck: check, runHoldout, signature, pinnedPaths } = fixture.substrate;
+    const reproductionHash = await hashPinned(worktree, pinnedPaths);
 
-    const before = await runCheck(worktree, work.signal, scriptCheckRunner(CHECK));
+    const before = await runCheck(worktree, work.signal, check);
     throwIfLost();
-    const redBeforeSignature = before.exitCode !== 0 ? parseFailureSignature(before.stderr) : null;
+    const redBeforeSignature = before.exitCode !== 0 ? signature.parse(before) : null;
     const redBeforeMatches =
-      before.exitCode !== 0 && !!redBeforeSignature && matchSignature(redBeforeSignature, fixture.incident) === "match";
+      before.exitCode !== 0 && redBeforeSignature != null && signature.match(redBeforeSignature) === "match";
 
-    const report = await repairer.repair(makeRepairContext(worktree, opts.policy, work.signal));
+    const report = await repairer.repair(makeRepairContext(worktree, opts.policy, work.signal, check));
     throwIfLost();
     if (opts._tamperCheckAfterRepair) await opts._tamperCheckAfterRepair(worktree);
 
-    const after = await runCheck(worktree, work.signal, scriptCheckRunner(CHECK));
+    const after = await runCheck(worktree, work.signal, check);
     throwIfLost();
     const greenAfter = after.exitCode === 0;
 
-    const reproductionIntact = (await sha256(join(worktree, CHECK))) === reproductionHash;
+    const reproductionIntact = (await hashPinned(worktree, pinnedPaths)) === reproductionHash;
 
     await execFileAsync("git", ["add", "-A"], { cwd: worktree });
     const { changedFiles, diffLines, hasBinaryDiff } = await numstat(worktree);
     const { patch, patchBytes, patchTooLarge } = await capturePatch(worktree, opts.maxPatchBytes);
 
-    // Hidden holdout: a correctness test the repairer never saw and cannot modify,
-    // injected ONLY now — after the patch is captured and git-added — so it is not
-    // in the diff. Catches false-fixes that game the visible check (e.g. hardcodes).
-    const holdoutRel = "src/__holdout__.mjs";
-    await writeFile(join(worktree, holdoutRel), fixture.holdoutSource);
-    const holdout = await runCheck(worktree, work.signal, scriptCheckRunner(holdoutRel));
+    // Hidden holdout: the substrate's runHoldout injects/selects a correctness test
+    // the repairer never saw and runs it — ONLY now, after the patch is captured and
+    // git-added, so it is not in the diff. Catches false-fixes that game the check.
+    const holdout = await runCheck(worktree, work.signal, runHoldout);
     throwIfLost();
     const holdoutPassed = holdout.exitCode === 0;
 

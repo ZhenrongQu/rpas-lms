@@ -1,17 +1,12 @@
 import type { RegressionFixture } from "./fixtures";
-import { nodeStackStrategy, type FailureSignature } from "./signature";
-import { scriptCheckRunner } from "./substrate";
 import { runCheckAtCommit } from "./worktree";
 
-const CHECK = "src/check.mjs";
-const check = scriptCheckRunner(CHECK);
-
 export type ReproductionResult =
-  | { accepted: true; reason: "accepted"; signature: FailureSignature }
+  | { accepted: true; reason: "accepted"; signature: unknown }
   | {
       accepted: false;
       reason: "control-failed" | "not-reproduced" | "signature-mismatch" | "unstable";
-      signature?: FailureSignature;
+      signature?: unknown;
     };
 
 /**
@@ -24,25 +19,25 @@ export async function reproduce(
   opts: { repeats?: number } = {},
 ): Promise<ReproductionResult> {
   const repeats = opts.repeats ?? 3;
-  const sig = nodeStackStrategy(fixture.incident);
+  const { runCheck, signature: sig } = fixture.substrate;
 
-  const control = await runCheckAtCommit(fixture.repoRoot, fixture.knownGoodCommit, check);
+  const control = await runCheckAtCommit(fixture.repoRoot, fixture.knownGoodCommit, runCheck);
   if (control.exitCode !== 0) return { accepted: false, reason: "control-failed" };
 
-  let signature: FailureSignature | null = null;
+  let signature: unknown = null;
   for (let i = 0; i < repeats; i++) {
-    const run = await runCheckAtCommit(fixture.repoRoot, fixture.defectiveCommit, check);
+    const run = await runCheckAtCommit(fixture.repoRoot, fixture.defectiveCommit, runCheck);
     if (run.exitCode === 0) return { accepted: false, reason: "not-reproduced" };
     const observed = sig.parse(run);
-    if (!observed || sig.match(observed) !== "match") {
+    if (observed == null || sig.match(observed) !== "match") {
       return { accepted: false, reason: "signature-mismatch", signature: observed ?? undefined };
     }
-    if (signature && sig.serialize(signature) !== sig.serialize(observed)) {
+    if (signature != null && sig.serialize(signature) !== sig.serialize(observed)) {
       return { accepted: false, reason: "unstable", signature: observed };
     }
     signature = observed;
   }
-  return { accepted: true, reason: "accepted", signature: signature! };
+  return { accepted: true, reason: "accepted", signature };
 }
 
 export type Classification = "FIXING" | "ALREADY_FIXED" | "NEEDS_HUMAN";
@@ -53,10 +48,10 @@ export type Classification = "FIXING" | "ALREADY_FIXED" | "NEEDS_HUMAN";
  * differently or no longer applying ⇒ needs a human.
  */
 export async function classifyOnLatestMain(fixture: RegressionFixture): Promise<Classification> {
-  const sig = nodeStackStrategy(fixture.incident);
-  const run = await runCheckAtCommit(fixture.repoRoot, fixture.mainCommit, check);
+  const { runCheck, signature: sig } = fixture.substrate;
+  const run = await runCheckAtCommit(fixture.repoRoot, fixture.mainCommit, runCheck);
   if (run.exitCode === 0) return "ALREADY_FIXED";
   const observed = sig.parse(run);
-  if (observed && sig.match(observed) === "match") return "FIXING";
+  if (observed != null && sig.match(observed) === "match") return "FIXING";
   return "NEEDS_HUMAN";
 }

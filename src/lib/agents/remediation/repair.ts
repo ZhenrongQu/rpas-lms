@@ -95,11 +95,9 @@ export function makeRepairContext(
   worktreeRoot: string,
   policy: RepairPolicy,
   signal: AbortSignal,
-  checkRelPath: string = DEFAULT_CHECK,
-  checkRunner?: CheckRunner,
+  checkRunner: CheckRunner = scriptCheckRunner(DEFAULT_CHECK),
 ): RepairContext {
   const maxReadBytes = policy.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
-  const runner = checkRunner ?? scriptCheckRunner(checkRelPath);
   return {
     signal,
     async readFile(rel) {
@@ -127,9 +125,9 @@ export function makeRepairContext(
       await walk(worktreeRoot);
       return out.sort();
     },
-    // scriptCheckRunner returns a red/green CheckResult and throws only on abort,
-    // which propagates (lease loss) exactly as before.
-    runCheck: () => runner(worktreeRoot, signal),
+    // The runner returns a red/green CheckResult and throws only on abort, which
+    // propagates (lease loss) exactly as before.
+    runCheck: () => checkRunner(worktreeRoot, signal),
   };
 }
 

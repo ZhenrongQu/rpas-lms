@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import type { RegressionFixture } from "../fixtures";
+import { nodeStackStrategy } from "../signature";
+import { scriptCheckRunner, scriptHoldoutRunner } from "../substrate";
 
 const execFileAsync = promisify(execFile);
 
@@ -69,8 +71,14 @@ async function buildRepairCase(spec: CaseSpec): Promise<RepairCase> {
       mainCommit: defectiveCommit,
       fixedSource: spec.files.find((f) => f.path === spec.sourceRelPath)!.good,
       sourceRelPath: spec.sourceRelPath,
-      holdoutSource: spec.holdout,
       incident: spec.incident,
+      substrate: {
+        runCheck: scriptCheckRunner("src/check.mjs"),
+        runHoldout: scriptHoldoutRunner(spec.holdout),
+        signature: nodeStackStrategy(spec.incident),
+        pinnedPaths: ["src/check.mjs"],
+        readAllowlist: ["src/"],
+      },
       cleanup: () => rm(repoRoot, { recursive: true, force: true }),
       id: spec.id,
       category: spec.category,

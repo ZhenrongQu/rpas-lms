@@ -3,6 +3,8 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { nodeStackStrategy } from "./signature";
+import { scriptCheckRunner, scriptHoldoutRunner, type Substrate } from "./substrate";
 
 const execFileAsync = promisify(execFile);
 
@@ -18,15 +20,15 @@ export type RegressionFixture = {
   /** The known-correct source + its path, for the deterministic FixtureRepairer. */
   fixedSource: string;
   sourceRelPath: string;
-  /** A hidden correctness test the repairer never sees; run only at verification
-   *  to catch false-fixes that game the visible check (e.g. hardcoding). */
-  holdoutSource: string;
   incident: {
     fingerprint: string;
     errorType: string;
     sourceFile: string;
     symbol: string;
   };
+  /** How this fixture runs its check + hidden holdout, fingerprints failures, and
+   *  bounds the repairer — script (`node`) here, real vitest for real-repo fixtures. */
+  substrate: Substrate;
   cleanup: () => Promise<void>;
 };
 
@@ -113,6 +115,12 @@ export async function createRegressionFixture(
       mainCommit = await head();
     }
 
+    const incident = {
+      fingerprint: "TypeError:score:score.mjs",
+      errorType: "TypeError",
+      sourceFile: "src/score.mjs",
+      symbol: "score",
+    };
     return {
       repoRoot,
       knownGoodCommit,
@@ -120,12 +128,13 @@ export async function createRegressionFixture(
       mainCommit,
       fixedSource: GOOD_SOURCE,
       sourceRelPath: "src/score.mjs",
-      holdoutSource: HOLDOUT_SOURCE,
-      incident: {
-        fingerprint: "TypeError:score:score.mjs",
-        errorType: "TypeError",
-        sourceFile: "src/score.mjs",
-        symbol: "score",
+      incident,
+      substrate: {
+        runCheck: scriptCheckRunner("src/check.mjs"),
+        runHoldout: scriptHoldoutRunner(HOLDOUT_SOURCE),
+        signature: nodeStackStrategy(incident),
+        pinnedPaths: ["src/check.mjs"],
+        readAllowlist: ["src/"],
       },
       cleanup: () => rm(repoRoot, { recursive: true, force: true }),
     };

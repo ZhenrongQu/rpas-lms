@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createRegressionFixture, type RegressionFixture } from "./fixtures";
 import { classifyOnLatestMain, reproduce } from "./reproduce";
+import { nodeStackStrategy, type FailureSignature } from "./signature";
 
 const created: RegressionFixture[] = [];
 
@@ -14,14 +15,20 @@ describe("reproduce", () => {
     created.push(fixture);
     const result = await reproduce(fixture, { repeats: 2 });
     expect(result.accepted).toBe(true);
-    expect(result.signature?.errorType).toBe("TypeError");
-    expect(result.signature?.applicationFrames[0]).toEqual({ module: "score.mjs", symbol: "score" });
+    const sig = result.signature as FailureSignature;
+    expect(sig.errorType).toBe("TypeError");
+    expect(sig.applicationFrames[0]).toEqual({ module: "score.mjs", symbol: "score" });
   });
 
   it("rejects when the failure signature does not match the incident", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
-    const wrong = { ...fixture, incident: { ...fixture.incident, symbol: "notScore" } };
+    // matching now lives in the substrate's signature strategy: point it at a
+    // different symbol so the observed defect no longer matches.
+    const wrong = {
+      ...fixture,
+      substrate: { ...fixture.substrate, signature: nodeStackStrategy({ ...fixture.incident, symbol: "notScore" }) },
+    };
     const result = await reproduce(wrong, { repeats: 2 });
     expect(result.accepted).toBe(false);
     expect(result.reason).toBe("signature-mismatch");

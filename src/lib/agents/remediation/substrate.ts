@@ -1,4 +1,6 @@
 import { execFile } from "node:child_process";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -54,3 +56,32 @@ export function scriptCheckRunner(relPath: string): CheckRunner {
     }
   };
 }
+
+/**
+ * A hidden-holdout runner for script fixtures: write the hidden test into the
+ * worktree, then `node` it. The fix attempt calls this AFTER capturing the patch,
+ * so the injected file is never in the diff (the false-fix catcher stays hidden).
+ */
+export function scriptHoldoutRunner(holdoutSource: string, relPath = "src/__holdout__.mjs"): CheckRunner {
+  const run = scriptCheckRunner(relPath);
+  return async (worktreeRoot, signal) => {
+    await writeFile(join(worktreeRoot, relPath), holdoutSource);
+    return run(worktreeRoot, signal);
+  };
+}
+
+/**
+ * Everything the kernel needs to run a fixture that is substrate-specific: HOW the
+ * check + hidden holdout run, HOW a failure is fingerprinted, and WHICH paths the
+ * repairer may read / must not touch. Bundled onto the fixture so the kernel reads
+ * these instead of assuming `node src/check.mjs` + a Node stack signature.
+ */
+export type Substrate = {
+  runCheck: CheckRunner;
+  runHoldout: CheckRunner;
+  signature: SignatureStrategy;
+  /** Files the repairer must not edit (the pinned reproduction: check / test files). */
+  pinnedPaths: string[];
+  /** Path prefixes the repairer may read/list. */
+  readAllowlist: string[];
+};
