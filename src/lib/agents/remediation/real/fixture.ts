@@ -4,9 +4,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type { RegressionFixture } from "../fixtures";
+import type { Substrate } from "../substrate";
+import { dockerVitestCheckRunner, dockerVitestHoldoutRunner } from "../isolated/dockerCheckRunner";
 import { vitestCheckRunner, vitestHoldoutRunner, vitestJsonStrategy, type VitestIncident } from "./vitestSubstrate";
 
 const execFileAsync = promisify(execFile);
+
+/** Where the (possibly untrusted) check code executes: `host` = real vitest on the
+ *  worker (trusted authors only); `docker` = isolated container (required for LLM). */
+export type FixtureIsolation = { isolation?: "host"; image?: never } | { isolation: "docker"; image: string };
 
 /**
  * A synthesized real-repo defect: a KNOWN mutation of a real source file whose real
@@ -36,7 +42,27 @@ export type RealRepoDefectSpec = {
  * ONLY in that clone (a separate object store) — the origin's history is never
  * touched. The same deterministic kernel drives it; only the substrate is real.
  */
-export async function buildRealRepoFixture(spec: RealRepoDefectSpec): Promise<RegressionFixture> {
+export async function buildRealRepoFixture(spec: RealRepoDefectSpec, opts: FixtureIsolation = {}): Promise<RegressionFixture> {
+  if (opts.isolation === "docker" && !opts.image) {
+    throw new Error("isolation 'docker' requires an image tag (call ensureImage first)");
+  }
+  const signature = vitestJsonStrategy(spec.signature);
+  const substrate: Substrate =
+    opts.isolation === "docker"
+      ? {
+          runCheck: dockerVitestCheckRunner({ image: opts.image, tests: spec.relatedTests }),
+          runHoldout: dockerVitestHoldoutRunner(opts.image, spec.holdout.relPath, spec.holdout.source),
+          signature,
+          pinnedPaths: spec.relatedTests,
+          readAllowlist: ["src/"],
+        }
+      : {
+          runCheck: vitestCheckRunner(spec.originRepo, spec.relatedTests),
+          runHoldout: vitestHoldoutRunner(spec.originRepo, spec.holdout.relPath, spec.holdout.source),
+          signature,
+          pinnedPaths: spec.relatedTests,
+          readAllowlist: ["src/"],
+        };
   const clone = await mkdtemp(join(tmpdir(), "real-fixture-"));
   const git = (args: string[]) => execFileAsync("git", args, { cwd: clone });
   const head = async () => (await git(["rev-parse", "HEAD"])).stdout.trim();
@@ -69,13 +95,7 @@ export async function buildRealRepoFixture(spec: RealRepoDefectSpec): Promise<Re
         sourceFile: spec.sourceRelPath,
         symbol: "",
       },
-      substrate: {
-        runCheck: vitestCheckRunner(spec.originRepo, spec.relatedTests),
-        runHoldout: vitestHoldoutRunner(spec.originRepo, spec.holdout.relPath, spec.holdout.source),
-        signature: vitestJsonStrategy(spec.signature),
-        pinnedPaths: spec.relatedTests, // the repairer must not edit the reproduction test
-        readAllowlist: ["src/"],
-      },
+      substrate,
       cleanup: () => rm(clone, { recursive: true, force: true }),
     };
   } catch (e) {

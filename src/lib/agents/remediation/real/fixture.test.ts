@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { buildRealRepoFixture, gradeDedupDefect, type RealRepoDefectSpec } from "./fixture";
 import type { RegressionFixture } from "../fixtures";
+import { isIsolated } from "../isolated/dockerCheckRunner";
 
 const execFileAsync = promisify(execFile);
 const cleanups: Array<() => Promise<unknown>> = [];
@@ -62,6 +63,39 @@ describe("buildRealRepoFixture", () => {
     // the defect really landed on the defective commit; the good source on known-good
     expect(await show(fixture, fixture.knownGoodCommit, "src/foo.ts")).toBe(good);
     expect(await show(fixture, fixture.defectiveCommit, "src/foo.ts")).toContain("answer = 2");
+    expect(isIsolated(fixture.substrate.runCheck)).toBe(false); // host by default
+  });
+
+  it("isolation 'docker' assembles an isolated substrate (runCheck + holdout tagged isolated)", async () => {
+    const origin = await fakeOrigin("export const answer = 1;\n");
+    const spec: RealRepoDefectSpec = {
+      originRepo: origin,
+      sourceRelPath: "src/foo.ts",
+      mutate: (s) => s.replace("1", "2"),
+      relatedTests: ["src/foo.test.ts"],
+      holdout: { relPath: "src/__holdout__.test.ts", source: "// hidden" },
+      fingerprint: "AssertionError:foo.test.ts:answer",
+      signature: { testFile: "src/foo.test.ts", testName: "answer", errorName: "AssertionError" },
+    };
+    const fixture = await buildRealRepoFixture(spec, { isolation: "docker", image: "remediation-vitest:test" });
+    cleanups.push(fixture.cleanup);
+    expect(isIsolated(fixture.substrate.runCheck)).toBe(true);
+    expect(isIsolated(fixture.substrate.runHoldout)).toBe(true);
+  });
+
+  it("isolation 'docker' requires an image", async () => {
+    const origin = await fakeOrigin("export const x = 1;\n");
+    const spec: RealRepoDefectSpec = {
+      originRepo: origin,
+      sourceRelPath: "src/foo.ts",
+      mutate: (s) => s.replace("1", "2"),
+      relatedTests: ["src/foo.test.ts"],
+      holdout: { relPath: "src/__holdout__.test.ts", source: "" },
+      fingerprint: "x",
+      signature: { testFile: "src/foo.test.ts", testName: "x", errorName: "AssertionError" },
+    };
+    // @ts-expect-error docker isolation must supply an image
+    await expect(buildRealRepoFixture(spec, { isolation: "docker" })).rejects.toThrow();
   });
 
   it("refuses a mutation that does not change the source", async () => {

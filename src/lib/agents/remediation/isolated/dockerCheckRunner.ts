@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { copyFile, mkdtemp, readFile, rm } from "node:fs/promises";
+import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -110,6 +110,25 @@ export function dockerVitestCheckRunner(opts: DockerRunnerOptions, exec: DockerE
       await exec("docker", ["kill", name], {}).catch(() => {}); // orphan safety (no-op if --rm already removed it)
       await rm(outDir, { recursive: true, force: true }).catch(() => {});
     }
+  };
+  return Object.assign(run, { isolated: true as const });
+}
+
+/**
+ * The isolated hidden-holdout runner: write the hidden test into the worktree ON THE
+ * HOST (before the container runs), then run it in the container (worktree read-only,
+ * so executed code cannot alter it). Mirrors vitestHoldoutRunner but isolated.
+ */
+export function dockerVitestHoldoutRunner(
+  image: string,
+  holdoutRelPath: string,
+  holdoutSource: string,
+  exec?: DockerExec,
+): IsolatedCheckRunner {
+  const inner = dockerVitestCheckRunner({ image, tests: [holdoutRelPath] }, exec);
+  const run: CheckRunner = async (worktreeRoot, signal) => {
+    await writeFile(join(worktreeRoot, holdoutRelPath), holdoutSource);
+    return inner(worktreeRoot, signal);
   };
   return Object.assign(run, { isolated: true as const });
 }
