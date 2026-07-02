@@ -106,6 +106,26 @@ describe("LlmRepairer", () => {
     expect(report.trace[0]!.reasoning).toContain("Reading"); // reasoning summary kept
   });
 
+  it("stamps each trace tool with its ACTUAL status (executed / denied / skipped_budget)", async () => {
+    const fixture = await newFixture();
+    const ctx = makeRepairContext(fixture.repoRoot, POLICY, new AbortController().signal);
+    // 1 legal write (executed) + 1 pinned write (denied) + 10 reads → 12 > the 8/step
+    // exec cap, so the tail is skipped_budget (recorded, never run).
+    const tools = [
+      toolBlock("w1", "write_file", { path: "src/score.mjs", content: fixture.fixedSource }),
+      toolBlock("w2", "write_file", { path: "src/check.mjs", content: "process.exit(0)" }),
+      ...Array.from({ length: 10 }, (_, i) => toolBlock(`r${i}`, "read_file", { path: "src/score.mjs" })),
+    ];
+    const repairer = new LlmRepairer({
+      createMessage: scripted([msg(tools, "tool_use"), msg([textBlock("done")], "end_turn")]),
+    });
+    const report = await repairer.repair(ctx);
+    const step0 = report.trace[0]!.tools;
+    expect(step0.find((t) => t.name === "write_file" && t.path === "src/score.mjs")!.status).toBe("executed");
+    expect(step0.find((t) => t.path === "src/check.mjs")!.status).toBe("denied"); // pinned → sandbox blocked
+    expect(step0.some((t) => t.status === "skipped_budget")).toBe(true); // beyond the 8/step exec cap
+  });
+
   it("byte-bounds the persisted trace (multibyte reasoning, long path, many tools)", async () => {
     const fixture = await newFixture();
     const ctx = makeRepairContext(fixture.repoRoot, POLICY, new AbortController().signal);

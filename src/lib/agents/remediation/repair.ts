@@ -33,12 +33,14 @@ export type RepairContext = {
 
 /** A bounded, REDACTED step of the author's trace — safe to persist into the
  *  proposal. Never the raw file content or full model text: only a byte-count +
- *  short hash of any written content, and a truncated reasoning summary. */
+ *  short hash of any written content, and a truncated reasoning summary. Each tool
+ *  carries its ACTUAL disposition so the trace can't over-report what ran. */
+export type RepairToolStatus = "executed" | "denied" | "skipped_budget";
 export type RepairTraceStep = {
   step: number;
   tokens: number;
   reasoning: string;
-  tools: { name: string; path?: string; contentBytes?: number; contentSha256?: string }[];
+  tools: { name: string; status: RepairToolStatus; path?: string; contentBytes?: number; contentSha256?: string }[];
 };
 
 export type RepairReport = { trace: RepairTraceStep[]; tokens: number };

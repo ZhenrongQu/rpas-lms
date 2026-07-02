@@ -63,7 +63,7 @@ describe("runFixAttempt", () => {
     const reporting: Repairer = {
       async repair(ctx) {
         await ctx.writeFile("src/score.mjs", fixture.fixedSource);
-        return { trace: [{ step: 0, tokens: 12, reasoning: "guarded", tools: [{ name: "write_file", path: "src/score.mjs", contentBytes: 42, contentSha256: "abcd" }] }], tokens: 12 };
+        return { trace: [{ step: 0, tokens: 12, reasoning: "guarded", tools: [{ name: "write_file", status: "executed", path: "src/score.mjs", contentBytes: 42, contentSha256: "abcd" }] }], tokens: 12 };
       },
     };
     const evidence = await runFixAttempt(fixture, reporting, { policy: POLICY, maxPatchBytes: 1_000_000 });

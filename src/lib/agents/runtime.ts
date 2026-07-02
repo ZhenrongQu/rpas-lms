@@ -50,6 +50,16 @@ export type AgentStepInfo = {
   stopReason: string | null;
 };
 
+/** Fired for each tool call AFTER the loop decides its fate, so an auditable trace
+ *  can tell a requested call from an executed one. `executed` is false when the
+ *  call was skipped by the per-step tool budget (recorded, but never run). */
+export type AgentToolResult = {
+  step: number;
+  name: string;
+  input: unknown;
+  executed: boolean;
+};
+
 export type AgentConfig = {
   system: string;
   tools?: Anthropic.Tool[];
@@ -68,6 +78,8 @@ export type AgentConfig = {
   signal?: AbortSignal;
   thinking?: Anthropic.ThinkingConfigParam;
   onStep?: (step: AgentStepInfo) => void;
+  /** Observes each tool call's actual disposition (executed vs skipped). */
+  onToolResult?: (result: AgentToolResult) => void;
   createMessage?: MessageCreator;
 };
 
@@ -153,12 +165,15 @@ export async function runAgent(config: AgentConfig, input: string): Promise<Agen
     const toolCap = config.maxToolCallsPerStep ?? Infinity;
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
     for (const [i, block] of toolUses.entries()) {
-      const out =
-        i >= toolCap
-          ? `Error: per-step tool-call budget exceeded (max ${toolCap}); this call was NOT executed`
-          : config.runTool
-            ? await config.runTool(block.name, block.input)
-            : "(no tool runner configured)";
+      const executed = i < toolCap;
+      const out = !executed
+        ? `Error: per-step tool-call budget exceeded (max ${toolCap}); this call was NOT executed`
+        : config.runTool
+          ? await config.runTool(block.name, block.input)
+          : "(no tool runner configured)";
+      // Report the ACTUAL disposition (runTool ran, above, before this fires) so an
+      // auditable trace never shows a skipped call as if it had executed.
+      config.onToolResult?.({ step, name: block.name, input: block.input, executed });
       toolResults.push({ type: "tool_result", tool_use_id: block.id, content: out });
     }
     messages.push({ role: "user", content: toolResults });

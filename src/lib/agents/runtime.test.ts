@@ -144,6 +144,28 @@ describe("runAgent", () => {
     expect(executed).toBe(4); // 50 tool_use blocks, only 4 subprocesses spawned
   });
 
+  it("reports each tool's disposition via onToolResult (executed vs skipped)", async () => {
+    const three = ["a", "b", "c"].map((id) => toolBlock(id, "run_check", {}));
+    const { create } = scripted([fakeMsg(three, "tool_use"), fakeMsg([textBlock("done")], "end_turn")]);
+    const seen: { name: string; executed: boolean }[] = [];
+    await runAgent(
+      {
+        system: "s",
+        tools: [noopTool("run_check")],
+        runTool: async () => "x",
+        createMessage: create,
+        maxToolCallsPerStep: 2,
+        onToolResult: (r) => seen.push({ name: r.name, executed: r.executed }),
+      },
+      "go",
+    );
+    expect(seen).toEqual([
+      { name: "run_check", executed: true },
+      { name: "run_check", executed: true },
+      { name: "run_check", executed: false }, // 3rd is over budget → recorded, not run
+    ]);
+  });
+
   it("stops cleanly (BudgetExhausted) rather than send a request too small for the thinking budget", async () => {
     let calls = 0;
     const create: MessageCreator = async () => (calls++, fakeMsg([textBlock("x")], "end_turn"));

@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BudgetExhausted, runAgent, type AgentConfig, type AgentStepInfo, type MessageCreator } from "../../runtime";
-import type { RepairContext, Repairer, RepairReport, RepairTraceStep } from "../repair";
+import type { RepairContext, Repairer, RepairReport, RepairToolStatus, RepairTraceStep } from "../repair";
+
+type RedactedTool = RepairTraceStep["tools"][number];
 import { REPAIR_SYSTEM_PROMPT, REPAIR_TASK, REPAIR_TOOLS } from "./prompt";
 
 // DEFAULT author model: Haiku is a deliberately modest author (cheap, and MORE
@@ -41,26 +43,20 @@ function clip(s: string): string {
   return byteTruncate(s, MAX_TOOL_OUTPUT_BYTES - Buffer.byteLength(TRUNC_MARK)) + TRUNC_MARK; // total ≤ MAX_TOOL_OUTPUT_BYTES
 }
 
-/** Redact a raw step into a persist-safe, byte-bounded trace entry: no raw file
- *  content or full model text — only a byte-count + short hash of written content,
- *  and byte-truncated reasoning/path (all fields explicitly capped). */
-function redactStep(s: AgentStepInfo): RepairTraceStep {
+/** Redact one tool call into a persist-safe, byte-bounded trace entry stamped with
+ *  its ACTUAL disposition — no raw file content or full model text: only a
+ *  byte-count + short hash of written content, and byte-truncated name/path. */
+function redactTool(name: string, input: unknown, status: RepairToolStatus): RedactedTool {
+  const a = (input ?? {}) as Record<string, unknown>;
+  const path = typeof a.path === "string" ? byteTruncate(a.path, MAX_PATH_BYTES) : undefined;
+  const content = typeof a.content === "string" ? a.content : undefined;
   return {
-    step: s.index,
-    tokens: s.tokens,
-    reasoning: byteTruncate(s.text, MAX_REASONING_BYTES),
-    tools: s.toolCalls.slice(0, MAX_TOOLS_PER_STEP).map((t) => {
-      const a = (t.input ?? {}) as Record<string, unknown>;
-      const path = typeof a.path === "string" ? byteTruncate(a.path, MAX_PATH_BYTES) : undefined;
-      const content = typeof a.content === "string" ? a.content : undefined;
-      return {
-        name: byteTruncate(t.name, MAX_NAME_BYTES),
-        ...(path !== undefined ? { path } : {}),
-        ...(content !== undefined
-          ? { contentBytes: Buffer.byteLength(content), contentSha256: createHash("sha256").update(content).digest("hex").slice(0, 16) }
-          : {}),
-      };
-    }),
+    name: byteTruncate(name, MAX_NAME_BYTES),
+    status,
+    ...(path !== undefined ? { path } : {}),
+    ...(content !== undefined
+      ? { contentBytes: Buffer.byteLength(content), contentSha256: createHash("sha256").update(content).digest("hex").slice(0, 16) }
+      : {}),
   };
 }
 
@@ -87,12 +83,17 @@ export class LlmRepairer implements Repairer {
   readonly steps: AgentStepInfo[] = [];
   /** The redacted, persist-safe report of the last repair(). */
   lastReport: RepairReport | null = null;
+  /** FIFO of redacted entries for EXECUTED tools, produced in runTool and drained
+   *  in onToolResult so the persisted trace reflects what actually ran. */
+  private readonly pending: RedactedTool[] = [];
 
   constructor(private readonly opts: LlmRepairerOptions = {}) {}
 
   async repair(ctx: RepairContext): Promise<RepairReport> {
     this.steps.length = 0;
+    this.pending.length = 0;
     const trace: RepairTraceStep[] = [];
+    const byStep = new Map<number, RepairTraceStep>();
     const config: AgentConfig = {
       system: REPAIR_SYSTEM_PROMPT,
       tools: REPAIR_TOOLS,
@@ -107,8 +108,23 @@ export class LlmRepairer implements Repairer {
       createMessage: this.opts.createMessage,
       onStep: (s) => {
         this.steps.push(s);
-        if (trace.length < MAX_TRACE_STEPS) trace.push(redactStep(s)); // bound total persisted trace
+        if (trace.length < MAX_TRACE_STEPS) {
+          // Skeleton only — reasoning/tokens now; tools are filled from ACTUAL
+          // execution events (onToolResult), so a requested-but-skipped call never
+          // masquerades as executed in the persisted trace.
+          const entry: RepairTraceStep = { step: s.index, tokens: s.tokens, reasoning: byteTruncate(s.text, MAX_REASONING_BYTES), tools: [] };
+          trace.push(entry);
+          byStep.set(s.index, entry);
+        }
         this.opts.onStep?.(s);
+      },
+      onToolResult: (r) => {
+        // Executed calls carry the runTool-classified entry (executed|denied) off
+        // the pending queue; skipped calls are synthesized here. Always drain
+        // pending for an executed call so it stays aligned past MAX_TRACE_STEPS.
+        const tool = r.executed ? this.pending.shift() : redactTool(r.name, r.input, "skipped_budget");
+        const entry = byStep.get(r.step);
+        if (entry && tool && entry.tools.length < MAX_TOOLS_PER_STEP) entry.tools.push(tool);
       },
     };
 
@@ -127,36 +143,46 @@ export class LlmRepairer implements Repairer {
     return report;
   }
 
-  /** Route a tool call to the capability. Policy denials are fed back to the model
-   *  as an error string (so it can adapt); an abort propagates. */
+  /** Route a tool call to the capability and CLASSIFY its outcome for the trace:
+   *  a successful run → "executed"; a policy/validation rejection → "denied" (its
+   *  message is still fed back so the model can adapt); an abort propagates. */
   private async runTool(ctx: RepairContext, name: string, input: unknown): Promise<string> {
     const args = (input ?? {}) as Record<string, unknown>;
     try {
-      switch (name) {
-        case "list_files": {
-          const files = await ctx.listFiles();
-          const shown = files.slice(0, MAX_LIST_FILES);
-          const more = files.length > shown.length ? `\n…(+${files.length - shown.length} more)` : "";
-          return clip(shown.join("\n") + more) || "(no files)";
-        }
-        case "read_file":
-          return await ctx.readFile(reqString(args.path, "path")); // read size/binary capped by the capability
-        case "write_file": {
-          const path = reqString(args.path, "path");
-          if (typeof args.content !== "string") throw new Error('"content" must be a string'); // no [object Object] coercion
-          await ctx.writeFile(path, args.content);
-          return `wrote ${path} (${Buffer.byteLength(args.content)} bytes)`;
-        }
-        case "run_check": {
-          const r = await ctx.runCheck();
-          return r.exitCode === 0 ? "PASS" : clip(`FAIL (exit ${r.exitCode})\n${r.stderr}`.trim());
-        }
-        default:
-          return `Error: unknown tool "${name}"`;
-      }
+      const out = await this.dispatch(ctx, name, args);
+      this.pending.push(redactTool(name, args, "executed"));
+      return out;
     } catch (e) {
-      if (ctx.signal.aborted) throw e; // abort is not a tool error — propagate
+      if (ctx.signal.aborted) throw e; // abort is not a tool error — propagate (no trace entry)
+      this.pending.push(redactTool(name, args, "denied"));
       return `Error: ${e instanceof Error ? e.message : String(e)}`;
+    }
+  }
+
+  /** Execute one tool against the capability. THROWS on a denial/validation failure
+   *  so runTool can classify it; the pinned check / allowlist enforce the sandbox. */
+  private async dispatch(ctx: RepairContext, name: string, args: Record<string, unknown>): Promise<string> {
+    switch (name) {
+      case "list_files": {
+        const files = await ctx.listFiles();
+        const shown = files.slice(0, MAX_LIST_FILES);
+        const more = files.length > shown.length ? `\n…(+${files.length - shown.length} more)` : "";
+        return clip(shown.join("\n") + more) || "(no files)";
+      }
+      case "read_file":
+        return await ctx.readFile(reqString(args.path, "path")); // read size/binary capped by the capability
+      case "write_file": {
+        const path = reqString(args.path, "path");
+        if (typeof args.content !== "string") throw new Error('"content" must be a string'); // no [object Object] coercion
+        await ctx.writeFile(path, args.content);
+        return `wrote ${path} (${Buffer.byteLength(args.content)} bytes)`;
+      }
+      case "run_check": {
+        const r = await ctx.runCheck();
+        return r.exitCode === 0 ? "PASS" : clip(`FAIL (exit ${r.exitCode})\n${r.stderr}`.trim());
+      }
+      default:
+        throw new Error(`unknown tool "${name}"`);
     }
   }
 }
