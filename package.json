@@ -14,8 +14,6 @@
     "seed:content": "tsx scripts/seed-content.ts",
     "eval:assistant": "tsx scripts/eval/run.ts",
     "sdlc": "tsx scripts/agents/sdlc.ts",
-    "triage": "tsx scripts/agents/triage.ts",
-    "autofix": "tsx scripts/agents/autofix.ts",
     "remediation:smoke": "tsx scripts/agents/remediation-smoke.ts",
     "postinstall": "prisma generate"
   },
