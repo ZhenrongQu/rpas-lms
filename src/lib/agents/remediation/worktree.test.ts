@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createRegressionFixture, type RegressionFixture } from "./fixtures";
+import { scriptCheckRunner } from "./substrate";
 import { runCheckAtCommit } from "./worktree";
+
+const check = scriptCheckRunner("src/check.mjs");
 
 const execFileAsync = promisify(execFile);
 const created: RegressionFixture[] = [];
@@ -16,10 +19,10 @@ describe("runCheckAtCommit", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
 
-    const good = await runCheckAtCommit(fixture.repoRoot, fixture.knownGoodCommit, "src/check.mjs");
+    const good = await runCheckAtCommit(fixture.repoRoot, fixture.knownGoodCommit, check);
     expect(good.exitCode).toBe(0);
 
-    const bad = await runCheckAtCommit(fixture.repoRoot, fixture.defectiveCommit, "src/check.mjs");
+    const bad = await runCheckAtCommit(fixture.repoRoot, fixture.defectiveCommit, check);
     expect(bad.exitCode).not.toBe(0);
     expect(bad.stderr).toContain("TypeError");
 

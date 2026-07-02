@@ -1,9 +1,7 @@
 import { readFile as fsReadFile, writeFile as fsWriteFile, lstat, readdir, realpath, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { scriptCheckRunner, type CheckResult, type CheckRunner } from "./substrate";
 
-const execFileAsync = promisify(execFile);
 const DEFAULT_MAX_READ_BYTES = 64 * 1024;
 const DEFAULT_CHECK = "src/check.mjs";
 
@@ -27,7 +25,7 @@ export type RepairContext = {
   readFile(rel: string): Promise<string>;
   writeFile(rel: string, content: string): Promise<void>;
   listFiles(): Promise<string[]>;
-  runCheck(): Promise<{ exitCode: number; stderr: string }>;
+  runCheck(): Promise<CheckResult>;
   signal: AbortSignal;
 };
 
@@ -98,8 +96,10 @@ export function makeRepairContext(
   policy: RepairPolicy,
   signal: AbortSignal,
   checkRelPath: string = DEFAULT_CHECK,
+  checkRunner?: CheckRunner,
 ): RepairContext {
   const maxReadBytes = policy.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
+  const runner = checkRunner ?? scriptCheckRunner(checkRelPath);
   return {
     signal,
     async readFile(rel) {
@@ -127,16 +127,9 @@ export function makeRepairContext(
       await walk(worktreeRoot);
       return out.sort();
     },
-    async runCheck() {
-      try {
-        await execFileAsync("node", [checkRelPath], { cwd: worktreeRoot, signal });
-        return { exitCode: 0, stderr: "" };
-      } catch (e) {
-        const err = e as { code?: number | string; stderr?: string; name?: string };
-        if (signal.aborted || err.name === "AbortError" || err.code === "ABORT_ERR") throw e; // abort propagates
-        return { exitCode: typeof err.code === "number" ? err.code : 1, stderr: err.stderr ?? String(e) };
-      }
-    },
+    // scriptCheckRunner returns a red/green CheckResult and throws only on abort,
+    // which propagates (lease loss) exactly as before.
+    runCheck: () => runner(worktreeRoot, signal),
   };
 }
 

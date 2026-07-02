@@ -7,6 +7,7 @@ import { join } from "node:path";
 import type { RegressionFixture } from "./fixtures";
 import { makeRepairContext, type RepairPolicy, type Repairer, type RepairTraceStep } from "./repair";
 import { matchSignature, parseFailureSignature, type FailureSignature } from "./signature";
+import { scriptCheckRunner, type CheckResult, type CheckRunner } from "./substrate";
 
 const execFileAsync = promisify(execFile);
 const CHECK = "src/check.mjs";
@@ -58,14 +59,13 @@ async function sha256(path: string): Promise<string> {
   return createHash("sha256").update(await readFile(path)).digest("hex");
 }
 
-async function runCheck(worktree: string, signal: AbortSignal, file: string = CHECK): Promise<{ exitCode: number; stderr: string }> {
+async function runCheck(worktree: string, signal: AbortSignal, runner: CheckRunner): Promise<CheckResult> {
   try {
-    await execFileAsync("node", [file], { cwd: worktree, signal });
-    return { exitCode: 0, stderr: "" };
+    return await runner(worktree, signal);
   } catch (e) {
-    const err = e as { code?: number | string; stderr?: string; name?: string };
+    const err = e as { code?: number | string; name?: string };
     if (signal.aborted || err.name === "AbortError" || err.code === "ABORT_ERR") throw new LeaseLost();
-    return { exitCode: typeof err.code === "number" ? err.code : 1, stderr: err.stderr ?? String(e) };
+    throw e;
   }
 }
 
@@ -139,7 +139,7 @@ export async function runFixAttempt(
 
     const reproductionHash = await sha256(join(worktree, CHECK));
 
-    const before = await runCheck(worktree, work.signal);
+    const before = await runCheck(worktree, work.signal, scriptCheckRunner(CHECK));
     throwIfLost();
     const redBeforeSignature = before.exitCode !== 0 ? parseFailureSignature(before.stderr) : null;
     const redBeforeMatches =
@@ -149,7 +149,7 @@ export async function runFixAttempt(
     throwIfLost();
     if (opts._tamperCheckAfterRepair) await opts._tamperCheckAfterRepair(worktree);
 
-    const after = await runCheck(worktree, work.signal);
+    const after = await runCheck(worktree, work.signal, scriptCheckRunner(CHECK));
     throwIfLost();
     const greenAfter = after.exitCode === 0;
 
@@ -164,7 +164,7 @@ export async function runFixAttempt(
     // in the diff. Catches false-fixes that game the visible check (e.g. hardcodes).
     const holdoutRel = "src/__holdout__.mjs";
     await writeFile(join(worktree, holdoutRel), fixture.holdoutSource);
-    const holdout = await runCheck(worktree, work.signal, holdoutRel);
+    const holdout = await runCheck(worktree, work.signal, scriptCheckRunner(holdoutRel));
     throwIfLost();
     const holdoutPassed = holdout.exitCode === 0;
 

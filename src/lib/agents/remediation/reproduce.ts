@@ -1,8 +1,10 @@
 import type { RegressionFixture } from "./fixtures";
 import { matchSignature, parseFailureSignature, type FailureSignature } from "./signature";
+import { scriptCheckRunner } from "./substrate";
 import { runCheckAtCommit } from "./worktree";
 
 const CHECK = "src/check.mjs";
+const check = scriptCheckRunner(CHECK);
 
 export type ReproductionResult =
   | { accepted: true; reason: "accepted"; signature: FailureSignature }
@@ -23,12 +25,12 @@ export async function reproduce(
 ): Promise<ReproductionResult> {
   const repeats = opts.repeats ?? 3;
 
-  const control = await runCheckAtCommit(fixture.repoRoot, fixture.knownGoodCommit, CHECK);
+  const control = await runCheckAtCommit(fixture.repoRoot, fixture.knownGoodCommit, check);
   if (control.exitCode !== 0) return { accepted: false, reason: "control-failed" };
 
   let signature: FailureSignature | null = null;
   for (let i = 0; i < repeats; i++) {
-    const run = await runCheckAtCommit(fixture.repoRoot, fixture.defectiveCommit, CHECK);
+    const run = await runCheckAtCommit(fixture.repoRoot, fixture.defectiveCommit, check);
     if (run.exitCode === 0) return { accepted: false, reason: "not-reproduced" };
     const observed = parseFailureSignature(run.stderr);
     if (!observed || matchSignature(observed, fixture.incident) !== "match") {
@@ -50,7 +52,7 @@ export type Classification = "FIXING" | "ALREADY_FIXED" | "NEEDS_HUMAN";
  * differently or no longer applying ⇒ needs a human.
  */
 export async function classifyOnLatestMain(fixture: RegressionFixture): Promise<Classification> {
-  const run = await runCheckAtCommit(fixture.repoRoot, fixture.mainCommit, CHECK);
+  const run = await runCheckAtCommit(fixture.repoRoot, fixture.mainCommit, check);
   if (run.exitCode === 0) return "ALREADY_FIXED";
   const observed = parseFailureSignature(run.stderr);
   if (observed && matchSignature(observed, fixture.incident) === "match") return "FIXING";
