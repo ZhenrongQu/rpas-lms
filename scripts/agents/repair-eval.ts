@@ -10,6 +10,7 @@
  * Optional: REPAIR_EVAL_MODEL to override the default (claude-haiku-4-5).
  */
 import "../eval/loadEnv";
+import { randomUUID } from "node:crypto";
 import { prisma } from "../../src/lib/db";
 import { createRepairCases, type RepairCase } from "../../src/lib/agents/remediation/llm/fixtures";
 import { LlmRepairer } from "../../src/lib/agents/remediation/llm/repairer";
@@ -18,9 +19,11 @@ import { driveRepair, driveReproduction } from "../../src/lib/agents/remediation
 
 const WORKER = "repair-eval";
 const LEASE_MS = 180_000;
-// A dedicated namespace so the eval can NEVER upsert onto or delete a real
-// business incident (dedup key is repository+defaultBranch+fingerprint).
-const EVAL_REPO = "__repair_eval__";
+// A dedicated, PER-RUN-UNIQUE namespace: the "__repair_eval__" prefix keeps it off
+// any real business incident (dedup key is repository+defaultBranch+fingerprint),
+// and the uuid keeps two concurrent eval processes from upserting onto — and then
+// deleting — each other's incidents.
+const EVAL_REPO = `__repair_eval__:${randomUUID()}`;
 
 function assertLocalDb(): void {
   let host: string;
