@@ -61,6 +61,10 @@ export type AgentConfig = {
   /** Hard cap on CUMULATIVE tokens (input+output, all steps). maxTokens only bounds
    *  a single call's output; this bounds total spend. Undefined = no cap. */
   maxTotalTokens?: number;
+  /** Hard cap on tool calls EXECUTED per step. maxSteps bounds round-trips, but one
+   *  response can emit many tool_use blocks; this bounds subprocess/fs work per step.
+   *  Excess calls return an unexecuted error result. Undefined = no cap. */
+  maxToolCallsPerStep?: number;
   signal?: AbortSignal;
   thinking?: Anthropic.ThinkingConfigParam;
   onStep?: (step: AgentStepInfo) => void;
@@ -78,22 +82,26 @@ export async function runAgent(config: AgentConfig, input: string): Promise<Agen
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: input }];
   const tools = config.tools ?? [];
   const maxSteps = config.maxSteps ?? DEFAULT_MAX_STEPS;
+  const thinking = config.thinking;
+  const thinkingBudget = thinking?.type === "enabled" ? thinking.budget_tokens : 0;
   let tokens = 0;
 
   for (let step = 0; step < maxSteps; step++) {
     if (config.signal?.aborted) throw new Error("runAgent aborted");
-    // Enforce the cumulative-token cap BEFORE spending on the next call.
-    if (config.maxTotalTokens !== undefined && tokens >= config.maxTotalTokens) {
-      throw new BudgetExhausted("maxTotalTokens", tokens);
+    // The cost ceiling is INCLUSIVE: cumulative usage may reach maxTotalTokens but
+    // not exceed it. Clamp this call's output to whatever budget remains so one
+    // response can't blow past the cap. With extended thinking, max_tokens MUST be
+    // larger than the thinking budget — if the remainder can't fund a legal request,
+    // stop cleanly (BudgetExhausted) instead of sending a doomed request the API
+    // would reject as an opaque transport error. (Input tokens are only known AFTER
+    // the call, so this bounds OUTPUT; the post-call check is the real hard stop.)
+    let maxTokens = config.maxTokens ?? DEFAULT_MAX_TOKENS;
+    if (config.maxTotalTokens !== undefined) {
+      const remaining = config.maxTotalTokens - tokens;
+      const minRequest = thinkingBudget > 0 ? thinkingBudget + 1 : 1;
+      if (remaining < minRequest) throw new BudgetExhausted("maxTotalTokens", tokens);
+      maxTokens = Math.max(minRequest, Math.min(maxTokens, remaining));
     }
-    // Clamp this call's output to whatever total budget remains, so one response
-    // cannot blow far past the ceiling. (Input tokens are only known AFTER the
-    // call, so this is a tight upper bound on the OUTPUT, not a perfect estimate;
-    // the post-call check below is the actual hard stop.)
-    const maxTokens =
-      config.maxTotalTokens !== undefined
-        ? Math.max(1, Math.min(config.maxTokens ?? DEFAULT_MAX_TOKENS, config.maxTotalTokens - tokens))
-        : config.maxTokens ?? DEFAULT_MAX_TOKENS;
 
     const res = await create(
       {
@@ -125,10 +133,11 @@ export async function runAgent(config: AgentConfig, input: string): Promise<Agen
       stopReason: res.stop_reason,
     });
 
-    // Post-call HARD stop: the actual usage may have overshot the ceiling (input
-    // tokens were unknown pre-call). Enforce it here too — even on a final
-    // end_turn, an over-budget answer is not trusted, so throw rather than return.
-    if (config.maxTotalTokens !== undefined && tokens >= config.maxTotalTokens) {
+    // Post-call HARD stop: actual usage may have overshot (input tokens were
+    // unknown pre-call). The cap is inclusive, so reject only when usage strictly
+    // EXCEEDS it — an answer landing exactly at the cap is kept. Fires even on a
+    // final end_turn: an over-budget answer is not trusted, so throw not return.
+    if (config.maxTotalTokens !== undefined && tokens > config.maxTotalTokens) {
       throw new BudgetExhausted("maxTotalTokens", tokens);
     }
 
@@ -136,12 +145,20 @@ export async function runAgent(config: AgentConfig, input: string): Promise<Agen
       return { text, tokens };
     }
 
-    // Run each tool call and feed results back.
+    // Run each tool call and feed results back — but EXECUTE at most
+    // maxToolCallsPerStep of them. maxSteps bounds round-trips; without this a
+    // single response with N tool_use blocks could spawn N subprocesses / fs ops,
+    // escaping that budget. Excess calls get an unexecuted error result (every
+    // tool_use still needs a matching tool_result to keep the request well-formed).
+    const toolCap = config.maxToolCallsPerStep ?? Infinity;
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
-    for (const block of toolUses) {
-      const out = config.runTool
-        ? await config.runTool(block.name, block.input)
-        : "(no tool runner configured)";
+    for (const [i, block] of toolUses.entries()) {
+      const out =
+        i >= toolCap
+          ? `Error: per-step tool-call budget exceeded (max ${toolCap}); this call was NOT executed`
+          : config.runTool
+            ? await config.runTool(block.name, block.input)
+            : "(no tool runner configured)";
       toolResults.push({ type: "tool_result", tool_use_id: block.id, content: out });
     }
     messages.push({ role: "user", content: toolResults });

@@ -22,6 +22,7 @@ const MAX_NAME_BYTES = 64; // tool name (defensive; our schema names are short)
 const MAX_PATH_BYTES = 256; // tool path
 const MAX_TOOLS_PER_STEP = 16; // tool calls recorded per step
 const MAX_TRACE_STEPS = 24; // steps recorded overall (raw `steps` still holds all)
+const MAX_TOOL_CALLS_PER_STEP = 8; // tool calls EXECUTED per step (bounds subprocess/fs work)
 
 function reqString(v: unknown, field: string): string {
   if (typeof v !== "string" || v.length === 0) throw new Error(`"${field}" must be a non-empty string`);
@@ -100,6 +101,7 @@ export class LlmRepairer implements Repairer {
       maxSteps: this.opts.maxSteps ?? DEFAULT_MAX_STEPS,
       maxTokens: this.opts.maxTokens ?? DEFAULT_MAX_TOKENS,
       maxTotalTokens: this.opts.maxTotalTokens ?? DEFAULT_MAX_TOTAL_TOKENS,
+      maxToolCallsPerStep: MAX_TOOL_CALLS_PER_STEP,
       thinking: this.opts.thinking,
       signal: ctx.signal,
       createMessage: this.opts.createMessage,

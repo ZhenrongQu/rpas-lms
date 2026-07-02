@@ -126,4 +126,32 @@ describe("runAgent", () => {
     expect(calls[0]!.max_tokens).toBe(10); // first call clamped to the full budget
     expect(calls[1]!.max_tokens).toBe(4); // second call clamped to what remains (10 - 6)
   });
+
+  it("accepts an answer that lands exactly at the token cap (inclusive ceiling)", async () => {
+    const { create } = scripted([fakeMsg([textBlock("done")], "end_turn", 4, 6)]); // exactly 10
+    const res = await runAgent({ system: "s", createMessage: create, maxTotalTokens: 10 }, "x");
+    expect(res).toEqual({ text: "done", tokens: 10 }); // at the cap, not over → kept
+  });
+
+  it("executes at most maxToolCallsPerStep tools; excess return an unexecuted error", async () => {
+    const many = Array.from({ length: 50 }, (_, i) => toolBlock(`t${i}`, "run_check", {}));
+    const { create } = scripted([fakeMsg(many, "tool_use"), fakeMsg([textBlock("done")], "end_turn")]);
+    let executed = 0;
+    await runAgent(
+      { system: "s", tools: [noopTool("run_check")], runTool: async () => (executed++, "x"), createMessage: create, maxToolCallsPerStep: 4 },
+      "go",
+    );
+    expect(executed).toBe(4); // 50 tool_use blocks, only 4 subprocesses spawned
+  });
+
+  it("stops cleanly (BudgetExhausted) rather than send a request too small for the thinking budget", async () => {
+    let calls = 0;
+    const create: MessageCreator = async () => (calls++, fakeMsg([textBlock("x")], "end_turn"));
+    const err = await runAgent(
+      { system: "s", createMessage: create, thinking: { type: "enabled", budget_tokens: 1024 }, maxTotalTokens: 500 },
+      "x",
+    ).catch((e) => e);
+    expect(err).toBeInstanceOf(BudgetExhausted);
+    expect(calls).toBe(0); // never sent the doomed request the API would reject
+  });
 });
