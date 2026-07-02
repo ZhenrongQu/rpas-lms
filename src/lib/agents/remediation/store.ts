@@ -76,6 +76,24 @@ export async function heartbeatRun(runId: string, workerId: string, leaseMs: num
   return updated.count === 1;
 }
 
+/** Freeze the repair/verify policy on the run the first time it is needed, so a
+ *  later resume verifies under identical rules instead of whatever the caller
+ *  passes. First-writer-wins and lease-guarded; a no-op once frozen. */
+export async function freezeRunPolicy<T>(
+  runId: string,
+  workerId: string,
+  existing: Prisma.JsonValue | null,
+  fallback: T,
+): Promise<T> {
+  if (existing != null) return existing as T;
+  const updated = await prisma.remediationRun.updateMany({
+    where: { id: runId, leaseOwner: workerId, leaseExpiresAt: { gt: new Date() } },
+    data: { policy: fallback as Prisma.InputJsonValue },
+  });
+  if (updated.count !== 1) throw new Error(`run ${runId} lost lease or CAS race`);
+  return fallback;
+}
+
 export async function transitionRun(
   runId: string,
   workerId: string,

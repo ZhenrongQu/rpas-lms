@@ -96,9 +96,33 @@ describe("driveRepair", () => {
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
     expect(run.phase).toBe("PROPOSED");
     expect(run.evidence).toBeTruthy();
+    expect(run.policy).toMatchObject({ repair: { pinnedPaths: ["src/check.mjs"] } }); // policy frozen on the run
     const versions = await prisma.externalActionVersion.findMany();
     expect(versions).toHaveLength(1);
     expect(versions[0]!.patch).toContain("score.mjs");
+  });
+
+  it("verifies against the policy frozen at repair time, not the caller's later args", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: "repair-frozen-policy", payload: {} });
+    const run = await createRemediationRun(incident.id);
+    await claimRun(run.id, "worker-a", 60_000);
+    // parked at VERIFYING with a LENIENT frozen policy + small evidence
+    await prisma.remediationRun.update({
+      where: { id: run.id },
+      data: {
+        phase: "VERIFYING",
+        evidence: JSON.stringify(EVIDENCE),
+        policy: {
+          verify: { allowedPaths: ["src/score.mjs"], maxFiles: 5, maxDiffLines: 200, maxPatchBytes: 1000 },
+          repair: { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"] },
+        },
+      },
+    });
+    // the caller passes a STRICTER arg (maxPatchBytes: 1) that WOULD reject if used
+    const outcome = await driveRepair(run.id, "worker-a", fixture, fixtureRepairerFor(fixture), { maxPatchBytes: 1 });
+    expect(outcome).toBe("PROPOSED"); // frozen lenient policy won, the stricter arg was ignored
   });
 
   it("resumes from PROPOSING after a crash without duplicating the proposal", async () => {
@@ -149,13 +173,14 @@ describe("driveRepair", () => {
     expect(await prisma.externalActionVersion.count()).toBe(0);
   });
 
-  it("a non-lease-owner cannot commit the repair transition", async () => {
+  it("rejects a non-lease-owner BEFORE running any repair work", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const runId = await fixingRun("repair-owner");
-    await expect(driveRepair(runId, "worker-b", fixture, fixtureRepairerFor(fixture))).rejects.toThrow(
-      "lost lease or CAS race",
-    );
+    let called = false;
+    const spy: Repairer = { async repair() { called = true; } };
+    await expect(driveRepair(runId, "worker-b", fixture, spy)).rejects.toThrow("lost lease or CAS race");
+    expect(called).toBe(false); // fast-failed before the expensive fix attempt
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
     expect(run.phase).toBe("FIXING");
   });

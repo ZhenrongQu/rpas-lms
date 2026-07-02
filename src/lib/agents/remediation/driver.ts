@@ -4,8 +4,11 @@ import { runFixAttempt, type RepairEvidence } from "./fixAttempt";
 import { publishProposal } from "./publish";
 import { classifyOnLatestMain, reproduce } from "./reproduce";
 import type { Repairer, RepairPolicy } from "./repair";
-import { heartbeatRun, transitionRun, transitionRunWithEvidence } from "./store";
+import { freezeRunPolicy, heartbeatRun, transitionRun, transitionRunWithEvidence } from "./store";
 import { verify, type VerifyPolicy } from "./verify";
+
+/** The repair+verify rules frozen per run so a resume can never use different ones. */
+type FrozenPolicy = { verify: VerifyPolicy; repair: RepairPolicy };
 
 export type ReproductionOutcome = "FIXING" | "ALREADY_FIXED" | "NOT_REPRODUCIBLE" | "NEEDS_HUMAN";
 
@@ -61,21 +64,33 @@ export async function driveRepair(
   opts: DriveRepairOptions = {},
 ): Promise<RepairOutcome> {
   const leaseMs = opts.leaseMs ?? 60_000;
-  const verifyPolicy: VerifyPolicy = {
-    allowedPaths: [fixture.sourceRelPath],
-    maxFiles: 5,
-    maxDiffLines: 200,
-    maxPatchBytes: opts.maxPatchBytes ?? 1_000_000,
+  // Policy derived from args only the FIRST time; then frozen on the run so a
+  // resume verifies under identical rules regardless of later caller args.
+  const argsPolicy: FrozenPolicy = {
+    verify: {
+      allowedPaths: [fixture.sourceRelPath],
+      maxFiles: 5,
+      maxDiffLines: 200,
+      maxPatchBytes: opts.maxPatchBytes ?? 1_000_000,
+    },
+    repair: { allowedPaths: [fixture.sourceRelPath], pinnedPaths: ["src/check.mjs"] },
   };
-  const repairPolicy: RepairPolicy = { allowedPaths: [fixture.sourceRelPath], pinnedPaths: ["src/check.mjs"] };
 
   for (;;) {
+    // Fail fast if we no longer own the lease — BEFORE any expensive worktree work
+    // (a wrong worker must not run the whole fix and only lose at commit time).
+    // This also renews the lease across the fast VERIFYING/PROPOSING phases.
+    if (!(await heartbeatRun(runId, workerId, leaseMs))) {
+      throw new Error(`run ${runId} lost lease or CAS race`);
+    }
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
+    const policy = await freezeRunPolicy(runId, workerId, run.policy, argsPolicy);
+
     switch (run.phase) {
       case "FIXING": {
         const evidence = await runFixAttempt(fixture, repairer, {
-          policy: repairPolicy,
-          maxPatchBytes: verifyPolicy.maxPatchBytes,
+          policy: policy.repair,
+          maxPatchBytes: policy.verify.maxPatchBytes,
           heartbeat: {
             intervalMs: opts.heartbeatMs ?? 5_000,
             beat: opts._beat ?? (() => heartbeatRun(runId, workerId, leaseMs)),
@@ -88,7 +103,7 @@ export async function driveRepair(
       case "VERIFYING": {
         const evidence = JSON.parse(run.evidence ?? "null") as RepairEvidence | null;
         if (!evidence) throw new Error(`run ${runId} at VERIFYING has no evidence`);
-        const verdict = verify(evidence, verifyPolicy);
+        const verdict = verify(evidence, policy.verify);
         if (!verdict.ok) {
           await transitionRun(runId, workerId, "VERIFYING", "NEEDS_HUMAN");
           return "NEEDS_HUMAN";
