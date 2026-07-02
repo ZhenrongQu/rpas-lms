@@ -486,13 +486,16 @@ model RemediationRun {
   id             String    @id @default(cuid())
   incidentId     String
   incident       Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  cycle          Int       @default(1)
   phase          String    @default("RECEIVED")
   leaseOwner     String?
   leaseExpiresAt DateTime?
   escalatedAt    DateTime?
+  evidence       String? // persisted RepairEvidence JSON (resume buffer for verify/publish)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  @@unique([incidentId, cycle])
   @@index([incidentId])
   @@index([phase, leaseExpiresAt])
 }

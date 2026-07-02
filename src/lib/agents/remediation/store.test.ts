@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "../../db";
-import { claimRun, heartbeatRun, ingestIncident, transitionRun } from "./store";
+import { claimRun, createRemediationRun, heartbeatRun, ingestIncident, transitionRun, transitionRunWithEvidence } from "./store";
 
 afterEach(async () => {
   await prisma.remediationRun.deleteMany();
@@ -93,5 +93,37 @@ describe("remediation store", () => {
     expect(stored.phase).toBe("CANCELLED");
     expect(stored.leaseOwner).toBeNull();
     expect(stored.leaseExpiresAt).toBeNull();
+  });
+
+  it("allocates sequential cycles for one incident", async () => {
+    const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: "cycle-seq", payload: {} });
+    const a = await createRemediationRun(incident.id);
+    const b = await createRemediationRun(incident.id);
+    expect(a.cycle).toBe(1);
+    expect(b.cycle).toBe(2);
+  });
+
+  it("allocates distinct cycles under concurrent creates", async () => {
+    const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: "cycle-conc", payload: {} });
+    const runs = await Promise.all(Array.from({ length: 4 }, () => createRemediationRun(incident.id)));
+    expect(new Set(runs.map((r) => r.cycle))).toEqual(new Set([1, 2, 3, 4]));
+  });
+
+  it("writes phase and evidence atomically, only for the lease owner", async () => {
+    const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: "evidence-cas", payload: {} });
+    const run = await prisma.remediationRun.create({ data: { incidentId: incident.id, phase: "FIXING", cycle: 1 } });
+    await claimRun(run.id, "worker-a", 60_000);
+
+    await expect(
+      transitionRunWithEvidence(run.id, "worker-b", "FIXING", "VERIFYING", '{"patch":"x"}'),
+    ).rejects.toThrow("lost lease or CAS race");
+    let stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: run.id } });
+    expect(stored.phase).toBe("FIXING");
+    expect(stored.evidence).toBeNull();
+
+    await transitionRunWithEvidence(run.id, "worker-a", "FIXING", "VERIFYING", '{"patch":"x"}');
+    stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: run.id } });
+    expect(stored.phase).toBe("VERIFYING");
+    expect(JSON.parse(stored.evidence!)).toEqual({ patch: "x" });
   });
 });
