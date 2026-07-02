@@ -40,6 +40,16 @@ const EVIDENCE: RepairEvidence = {
   patchTooLarge: false,
 };
 
+function frozenTarget(fixture: RegressionFixture) {
+  return {
+    fingerprint: fixture.incident.fingerprint,
+    mainCommit: fixture.mainCommit,
+    defectiveCommit: fixture.defectiveCommit,
+    knownGoodCommit: fixture.knownGoodCommit,
+    sourceRelPath: fixture.sourceRelPath,
+  };
+}
+
 async function classifiedRun(fingerprint: string): Promise<string> {
   const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint, payload: {} });
   const run = await prisma.remediationRun.create({ data: { incidentId: incident.id } });
@@ -117,12 +127,52 @@ describe("driveRepair", () => {
         policy: {
           verify: { allowedPaths: ["src/score.mjs"], maxFiles: 5, maxDiffLines: 200, maxPatchBytes: 1000 },
           repair: { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"] },
+          target: frozenTarget(fixture),
         },
       },
     });
     // the caller passes a STRICTER arg (maxPatchBytes: 1) that WOULD reject if used
     const outcome = await driveRepair(run.id, "worker-a", fixture, fixtureRepairerFor(fixture), { maxPatchBytes: 1 });
     expect(outcome).toBe("PROPOSED"); // frozen lenient policy won, the stricter arg was ignored
+  });
+
+  it("escalates to NEEDS_HUMAN when a resume is handed a different target", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: "repair-target-drift", payload: {} });
+    const run = await createRemediationRun(incident.id);
+    await claimRun(run.id, "worker-a", 60_000);
+    // frozen against a DIFFERENT commit than the fixture we will resume with
+    await prisma.remediationRun.update({
+      where: { id: run.id },
+      data: {
+        phase: "VERIFYING",
+        evidence: JSON.stringify(EVIDENCE),
+        policy: {
+          verify: { allowedPaths: ["src/score.mjs"], maxFiles: 5, maxDiffLines: 200, maxPatchBytes: 1_000_000 },
+          repair: { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"] },
+          target: { ...frozenTarget(fixture), mainCommit: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef" },
+        },
+      },
+    });
+    // resume: the fixture's real target no longer matches the frozen one
+    const outcome = await driveRepair(run.id, "worker-a", fixture, fixtureRepairerFor(fixture));
+    expect(outcome).toBe("NEEDS_HUMAN");
+    const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: run.id } });
+    expect(stored.phase).toBe("NEEDS_HUMAN");
+    expect(await prisma.externalActionVersion.count()).toBe(0); // never verified/published a wrong repair
+  });
+
+  it("refuses an invalid starting phase without writing any policy", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: "repair-bad-phase", payload: {} });
+    const run = await createRemediationRun(incident.id);
+    await claimRun(run.id, "worker-a", 60_000);
+    await prisma.remediationRun.update({ where: { id: run.id }, data: { phase: "CLASSIFIED" } });
+    await expect(driveRepair(run.id, "worker-a", fixture, fixtureRepairerFor(fixture))).rejects.toThrow(/cannot run from phase/);
+    const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: run.id } });
+    expect(stored.policy).toBeNull(); // phase checked before the freeze
   });
 
   it("resumes from PROPOSING after a crash without duplicating the proposal", async () => {

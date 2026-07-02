@@ -76,9 +76,11 @@ export async function heartbeatRun(runId: string, workerId: string, leaseMs: num
   return updated.count === 1;
 }
 
-/** Freeze the repair/verify policy on the run the first time it is needed, so a
- *  later resume verifies under identical rules instead of whatever the caller
- *  passes. First-writer-wins and lease-guarded; a no-op once frozen. */
+/** Freeze the repair/verify spec on the run the first time it is needed, so a
+ *  later resume runs under identical rules/target instead of whatever the caller
+ *  passes. TRULY first-writer-wins: the `policy IS NULL` predicate is part of the
+ *  atomic UPDATE (like the GREATEST pointer), so two racing callers can't both
+ *  succeed and clobber each other — the loser reads back the winner's value. */
 export async function freezeRunPolicy<T>(
   runId: string,
   workerId: string,
@@ -86,12 +88,19 @@ export async function freezeRunPolicy<T>(
   fallback: T,
 ): Promise<T> {
   if (existing != null) return existing as T;
-  const updated = await prisma.remediationRun.updateMany({
-    where: { id: runId, leaseOwner: workerId, leaseExpiresAt: { gt: new Date() } },
-    data: { policy: fallback as Prisma.InputJsonValue },
-  });
-  if (updated.count !== 1) throw new Error(`run ${runId} lost lease or CAS race`);
-  return fallback;
+  const affected = await prisma.$executeRaw`
+    UPDATE "RemediationRun"
+    SET "policy" = ${JSON.stringify(fallback)}::jsonb
+    WHERE "id" = ${runId}
+      AND "leaseOwner" = ${workerId}
+      AND "leaseExpiresAt" > now()
+      AND "policy" IS NULL`;
+  if (affected === 1) return fallback;
+  // Lost the race or already frozen — return whoever won. If it is still null we
+  // simply do not hold the lease.
+  const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
+  if (run.policy != null) return run.policy as T;
+  throw new Error(`run ${runId} lost lease or CAS race`);
 }
 
 export async function transitionRun(

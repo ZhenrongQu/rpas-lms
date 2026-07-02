@@ -6,9 +6,44 @@ import { classifyOnLatestMain, reproduce } from "./reproduce";
 import type { Repairer, RepairPolicy } from "./repair";
 import { freezeRunPolicy, heartbeatRun, transitionRun, transitionRunWithEvidence } from "./store";
 import { verify, type VerifyPolicy } from "./verify";
+import type { RemediationPhase } from "./types";
 
-/** The repair+verify rules frozen per run so a resume can never use different ones. */
-type FrozenPolicy = { verify: VerifyPolicy; repair: RepairPolicy };
+/** The caller-supplied identity of the code state being repaired. Frozen on the
+ *  run so a resume cannot be pointed at a DIFFERENT fixture/commit than the one
+ *  that was triaged and reproduced. */
+type RepairTarget = {
+  fingerprint: string;
+  mainCommit: string;
+  defectiveCommit: string;
+  knownGoodCommit: string;
+  sourceRelPath: string;
+};
+
+/** The repair/verify rules + target frozen per run so a resume can never use
+ *  different ones. */
+type FrozenSpec = { verify: VerifyPolicy; repair: RepairPolicy; target: RepairTarget };
+
+const REPAIRABLE_PHASES = new Set(["FIXING", "VERIFYING", "PROPOSING"]);
+
+function targetOf(fixture: RegressionFixture): RepairTarget {
+  return {
+    fingerprint: fixture.incident.fingerprint,
+    mainCommit: fixture.mainCommit,
+    defectiveCommit: fixture.defectiveCommit,
+    knownGoodCommit: fixture.knownGoodCommit,
+    sourceRelPath: fixture.sourceRelPath,
+  };
+}
+
+function sameTarget(a: RepairTarget, b: RepairTarget): boolean {
+  return (
+    a.fingerprint === b.fingerprint &&
+    a.mainCommit === b.mainCommit &&
+    a.defectiveCommit === b.defectiveCommit &&
+    a.knownGoodCommit === b.knownGoodCommit &&
+    a.sourceRelPath === b.sourceRelPath
+  );
+}
 
 export type ReproductionOutcome = "FIXING" | "ALREADY_FIXED" | "NOT_REPRODUCIBLE" | "NEEDS_HUMAN";
 
@@ -64,9 +99,10 @@ export async function driveRepair(
   opts: DriveRepairOptions = {},
 ): Promise<RepairOutcome> {
   const leaseMs = opts.leaseMs ?? 60_000;
-  // Policy derived from args only the FIRST time; then frozen on the run so a
-  // resume verifies under identical rules regardless of later caller args.
-  const argsPolicy: FrozenPolicy = {
+  const target = targetOf(fixture);
+  // Spec derived from args only the FIRST time; then frozen on the run so a resume
+  // runs under identical rules AND against the same target regardless of args.
+  const argsSpec: FrozenSpec = {
     verify: {
       allowedPaths: [fixture.sourceRelPath],
       maxFiles: 5,
@@ -74,6 +110,7 @@ export async function driveRepair(
       maxPatchBytes: opts.maxPatchBytes ?? 1_000_000,
     },
     repair: { allowedPaths: [fixture.sourceRelPath], pinnedPaths: ["src/check.mjs"] },
+    target,
   };
 
   for (;;) {
@@ -84,7 +121,20 @@ export async function driveRepair(
       throw new Error(`run ${runId} lost lease or CAS race`);
     }
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
-    const policy = await freezeRunPolicy(runId, workerId, run.policy, argsPolicy);
+    // Validate the phase BEFORE freezing, so an accidental call from a non-repair
+    // phase cannot persist a policy and pollute a later real repair.
+    if (!REPAIRABLE_PHASES.has(run.phase)) {
+      throw new Error(`driveRepair cannot run from phase ${run.phase}`);
+    }
+    const spec = await freezeRunPolicy(runId, workerId, run.policy, argsSpec);
+    // The caller must hand us the SAME target that was frozen; a mismatch means
+    // this resume is pointed at a different fixture/commit than was reproduced —
+    // escalate rather than verify a self-consistent but wrong repair.
+    if (!sameTarget(target, spec.target)) {
+      await transitionRun(runId, workerId, run.phase as RemediationPhase, "NEEDS_HUMAN");
+      return "NEEDS_HUMAN";
+    }
+    const policy = spec;
 
     switch (run.phase) {
       case "FIXING": {

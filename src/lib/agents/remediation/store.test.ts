@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "../../db";
-import { claimRun, createRemediationRun, heartbeatRun, ingestIncident, transitionRun, transitionRunWithEvidence } from "./store";
+import { claimRun, createRemediationRun, freezeRunPolicy, heartbeatRun, ingestIncident, transitionRun, transitionRunWithEvidence } from "./store";
 
 afterEach(async () => {
   await prisma.remediationRun.deleteMany();
@@ -107,6 +107,30 @@ describe("remediation store", () => {
     const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: "cycle-conc", payload: {} });
     const runs = await Promise.all(Array.from({ length: 4 }, () => createRemediationRun(incident.id)));
     expect(new Set(runs.map((r) => r.cycle))).toEqual(new Set([1, 2, 3, 4]));
+  });
+
+  it("freezeRunPolicy is first-writer-wins: a stale null read never clobbers the persisted value", async () => {
+    const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: "freeze-race", payload: {} });
+    const run = await prisma.remediationRun.create({ data: { incidentId: incident.id, phase: "FIXING", cycle: 1 } });
+    await claimRun(run.id, "worker-a", 60_000);
+    // winner already persisted policy A
+    await prisma.remediationRun.update({ where: { id: run.id }, data: { policy: { tag: "A" } } });
+
+    // a caller with a STALE null snapshot tries to write B — the atomic `policy IS
+    // NULL` predicate blocks it and it reads back the winner instead.
+    const got = await freezeRunPolicy(run.id, "worker-a", null, { tag: "B" });
+    expect(got).toEqual({ tag: "A" });
+    const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: run.id } });
+    expect(stored.policy).toEqual({ tag: "A" }); // B never overwrote A
+  });
+
+  it("freezeRunPolicy throws when the caller lost the lease and nothing is frozen", async () => {
+    const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: "freeze-lease", payload: {} });
+    const run = await prisma.remediationRun.create({ data: { incidentId: incident.id, phase: "FIXING", cycle: 1 } });
+    await claimRun(run.id, "worker-a", 60_000);
+    await expect(freezeRunPolicy(run.id, "worker-b", null, { tag: "B" })).rejects.toThrow("lost lease or CAS race");
+    const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: run.id } });
+    expect(stored.policy).toBeNull();
   });
 
   it("writes phase and evidence atomically, only for the lease owner", async () => {
