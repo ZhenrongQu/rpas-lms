@@ -86,11 +86,19 @@ export async function runAgent(config: AgentConfig, input: string): Promise<Agen
     if (config.maxTotalTokens !== undefined && tokens >= config.maxTotalTokens) {
       throw new BudgetExhausted("maxTotalTokens", tokens);
     }
+    // Clamp this call's output to whatever total budget remains, so one response
+    // cannot blow far past the ceiling. (Input tokens are only known AFTER the
+    // call, so this is a tight upper bound on the OUTPUT, not a perfect estimate;
+    // the post-call check below is the actual hard stop.)
+    const maxTokens =
+      config.maxTotalTokens !== undefined
+        ? Math.max(1, Math.min(config.maxTokens ?? DEFAULT_MAX_TOKENS, config.maxTotalTokens - tokens))
+        : config.maxTokens ?? DEFAULT_MAX_TOKENS;
 
     const res = await create(
       {
         model: config.model ?? DEFAULT_MODEL,
-        max_tokens: config.maxTokens ?? DEFAULT_MAX_TOKENS,
+        max_tokens: maxTokens,
         system: config.system,
         tools: tools.length ? tools : undefined,
         thinking: config.thinking,
@@ -116,6 +124,13 @@ export async function runAgent(config: AgentConfig, input: string): Promise<Agen
       tokens: stepTokens,
       stopReason: res.stop_reason,
     });
+
+    // Post-call HARD stop: the actual usage may have overshot the ceiling (input
+    // tokens were unknown pre-call). Enforce it here too — even on a final
+    // end_turn, an over-budget answer is not trusted, so throw rather than return.
+    if (config.maxTotalTokens !== undefined && tokens >= config.maxTotalTokens) {
+      throw new BudgetExhausted("maxTotalTokens", tokens);
+    }
 
     if (res.stop_reason !== "tool_use") {
       return { text, tokens };

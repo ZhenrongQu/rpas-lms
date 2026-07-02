@@ -104,4 +104,26 @@ describe("runAgent", () => {
     expect(err).toBeInstanceOf(BudgetExhausted);
     expect((err as BudgetExhausted).reason).toBe("maxTotalTokens");
   });
+
+  it("enforces the cap post-call: an over-budget FINAL end_turn still throws (not returned)", async () => {
+    const { create } = scripted([fakeMsg([textBlock("huge answer")], "end_turn", 5, 30)]); // 35 tokens in ONE call
+    const err = await runAgent({ system: "s", createMessage: create, maxTotalTokens: 10 }, "x").catch((e) => e);
+    expect(err).toBeInstanceOf(BudgetExhausted);
+    expect((err as BudgetExhausted).reason).toBe("maxTotalTokens");
+    expect((err as BudgetExhausted).tokens).toBe(35);
+  });
+
+  it("clamps a call's max_tokens to the remaining total budget", async () => {
+    const { create, calls } = scripted([
+      fakeMsg([toolBlock("t", "noop", {})], "tool_use", 3, 3), // 6 tokens → 4 of 10 remain
+      fakeMsg([textBlock("done")], "end_turn", 1, 1),
+    ]);
+    const res = await runAgent(
+      { system: "s", tools: [noopTool("noop")], runTool: async () => "x", createMessage: create, maxTotalTokens: 10, maxTokens: 4096 },
+      "x",
+    );
+    expect(res.tokens).toBe(8);
+    expect(calls[0]!.max_tokens).toBe(10); // first call clamped to the full budget
+    expect(calls[1]!.max_tokens).toBe(4); // second call clamped to what remains (10 - 6)
+  });
 });
