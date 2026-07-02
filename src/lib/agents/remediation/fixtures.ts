@@ -15,6 +15,9 @@ export type RegressionFixture = {
   /** The tip a fix worktree would check out ("latest main"). Equals the defective
    *  commit for `reproducible`; a later fix/refactor commit for the other variants. */
   mainCommit: string;
+  /** The known-correct source + its path, for the deterministic FixtureRepairer. */
+  fixedSource: string;
+  sourceRelPath: string;
   incident: {
     fingerprint: string;
     errorType: string;
@@ -102,6 +105,8 @@ export async function createRegressionFixture(
       knownGoodCommit,
       defectiveCommit,
       mainCommit,
+      fixedSource: GOOD_SOURCE,
+      sourceRelPath: "src/score.mjs",
       incident: {
         fingerprint: "TypeError:score:score.mjs",
         errorType: "TypeError",
