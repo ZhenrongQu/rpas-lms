@@ -478,6 +478,7 @@ model Incident {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   runs            RemediationRun[]
+  externalActions ExternalAction[]
 
   @@unique([repository, defaultBranch, fingerprint])
 }
@@ -498,4 +499,39 @@ model RemediationRun {
   @@unique([incidentId, cycle])
   @@index([incidentId])
   @@index([phase, leaseExpiresAt])
+}
+
+// A remediation proposal (mock Draft PR). Stable identity per (incident, kind);
+// each verified cycle is an append-only version, never rewritten. currentVersion
+// is advanced with an atomic GREATEST so concurrent cycles stay monotonic.
+model ExternalAction {
+  id             String                  @id @default(cuid())
+  kind           String // "draft_pr"
+  incidentId     String
+  incident       Incident                @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  repository     String
+  defaultBranch  String
+  fingerprint    String
+  status         String                  @default("open")
+  currentVersion Int                     @default(0)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  versions       ExternalActionVersion[]
+
+  @@unique([incidentId, kind])
+}
+
+model ExternalActionVersion {
+  id        String         @id @default(cuid())
+  actionId  String
+  action    ExternalAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  cycle     Int
+  version   Int
+  body      String
+  patch     String
+  evidence  String
+  createdAt DateTime       @default(now())
+
+  @@unique([actionId, version])
+  @@unique([actionId, cycle])
 }
