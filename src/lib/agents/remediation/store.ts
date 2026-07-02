@@ -76,18 +76,14 @@ export async function heartbeatRun(runId: string, workerId: string, leaseMs: num
   return updated.count === 1;
 }
 
-/** Freeze the repair/verify spec on the run the first time it is needed, so a
- *  later resume runs under identical rules/target instead of whatever the caller
- *  passes. TRULY first-writer-wins: the `policy IS NULL` predicate is part of the
- *  atomic UPDATE (like the GREATEST pointer), so two racing callers can't both
- *  succeed and clobber each other — the loser reads back the winner's value. */
-export async function freezeRunPolicy<T>(
-  runId: string,
-  workerId: string,
-  existing: Prisma.JsonValue | null,
-  fallback: T,
-): Promise<T> {
-  if (existing != null) return existing as T;
+/** Freeze the repair/verify policy on the run the first time it is needed, so a
+ *  later resume runs under identical rules. TRULY first-writer-wins: the
+ *  `policy IS NULL` predicate is part of the atomic UPDATE (like the GREATEST
+ *  pointer), so two racing callers can't both succeed and clobber each other.
+ *  The contract is "returns ONLY while you still hold the lease": the loser reads
+ *  back the winner's value but must re-confirm the lease first, so a caller whose
+ *  lease expired stops immediately instead of proceeding on a stale read. */
+export async function freezeRunPolicy<T>(runId: string, workerId: string, fallback: T): Promise<T> {
   const affected = await prisma.$executeRaw`
     UPDATE "RemediationRun"
     SET "policy" = ${JSON.stringify(fallback)}::jsonb
@@ -96,9 +92,12 @@ export async function freezeRunPolicy<T>(
       AND "leaseExpiresAt" > now()
       AND "policy" IS NULL`;
   if (affected === 1) return fallback;
-  // Lost the race or already frozen — return whoever won. If it is still null we
-  // simply do not hold the lease.
+  // Already frozen OR we don't hold the lease. Re-confirm the lease before trusting
+  // the winner's value — a stale-lease loser must NOT keep going.
   const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
+  if (run.leaseOwner !== workerId || !run.leaseExpiresAt || run.leaseExpiresAt <= new Date()) {
+    throw new Error(`run ${runId} lost lease or CAS race`);
+  }
   if (run.policy != null) return run.policy as T;
   throw new Error(`run ${runId} lost lease or CAS race`);
 }
@@ -136,6 +135,26 @@ export async function transitionRunWithEvidence(
     data: clearLease
       ? { phase: next, evidence, leaseOwner: null, leaseExpiresAt: null }
       : { phase: next, evidence },
+  });
+  if (updated.count !== 1) throw new Error(`run ${runId} lost lease or CAS race`);
+}
+
+/** Like transitionRun but writes the immutable `target` in the SAME lease/CAS
+ *  updateMany. Used at REPRODUCING→FIXING to anchor the target to the code state
+ *  that was actually reproduced — repair can only read/compare it, never define it. */
+export async function transitionRunWithTarget(
+  runId: string,
+  workerId: string,
+  expected: RemediationPhase,
+  next: RemediationPhase,
+  target: unknown,
+): Promise<void> {
+  assertTransition(expected, next);
+  const clearLease = TERMINAL.includes(next);
+  const data = { phase: next, target: target as Prisma.InputJsonValue };
+  const updated = await prisma.remediationRun.updateMany({
+    where: { id: runId, phase: expected, leaseOwner: workerId, leaseExpiresAt: { gt: new Date() } },
+    data: clearLease ? { ...data, leaseOwner: null, leaseExpiresAt: null } : data,
   });
   if (updated.count !== 1) throw new Error(`run ${runId} lost lease or CAS race`);
 }

@@ -17,11 +17,13 @@ afterEach(async () => {
   await prisma.incident.deleteMany();
 });
 
-async function fixingRun(fingerprint: string): Promise<string> {
+// Fabricate the post-reproduction state: a claimed run at FIXING with the target
+// already frozen (as driveReproduction would have done).
+async function fixingRun(fingerprint: string, fixture: RegressionFixture): Promise<string> {
   const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint, payload: {} });
   const run = await createRemediationRun(incident.id);
   await claimRun(run.id, "worker-a", 60_000);
-  await prisma.remediationRun.update({ where: { id: run.id }, data: { phase: "FIXING" } });
+  await prisma.remediationRun.update({ where: { id: run.id }, data: { phase: "FIXING", target: frozenTarget(fixture) } });
   return run.id;
 }
 
@@ -40,8 +42,11 @@ const EVIDENCE: RepairEvidence = {
   patchTooLarge: false,
 };
 
+// Mirror driver.buildTarget for a run whose incident is repository "rpas-lms" / "main".
 function frozenTarget(fixture: RegressionFixture) {
   return {
+    repository: "rpas-lms",
+    defaultBranch: "main",
     fingerprint: fixture.incident.fingerprint,
     mainCommit: fixture.mainCommit,
     defectiveCommit: fixture.defectiveCommit,
@@ -94,13 +99,31 @@ describe("driveReproduction", () => {
       "lost lease or CAS race",
     );
   });
+
+  it("freezes the reproduced target atomically when advancing to FIXING", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const runId = await classifiedRun("drive-target");
+    expect(await driveReproduction(runId, "worker-a", fixture, { repeats: 2 })).toBe("FIXING");
+    const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(run.phase).toBe("FIXING");
+    // the target is anchored at reproduction, not at first repair
+    expect(run.target).toMatchObject({
+      repository: "rpas-lms",
+      defaultBranch: "main",
+      mainCommit: fixture.mainCommit,
+      defectiveCommit: fixture.defectiveCommit,
+      knownGoodCommit: fixture.knownGoodCommit,
+      sourceRelPath: "src/score.mjs",
+    });
+  });
 });
 
 describe("driveRepair", () => {
   it("drives a fixable defect FIXING → PROPOSED with a real patch", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
-    const runId = await fixingRun("repair-ok");
+    const runId = await fixingRun("repair-ok", fixture);
     const outcome = await driveRepair(runId, "worker-a", fixture, fixtureRepairerFor(fixture), { heartbeatMs: 20 });
     expect(outcome).toBe("PROPOSED");
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
@@ -124,10 +147,10 @@ describe("driveRepair", () => {
       data: {
         phase: "VERIFYING",
         evidence: JSON.stringify(EVIDENCE),
+        target: frozenTarget(fixture),
         policy: {
           verify: { allowedPaths: ["src/score.mjs"], maxFiles: 5, maxDiffLines: 200, maxPatchBytes: 1000 },
           repair: { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"] },
-          target: frozenTarget(fixture),
         },
       },
     });
@@ -142,16 +165,16 @@ describe("driveRepair", () => {
     const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: "repair-target-drift", payload: {} });
     const run = await createRemediationRun(incident.id);
     await claimRun(run.id, "worker-a", 60_000);
-    // frozen against a DIFFERENT commit than the fixture we will resume with
     await prisma.remediationRun.update({
       where: { id: run.id },
       data: {
         phase: "VERIFYING",
         evidence: JSON.stringify(EVIDENCE),
+        // frozen against a DIFFERENT commit than the fixture we will resume with
+        target: { ...frozenTarget(fixture), mainCommit: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef" },
         policy: {
           verify: { allowedPaths: ["src/score.mjs"], maxFiles: 5, maxDiffLines: 200, maxPatchBytes: 1_000_000 },
           repair: { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"] },
-          target: { ...frozenTarget(fixture), mainCommit: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef" },
         },
       },
     });
@@ -181,7 +204,7 @@ describe("driveRepair", () => {
     const incident = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: "repair-resume", payload: {} });
     const run = await createRemediationRun(incident.id);
     await claimRun(run.id, "worker-a", 60_000);
-    await prisma.remediationRun.update({ where: { id: run.id }, data: { phase: "PROPOSING", evidence: JSON.stringify(EVIDENCE) } });
+    await prisma.remediationRun.update({ where: { id: run.id }, data: { phase: "PROPOSING", evidence: JSON.stringify(EVIDENCE), target: frozenTarget(fixture) } });
     await publishProposal(run.id, "worker-a"); // already published pre-crash
 
     const outcome = await driveRepair(run.id, "worker-a", fixture, fixtureRepairerFor(fixture));
@@ -192,7 +215,7 @@ describe("driveRepair", () => {
   it("routes an unfixed defect to NEEDS_HUMAN with no proposal", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
-    const runId = await fixingRun("repair-nofix");
+    const runId = await fixingRun("repair-nofix", fixture);
     const noop: Repairer = { async repair() {} };
     const outcome = await driveRepair(runId, "worker-a", fixture, noop, { heartbeatMs: 20 });
     expect(outcome).toBe("NEEDS_HUMAN");
@@ -204,7 +227,7 @@ describe("driveRepair", () => {
   it("aborts on lease loss, leaving the phase resumable and no proposal", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
-    const runId = await fixingRun("repair-lease-loss");
+    const runId = await fixingRun("repair-lease-loss", fixture);
     let n = 0;
     const sleeper: Repairer = {
       async repair(ctx) {
@@ -226,7 +249,7 @@ describe("driveRepair", () => {
   it("rejects a non-lease-owner BEFORE running any repair work", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
-    const runId = await fixingRun("repair-owner");
+    const runId = await fixingRun("repair-owner", fixture);
     let called = false;
     const spy: Repairer = { async repair() { called = true; } };
     await expect(driveRepair(runId, "worker-b", fixture, spy)).rejects.toThrow("lost lease or CAS race");

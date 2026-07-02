@@ -493,7 +493,8 @@ model RemediationRun {
   leaseExpiresAt DateTime?
   escalatedAt    DateTime?
   evidence       String? // persisted RepairEvidence JSON (resume buffer for verify/publish)
-  policy         Json? // frozen run spec (repair/verify policy + repair target); resume runs under the same rules/target
+  target         Json? // immutable repair target, frozen at REPRODUCING→FIXING; resume must match it
+  policy         Json? // frozen repair/verify policy, snapshotted at first repair; resume runs under the same rules
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
