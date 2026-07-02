@@ -52,8 +52,24 @@ describe("runFixAttempt", () => {
     expect(evidence.patch).toContain("score.mjs");
     expect(evidence.patch).toContain("@@");
     expect(evidence.baseCommit).toBe(fixture.mainCommit);
+    expect(evidence.trace).toBeUndefined(); // the oracle repairer returns no report
     expect(hb.state.calls).toBeGreaterThanOrEqual(1);
     expect(await worktreeCount(fixture.repoRoot)).toBe(1);
+  });
+
+  it("persists a repairer's redacted trace in the evidence", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const reporting: Repairer = {
+      async repair(ctx) {
+        await ctx.writeFile("src/score.mjs", fixture.fixedSource);
+        return { trace: [{ step: 0, tokens: 12, reasoning: "guarded", tools: [{ name: "write_file", path: "src/score.mjs", contentBytes: 42, contentSha256: "abcd" }] }], tokens: 12 };
+      },
+    };
+    const evidence = await runFixAttempt(fixture, reporting, { policy: POLICY, maxPatchBytes: 1_000_000 });
+    expect(evidence.greenAfter).toBe(true);
+    expect(evidence.trace).toHaveLength(1);
+    expect(evidence.trace![0]!.tools[0]!.name).toBe("write_file");
   });
 
   it("runs the hidden holdout: a hardcode games the visible check but fails the holdout", async () => {

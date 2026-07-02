@@ -1,6 +1,7 @@
+import { createHash } from "node:crypto";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BudgetExhausted, runAgent, type AgentConfig, type AgentStepInfo, type MessageCreator } from "../../runtime";
-import type { RepairContext, Repairer } from "../repair";
+import type { RepairContext, Repairer, RepairReport, RepairTraceStep } from "../repair";
 import { REPAIR_SYSTEM_PROMPT, REPAIR_TASK, REPAIR_TOOLS } from "./prompt";
 
 // DEFAULT author model: Haiku is a deliberately modest author (cheap, and MORE
@@ -13,6 +14,7 @@ const DEFAULT_MAX_TOKENS = 4096;
 const DEFAULT_MAX_TOTAL_TOKENS = 200_000; // hard cost ceiling so a runaway loop is bounded
 const MAX_LIST_FILES = 200;
 const MAX_TOOL_OUTPUT_BYTES = 8192; // cap list/check output fed back into the model context
+const MAX_REASONING_CHARS = 500; // truncate persisted reasoning summaries
 
 function reqString(v: unknown, field: string): string {
   if (typeof v !== "string" || v.length === 0) throw new Error(`"${field}" must be a non-empty string`);
@@ -20,6 +22,28 @@ function reqString(v: unknown, field: string): string {
 }
 function clip(s: string): string {
   return Buffer.byteLength(s) <= MAX_TOOL_OUTPUT_BYTES ? s : `${s.slice(0, MAX_TOOL_OUTPUT_BYTES)}\n…(truncated)`;
+}
+
+/** Redact a raw step into a persist-safe trace entry: no raw file content or full
+ *  model text — only a byte-count + short hash of written content, truncated reasoning. */
+function redactStep(s: AgentStepInfo): RepairTraceStep {
+  return {
+    step: s.index,
+    tokens: s.tokens,
+    reasoning: s.text.slice(0, MAX_REASONING_CHARS),
+    tools: s.toolCalls.map((t) => {
+      const a = (t.input ?? {}) as Record<string, unknown>;
+      const path = typeof a.path === "string" ? a.path : undefined;
+      const content = typeof a.content === "string" ? a.content : undefined;
+      return {
+        name: t.name,
+        ...(path !== undefined ? { path } : {}),
+        ...(content !== undefined
+          ? { contentBytes: Buffer.byteLength(content), contentSha256: createHash("sha256").update(content).digest("hex").slice(0, 16) }
+          : {}),
+      };
+    }),
+  };
 }
 
 export type LlmRepairerOptions = {
@@ -41,13 +65,16 @@ export type LlmRepairerOptions = {
  * sole authority on whether its work is accepted.
  */
 export class LlmRepairer implements Repairer {
-  /** The step-by-step trace of the last repair() (reasoning text + tool calls + tokens). */
+  /** The raw in-memory steps of the last repair() (for the eval's counts/tokens). */
   readonly steps: AgentStepInfo[] = [];
+  /** The redacted, persist-safe report of the last repair(). */
+  lastReport: RepairReport | null = null;
 
   constructor(private readonly opts: LlmRepairerOptions = {}) {}
 
-  async repair(ctx: RepairContext): Promise<void> {
+  async repair(ctx: RepairContext): Promise<RepairReport> {
     this.steps.length = 0;
+    const trace: RepairTraceStep[] = [];
     const config: AgentConfig = {
       system: REPAIR_SYSTEM_PROMPT,
       tools: REPAIR_TOOLS,
@@ -61,6 +88,7 @@ export class LlmRepairer implements Repairer {
       createMessage: this.opts.createMessage,
       onStep: (s) => {
         this.steps.push(s);
+        trace.push(redactStep(s));
         this.opts.onStep?.(s);
       },
     };
@@ -69,12 +97,15 @@ export class LlmRepairer implements Repairer {
       await runAgent(config, REPAIR_TASK);
     } catch (e) {
       if (ctx.signal.aborted) throw e; // lease lost → propagate (resumable)
-      // Budget exhausted (steps or total tokens) = the model did not converge.
-      // Return quietly and let the kernel's green-after / holdout gates route it to
-      // NEEDS_HUMAN, rather than crash-looping the run.
-      if (e instanceof BudgetExhausted) return;
-      throw e; // a genuine model/transport error is resumable — let it propagate
+      // Budget exhausted (steps or total tokens) = the model did not converge; keep
+      // the partial trace and return quietly so the kernel's green-after / holdout
+      // gates route it to NEEDS_HUMAN, rather than crash-looping the run.
+      if (!(e instanceof BudgetExhausted)) throw e; // a genuine model/transport error is resumable
     }
+
+    const report: RepairReport = { trace, tokens: trace.reduce((n, t) => n + t.tokens, 0) };
+    this.lastReport = report;
+    return report;
   }
 
   /** Route a tool call to the capability. Policy denials are fed back to the model

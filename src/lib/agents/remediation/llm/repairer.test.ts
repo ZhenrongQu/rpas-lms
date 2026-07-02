@@ -58,7 +58,7 @@ describe("LlmRepairer", () => {
       ]),
     });
 
-    await expect(repairer.repair(ctx)).resolves.toBeUndefined();
+    await repairer.repair(ctx);
     expect(await ctx.readFile("src/check.mjs")).toBe(original); // pinned check untouched
   });
 
@@ -83,8 +83,27 @@ describe("LlmRepairer", () => {
       createMessage: scripted([msg([toolBlock("t", "run_check", {})], "tool_use")]), // never stops
     });
 
-    await expect(repairer.repair(ctx)).resolves.toBeUndefined(); // no throw
+    await repairer.repair(ctx); // no throw
     expect((await ctx.runCheck()).exitCode).toBe(1); // defect still there → kernel routes to NEEDS_HUMAN
+  });
+
+  it("returns a redacted, persist-safe trace (byte-count + hash, no raw content)", async () => {
+    const fixture = await newFixture();
+    const ctx = makeRepairContext(fixture.repoRoot, POLICY, new AbortController().signal);
+    const repairer = new LlmRepairer({
+      createMessage: scripted([
+        msg([textBlock("Reading the source."), toolBlock("t1", "read_file", { path: "src/score.mjs" })], "tool_use"),
+        msg([toolBlock("t2", "write_file", { path: "src/score.mjs", content: fixture.fixedSource })], "tool_use"),
+        msg([textBlock("done")], "end_turn"),
+      ]),
+    });
+    const report = await repairer.repair(ctx);
+    const writeTool = report.trace.flatMap((s) => s.tools).find((t) => t.name === "write_file")!;
+    expect(writeTool.path).toBe("src/score.mjs");
+    expect(writeTool.contentBytes).toBeGreaterThan(0);
+    expect(writeTool.contentSha256).toMatch(/^[0-9a-f]{16}$/);
+    expect(writeTool).not.toHaveProperty("content"); // raw source is NOT in the trace
+    expect(report.trace[0]!.reasoning).toContain("Reading"); // reasoning summary kept
   });
 
   it("propagates an abort (lease lost)", async () => {

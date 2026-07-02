@@ -31,8 +31,21 @@ export type RepairContext = {
   signal: AbortSignal;
 };
 
+/** A bounded, REDACTED step of the author's trace — safe to persist into the
+ *  proposal. Never the raw file content or full model text: only a byte-count +
+ *  short hash of any written content, and a truncated reasoning summary. */
+export type RepairTraceStep = {
+  step: number;
+  tokens: number;
+  reasoning: string;
+  tools: { name: string; path?: string; contentBytes?: number; contentSha256?: string }[];
+};
+
+export type RepairReport = { trace: RepairTraceStep[]; tokens: number };
+
 export interface Repairer {
-  repair(ctx: RepairContext): Promise<void>;
+  /** Returns a redacted report (LLM author) or void (deterministic oracle). */
+  repair(ctx: RepairContext): Promise<RepairReport | void>;
 }
 
 // Never readable, even inside the worktree — VCS internals, env/secrets, deps.

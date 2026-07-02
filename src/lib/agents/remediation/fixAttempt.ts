@@ -5,7 +5,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RegressionFixture } from "./fixtures";
-import { makeRepairContext, type RepairPolicy, type Repairer } from "./repair";
+import { makeRepairContext, type RepairPolicy, type Repairer, type RepairTraceStep } from "./repair";
 import { matchSignature, parseFailureSignature, type FailureSignature } from "./signature";
 
 const execFileAsync = promisify(execFile);
@@ -33,6 +33,7 @@ export type RepairEvidence = {
   patchBytes: number;
   patchTooLarge: boolean;
   holdoutPassed: boolean; // a hidden correctness test passed post-repair (false-fix catcher)
+  trace?: RepairTraceStep[]; // redacted author trace (LLM repairer only; oracle has none)
 };
 
 export type Heartbeat = { intervalMs: number; beat: () => Promise<boolean> };
@@ -144,7 +145,7 @@ export async function runFixAttempt(
     const redBeforeMatches =
       before.exitCode !== 0 && !!redBeforeSignature && matchSignature(redBeforeSignature, fixture.incident) === "match";
 
-    await repairer.repair(makeRepairContext(worktree, opts.policy, work.signal));
+    const report = await repairer.repair(makeRepairContext(worktree, opts.policy, work.signal));
     throwIfLost();
     if (opts._tamperCheckAfterRepair) await opts._tamperCheckAfterRepair(worktree);
 
@@ -181,6 +182,7 @@ export async function runFixAttempt(
       patchBytes,
       patchTooLarge,
       holdoutPassed,
+      trace: report ? report.trace : undefined,
     };
   } catch (e) {
     if (work.signal.aborted) throw new LeaseLost();
