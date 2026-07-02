@@ -21,6 +21,20 @@ export type CheckResult = { exitCode: number; stdout: string; stderr: string };
 export type CheckRunner = (worktreeRoot: string, signal?: AbortSignal) => Promise<CheckResult>;
 
 /**
+ * How a failure is fingerprinted and matched to the incident. The kernel only calls
+ * parse/match/serialize, so it is agnostic to the signature's SHAPE — a Node stack
+ * frame (script fixtures) or a failing-test identity (real vitest). The incident is
+ * baked into the strategy at construction, so `match` needs no incident argument.
+ */
+export interface SignatureStrategy<S = unknown> {
+  /** Derive a failure signature from a red check, or null if none is recognizable. */
+  parse(result: CheckResult): S | null;
+  match(observed: S): "match" | "low-confidence" | "mismatch";
+  /** Stable string form, for the reproduction's cross-run stability comparison. */
+  serialize(observed: S): string;
+}
+
+/**
  * The default substrate: `node <relPath>` in the worktree (dependency-free ESM
  * fixtures). This is exactly the kernel's original check behavior, extracted here.
  */

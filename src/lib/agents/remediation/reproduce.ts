@@ -1,5 +1,5 @@
 import type { RegressionFixture } from "./fixtures";
-import { matchSignature, parseFailureSignature, type FailureSignature } from "./signature";
+import { nodeStackStrategy, type FailureSignature } from "./signature";
 import { scriptCheckRunner } from "./substrate";
 import { runCheckAtCommit } from "./worktree";
 
@@ -24,6 +24,7 @@ export async function reproduce(
   opts: { repeats?: number } = {},
 ): Promise<ReproductionResult> {
   const repeats = opts.repeats ?? 3;
+  const sig = nodeStackStrategy(fixture.incident);
 
   const control = await runCheckAtCommit(fixture.repoRoot, fixture.knownGoodCommit, check);
   if (control.exitCode !== 0) return { accepted: false, reason: "control-failed" };
@@ -32,11 +33,11 @@ export async function reproduce(
   for (let i = 0; i < repeats; i++) {
     const run = await runCheckAtCommit(fixture.repoRoot, fixture.defectiveCommit, check);
     if (run.exitCode === 0) return { accepted: false, reason: "not-reproduced" };
-    const observed = parseFailureSignature(run.stderr);
-    if (!observed || matchSignature(observed, fixture.incident) !== "match") {
+    const observed = sig.parse(run);
+    if (!observed || sig.match(observed) !== "match") {
       return { accepted: false, reason: "signature-mismatch", signature: observed ?? undefined };
     }
-    if (signature && JSON.stringify(signature) !== JSON.stringify(observed)) {
+    if (signature && sig.serialize(signature) !== sig.serialize(observed)) {
       return { accepted: false, reason: "unstable", signature: observed };
     }
     signature = observed;
@@ -52,9 +53,10 @@ export type Classification = "FIXING" | "ALREADY_FIXED" | "NEEDS_HUMAN";
  * differently or no longer applying ⇒ needs a human.
  */
 export async function classifyOnLatestMain(fixture: RegressionFixture): Promise<Classification> {
+  const sig = nodeStackStrategy(fixture.incident);
   const run = await runCheckAtCommit(fixture.repoRoot, fixture.mainCommit, check);
   if (run.exitCode === 0) return "ALREADY_FIXED";
-  const observed = parseFailureSignature(run.stderr);
-  if (observed && matchSignature(observed, fixture.incident) === "match") return "FIXING";
+  const observed = sig.parse(run);
+  if (observed && sig.match(observed) === "match") return "FIXING";
   return "NEEDS_HUMAN";
 }

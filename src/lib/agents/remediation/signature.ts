@@ -1,4 +1,5 @@
 import { basename } from "node:path";
+import type { CheckResult, SignatureStrategy } from "./substrate";
 
 /**
  * A normalized failure fingerprint (design §6). Deterministic and conservative:
@@ -40,4 +41,14 @@ export function matchSignature(
   if (top.module !== basename(incident.sourceFile)) return "mismatch";
   if (top.symbol && incident.symbol) return top.symbol === incident.symbol ? "match" : "mismatch";
   return "low-confidence"; // file matches, but a symbol is missing on one side
+}
+
+/** The default (script-fixture) signature strategy: a Node stack-trace fingerprint
+ *  parsed from stderr, matched conservatively against the incident. */
+export function nodeStackStrategy(incident: IncidentSignature): SignatureStrategy<FailureSignature> {
+  return {
+    parse: (result: CheckResult) => parseFailureSignature(result.stderr),
+    match: (observed) => matchSignature(observed, incident),
+    serialize: (observed) => JSON.stringify(observed),
+  };
 }
