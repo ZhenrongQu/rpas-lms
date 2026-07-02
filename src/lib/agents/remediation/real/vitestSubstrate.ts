@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { access, mkdtemp, readFile, rm, symlink } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { promisify } from "node:util";
@@ -64,6 +64,25 @@ export function vitestCheckRunner(
   };
 }
 
+/**
+ * A hidden-holdout runner for real fixtures: write the hidden test file into the
+ * worktree, then run vitest on it. Called AFTER patch capture (by the fix attempt),
+ * so the injected test is never in the diff — and it is absent during repair, so
+ * the repairer (which may read src/) never sees it.
+ */
+export function vitestHoldoutRunner(
+  originRepo: string,
+  holdoutRelPath: string,
+  holdoutSource: string,
+  exec?: VitestExec,
+): CheckRunner {
+  const run = vitestCheckRunner(originRepo, [holdoutRelPath], exec);
+  return async (worktreeRoot, signal) => {
+    await writeFile(join(worktreeRoot, holdoutRelPath), holdoutSource);
+    return run(worktreeRoot, signal);
+  };
+}
+
 /** A failing-test identity — the real-repo analogue of a stack signature. Value-only
  *  bugs (assertion failures) are fingerprintable this way; they need not throw. */
 export type VitestSignature = { testFile: string; testName: string; errorName: string };
@@ -111,7 +130,12 @@ export function vitestJsonStrategy(incident: VitestIncident): SignatureStrategy<
     match: (observed) => {
       if (basename(incident.testFile) !== observed.testFile) return "mismatch";
       if (incident.errorName !== observed.errorName) return "mismatch";
-      if (incident.testName && observed.testName) return incident.testName === observed.testName ? "match" : "mismatch";
+      if (incident.testName && observed.testName) {
+        // Tolerate vitest reporting fullName ("describe > it") vs the leaf title:
+        // declaring the leaf still matches either form.
+        const named = observed.testName === incident.testName || observed.testName.endsWith(incident.testName);
+        return named ? "match" : "mismatch";
+      }
       return "low-confidence"; // file + error match, but a test name is missing on one side
     },
     serialize: (observed) => JSON.stringify(observed),
