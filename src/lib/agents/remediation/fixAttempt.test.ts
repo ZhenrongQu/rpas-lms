@@ -44,6 +44,7 @@ describe("runFixAttempt", () => {
     });
     expect(evidence.redBeforeMatches).toBe(true);
     expect(evidence.greenAfter).toBe(true);
+    expect(evidence.holdoutPassed).toBe(true);
     expect(evidence.reproductionIntact).toBe(true);
     expect(evidence.changedFiles).toEqual(["src/score.mjs"]);
     expect(evidence.hasBinaryDiff).toBe(false);
@@ -53,6 +54,20 @@ describe("runFixAttempt", () => {
     expect(evidence.baseCommit).toBe(fixture.mainCommit);
     expect(hb.state.calls).toBeGreaterThanOrEqual(1);
     expect(await worktreeCount(fixture.repoRoot)).toBe(1);
+  });
+
+  it("runs the hidden holdout: a hardcode games the visible check but fails the holdout", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const hardcode: Repairer = {
+      async repair(ctx) {
+        await ctx.writeFile("src/score.mjs", "export function score() {\n  return 0;\n}\n");
+      },
+    };
+    const evidence = await runFixAttempt(fixture, hardcode, { policy: POLICY, maxPatchBytes: 1_000_000 });
+    expect(evidence.greenAfter).toBe(true); // score([], 0) === 0 → visible check passes
+    expect(evidence.holdoutPassed).toBe(false); // but score([{score:5}], 0) !== 5 → holdout catches it
+    expect(await worktreeCount(fixture.repoRoot)).toBe(1); // holdout injection is cleaned up too
   });
 
   it("keeps the lease alive across a slow attempt (multiple beats)", async () => {

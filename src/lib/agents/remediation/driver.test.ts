@@ -46,6 +46,7 @@ const EVIDENCE: RepairEvidence = {
   patch: "PATCH",
   patchBytes: 5,
   patchTooLarge: false,
+  holdoutPassed: true,
 };
 
 // Mirror driver.buildTarget for a run whose incident is repository "rpas-lms" / "main".

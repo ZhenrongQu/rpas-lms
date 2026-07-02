@@ -15,6 +15,7 @@ const clean: RepairEvidence = {
   patch: "diff --git …",
   patchBytes: 12,
   patchTooLarge: false,
+  holdoutPassed: true,
 };
 
 const policy: VerifyPolicy = { allowedPaths: ["src/score.mjs"], maxFiles: 5, maxDiffLines: 200, maxPatchBytes: 1000 };
@@ -27,6 +28,7 @@ describe("verify", () => {
   it.each<[string, Partial<RepairEvidence>, string]>([
     ["not-red-before", { redBeforeMatches: false }, "not-red-before"],
     ["not-green-after", { greenAfter: false }, "not-green-after"],
+    ["holdout-failed", { holdoutPassed: false }, "holdout-failed"],
     ["reproduction-modified", { reproductionIntact: false }, "reproduction-modified"],
     ["binary-diff", { hasBinaryDiff: true }, "binary-diff"],
     ["patch-too-large (flag)", { patchTooLarge: true }, "patch-too-large"],

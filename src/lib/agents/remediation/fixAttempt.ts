@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RegressionFixture } from "./fixtures";
@@ -32,6 +32,7 @@ export type RepairEvidence = {
   patch: string; // full patch, or a bounded preview when patchTooLarge
   patchBytes: number;
   patchTooLarge: boolean;
+  holdoutPassed: boolean; // a hidden correctness test passed post-repair (false-fix catcher)
 };
 
 export type Heartbeat = { intervalMs: number; beat: () => Promise<boolean> };
@@ -56,9 +57,9 @@ async function sha256(path: string): Promise<string> {
   return createHash("sha256").update(await readFile(path)).digest("hex");
 }
 
-async function runCheck(worktree: string, signal: AbortSignal): Promise<{ exitCode: number; stderr: string }> {
+async function runCheck(worktree: string, signal: AbortSignal, file: string = CHECK): Promise<{ exitCode: number; stderr: string }> {
   try {
-    await execFileAsync("node", [CHECK], { cwd: worktree, signal });
+    await execFileAsync("node", [file], { cwd: worktree, signal });
     return { exitCode: 0, stderr: "" };
   } catch (e) {
     const err = e as { code?: number | string; stderr?: string; name?: string };
@@ -157,6 +158,15 @@ export async function runFixAttempt(
     const { changedFiles, diffLines, hasBinaryDiff } = await numstat(worktree);
     const { patch, patchBytes, patchTooLarge } = await capturePatch(worktree, opts.maxPatchBytes);
 
+    // Hidden holdout: a correctness test the repairer never saw and cannot modify,
+    // injected ONLY now — after the patch is captured and git-added — so it is not
+    // in the diff. Catches false-fixes that game the visible check (e.g. hardcodes).
+    const holdoutRel = "src/__holdout__.mjs";
+    await writeFile(join(worktree, holdoutRel), fixture.holdoutSource);
+    const holdout = await runCheck(worktree, work.signal, holdoutRel);
+    throwIfLost();
+    const holdoutPassed = holdout.exitCode === 0;
+
     return {
       baseCommit: fixture.mainCommit,
       reproductionHash,
@@ -170,6 +180,7 @@ export async function runFixAttempt(
       patch,
       patchBytes,
       patchTooLarge,
+      holdoutPassed,
     };
   } catch (e) {
     if (work.signal.aborted) throw new LeaseLost();

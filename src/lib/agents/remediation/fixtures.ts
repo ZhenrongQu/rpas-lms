@@ -18,6 +18,9 @@ export type RegressionFixture = {
   /** The known-correct source + its path, for the deterministic FixtureRepairer. */
   fixedSource: string;
   sourceRelPath: string;
+  /** A hidden correctness test the repairer never sees; run only at verification
+   *  to catch false-fixes that game the visible check (e.g. hardcoding). */
+  holdoutSource: string;
   incident: {
     fingerprint: string;
     errorType: string;
@@ -56,6 +59,16 @@ const CHECK_SOURCE = `import { score } from "./score.mjs";
 const got = score([], 0);
 if (got !== 0) {
   console.error(\`AssertionError: expected 0, got \${got}\`);
+  process.exit(1);
+}
+`;
+
+// Hidden holdout: asserts a case the visible check does NOT cover (a present
+// element), so a "return 0"-style hardcode passes CHECK_SOURCE but fails here.
+const HOLDOUT_SOURCE = `import { score } from "./score.mjs";
+const got = score([{ score: 5 }], 0);
+if (got !== 5) {
+  console.error(\`HoldoutError: expected 5, got \${got}\`);
   process.exit(1);
 }
 `;
@@ -107,6 +120,7 @@ export async function createRegressionFixture(
       mainCommit,
       fixedSource: GOOD_SOURCE,
       sourceRelPath: "src/score.mjs",
+      holdoutSource: HOLDOUT_SOURCE,
       incident: {
         fingerprint: "TypeError:score:score.mjs",
         errorType: "TypeError",

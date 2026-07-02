@@ -18,6 +18,7 @@ export function verify(evidence: RepairEvidence, policy: VerifyPolicy): Verdict 
   const failures: string[] = [];
   if (!evidence.redBeforeMatches) failures.push("not-red-before");
   if (!evidence.greenAfter) failures.push("not-green-after");
+  if (!evidence.holdoutPassed) failures.push("holdout-failed");
   if (!evidence.reproductionIntact) failures.push("reproduction-modified");
   if (evidence.hasBinaryDiff) failures.push("binary-diff");
   if (evidence.patchTooLarge || evidence.patchBytes > policy.maxPatchBytes) failures.push("patch-too-large");

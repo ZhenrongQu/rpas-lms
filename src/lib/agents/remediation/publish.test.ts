@@ -24,6 +24,7 @@ const EVIDENCE: RepairEvidence = {
   patch: "PATCH-A",
   patchBytes: 7,
   patchTooLarge: false,
+  holdoutPassed: true,
 };
 
 async function incident(fingerprint: string) {
