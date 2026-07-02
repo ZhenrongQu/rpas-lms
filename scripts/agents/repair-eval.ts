@@ -45,9 +45,10 @@ type CaseResult = {
   ms: number;
 };
 
-async function evalCase(c: RepairCase, model?: string): Promise<CaseResult & { incidentId: string }> {
+async function evalCase(c: RepairCase, createdIds: string[], model?: string): Promise<CaseResult> {
   const started = Date.now();
   const incident = await ingestIncident({ repository: EVAL_REPO, defaultBranch: "main", fingerprint: c.incident.fingerprint, payload: {} });
+  createdIds.push(incident.id); // register NOW, before run/claim/transition can throw — so cleanup always finds it
   const run = await createRemediationRun(incident.id);
   await claimRun(run.id, WORKER, LEASE_MS);
   await transitionRun(run.id, WORKER, "RECEIVED", "TRIAGING");
@@ -71,7 +72,6 @@ async function evalCase(c: RepairCase, model?: string): Promise<CaseResult & { i
     steps: repairer.steps.length,
     tokens: repairer.steps.reduce((s, x) => s + x.tokens, 0),
     ms: Date.now() - started,
-    incidentId: incident.id,
   };
 }
 
@@ -106,9 +106,7 @@ async function main(): Promise<void> {
   try {
     const results: CaseResult[] = [];
     for (const c of cases) {
-      const r = await evalCase(c, model);
-      createdIds.push(r.incidentId);
-      results.push(r);
+      results.push(await evalCase(c, createdIds, model));
     }
     report(results);
   } finally {
