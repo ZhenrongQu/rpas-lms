@@ -7,6 +7,17 @@ import { defineConfig } from "vitest/config";
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5433/postgres";
 
+// The remediation kernel's advisory-lock test runs against a DEDICATED database
+// (never the shared one it might force-reset). Default it next to the test DB and
+// inject it, so a clean `pnpm test` is self-contained; globalSetup provisions it.
+function remediationUrlFrom(base: string): string {
+  const u = new URL(base);
+  u.pathname = "/rpas_remediation_test";
+  return u.toString();
+}
+const REMEDIATION_TEST_DATABASE_URL =
+  process.env.REMEDIATION_TEST_DATABASE_URL ?? remediationUrlFrom(TEST_DATABASE_URL);
+
 export default defineConfig({
   resolve: {
     // Mirror tsconfig "@/*" → "./src/*" so tests can import route modules that
@@ -19,6 +30,7 @@ export default defineConfig({
     env: {
       DATABASE_URL: TEST_DATABASE_URL,
       DIRECT_URL: TEST_DATABASE_URL,
+      REMEDIATION_TEST_DATABASE_URL,
       // SEC-05: opt-in flag that, together with NODE_ENV=test, enables the
       // x-test-user-id auth header in sessionAuth.ts. Never set in production.
       ALLOW_TEST_AUTH: "1",

@@ -57,10 +57,17 @@ describe("POST /api/chat gating", () => {
   });
 
   it("paid user passes all gates and stops at the missing key (503, no LLM call)", async () => {
-    // ANTHROPIC_API_KEY is unset in the vitest env, so a fully-valid paid request
-    // proves the gates let it through and it halts cleanly before the model.
-    const res = await chat(post(oneUserMsg, PAID));
-    expect(res.status).toBe(503);
-    expect((await res.json()).error).toBe("assistant_unavailable");
+    // Force the key absent regardless of the ambient .env (a real key may be
+    // configured locally), so this hermetically asserts the missing-key branch: a
+    // fully-valid paid request passes every gate and halts cleanly before the model.
+    const saved = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      const res = await chat(post(oneUserMsg, PAID));
+      expect(res.status).toBe(503);
+      expect((await res.json()).error).toBe("assistant_unavailable");
+    } finally {
+      if (saved !== undefined) process.env.ANTHROPIC_API_KEY = saved;
+    }
   });
 });

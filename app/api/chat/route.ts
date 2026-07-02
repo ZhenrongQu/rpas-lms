@@ -3,8 +3,8 @@ import { z } from "zod";
 import { currentAccount } from "../exam/sessionAuth";
 import { hasPaidAccess } from "../../../src/lib/payments/entitlements";
 import { enforceRateLimit } from "../../../src/lib/security/rateLimit";
-import { runAssistant } from "../../../src/lib/chat/loop";
-import type { ToolContext } from "../../../src/lib/chat/tools";
+import { runAssistant } from "../../../src/lib/agents/chat/loop";
+import type { ToolContext } from "../../../src/lib/agents/chat/tools";
 
 // Prisma + the Anthropic SDK need the Node runtime; the stream must not be cached.
 export const runtime = "nodejs";

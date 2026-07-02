@@ -13,6 +13,9 @@
     "db:push": "prisma db push",
     "seed:content": "tsx scripts/seed-content.ts",
     "eval:assistant": "tsx scripts/eval/run.ts",
+    "sdlc": "tsx scripts/agents/sdlc.ts",
+    "remediation:smoke": "tsx scripts/agents/remediation-smoke.ts",
+    "eval:repair": "tsx scripts/agents/repair-eval.ts",
     "postinstall": "prisma generate"
   },
   "devDependencies": {
