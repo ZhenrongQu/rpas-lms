@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRegressionFixture, type RegressionFixture } from "./fixtures";
-import { fixtureRepairerFor, LlmRepairer, makeRepairContext } from "./repair";
+import { fixtureRepairerFor, makeRepairContext } from "./repair";
 
 const created: RegressionFixture[] = [];
 const dirs: string[] = [];
@@ -99,7 +99,4 @@ describe("FixtureRepairer + capability context", () => {
     expect((await ctx.runCheck()).exitCode).toBe(0);
   });
 
-  it("LlmRepairer is a not-implemented stub", async () => {
-    await expect(new LlmRepairer().repair()).rejects.toThrow(/not implemented/);
-  });
 });

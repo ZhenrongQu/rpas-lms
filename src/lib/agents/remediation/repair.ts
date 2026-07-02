@@ -140,9 +140,4 @@ export function fixtureRepairerFor(fixture: { sourceRelPath: string; fixedSource
   return new FixtureRepairer(fixture.sourceRelPath, fixture.fixedSource);
 }
 
-/** Same-interface stub — the model-driven repairer is a later milestone. */
-export class LlmRepairer implements Repairer {
-  async repair(): Promise<void> {
-    throw new Error("LlmRepairer not implemented — deferred to a later milestone");
-  }
-}
+// The model-driven repairer (same interface) lives in ./llm/repairer.ts.
