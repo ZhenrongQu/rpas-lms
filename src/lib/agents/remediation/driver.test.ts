@@ -108,7 +108,7 @@ describe("driveRepair", () => {
     const run = await createRemediationRun(incident.id);
     await claimRun(run.id, "worker-a", 60_000);
     await prisma.remediationRun.update({ where: { id: run.id }, data: { phase: "PROPOSING", evidence: JSON.stringify(EVIDENCE) } });
-    await publishProposal(run.id, { body: "b", patch: EVIDENCE.patch, evidence: JSON.stringify(EVIDENCE) }); // already published pre-crash
+    await publishProposal(run.id, "worker-a"); // already published pre-crash
 
     const outcome = await driveRepair(run.id, "worker-a", fixture, fixtureRepairerFor(fixture));
     expect(outcome).toBe("PROPOSED");

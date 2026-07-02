@@ -97,13 +97,9 @@ export async function driveRepair(
         break;
       }
       case "PROPOSING": {
-        const evidence = JSON.parse(run.evidence ?? "null") as RepairEvidence | null;
-        if (!evidence) throw new Error(`run ${runId} at PROPOSING has no evidence`);
-        await publishProposal(runId, {
-          body: `Automated remediation: reproduction went red→green. Files: ${evidence.changedFiles.join(", ")}`,
-          patch: evidence.patch,
-          evidence: run.evidence!,
-        });
+        // publishProposal reads the run's own persisted evidence + enforces the
+        // lease; the driver injects no truthfulness material.
+        await publishProposal(runId, workerId);
         await transitionRun(runId, workerId, "PROPOSING", "PROPOSED");
         return "PROPOSED";
       }
