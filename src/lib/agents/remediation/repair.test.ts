@@ -13,7 +13,7 @@ afterEach(async () => {
   await Promise.all(dirs.splice(0).map((d) => rm(d, { recursive: true, force: true })));
 });
 
-const POLICY = { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"] };
+const POLICY = { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"], readAllowlist: ["src/"] };
 const never = new AbortController().signal;
 
 describe("FixtureRepairer + capability context", () => {
@@ -58,6 +58,45 @@ describe("FixtureRepairer + capability context", () => {
     const ctx = makeRepairContext(root, POLICY, never);
     await expect(ctx.writeFile("src/score.mjs", "pwned")).rejects.toThrow(/symlink/);
     expect(await readFile(join(outside, "target.mjs"), "utf8")).toBe("original"); // never followed
+  });
+
+  it("gates reads by allowlist and denies vcs/secret/out-of-tree paths", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const ctx = makeRepairContext(fixture.repoRoot, POLICY, never);
+    await expect(ctx.readFile(".git/config")).rejects.toThrow(/allowlist|denied/);
+    await expect(ctx.readFile(".env")).rejects.toThrow(/allowlist|denied/);
+    await expect(ctx.readFile("../escape")).rejects.toThrow(/escapes|allowlist/);
+    expect(await ctx.readFile("src/score.mjs")).toContain("score"); // src/ is allowed
+  });
+
+  it("rejects oversized and binary file reads", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    await writeFile(join(fixture.repoRoot, "src/blob.bin"), Buffer.from([1, 2, 0, 3, 4])); // NUL → binary
+    await writeFile(join(fixture.repoRoot, "src/big.txt"), "x".repeat(200));
+    const ctx = makeRepairContext(fixture.repoRoot, { ...POLICY, maxReadBytes: 100 }, never);
+    await expect(ctx.readFile("src/blob.bin")).rejects.toThrow(/binary/);
+    await expect(ctx.readFile("src/big.txt")).rejects.toThrow(/too large/);
+  });
+
+  it("listFiles returns only allowlisted files and prunes vcs/secrets", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    await writeFile(join(fixture.repoRoot, ".env"), "SECRET=1");
+    const files = await makeRepairContext(fixture.repoRoot, POLICY, never).listFiles();
+    expect(files).toEqual(["src/check.mjs", "src/score.mjs"]);
+  });
+
+  it("runCheck reports the reproduction's exit code and stderr", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const ctx = makeRepairContext(fixture.repoRoot, POLICY, never);
+    const before = await ctx.runCheck(); // repoRoot HEAD = defective for the reproducible variant
+    expect(before.exitCode).toBe(1);
+    expect(before.stderr).toMatch(/TypeError|AssertionError/);
+    await ctx.writeFile("src/score.mjs", fixture.fixedSource);
+    expect((await ctx.runCheck()).exitCode).toBe(0);
   });
 
   it("LlmRepairer is a not-implemented stub", async () => {

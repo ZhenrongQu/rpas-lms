@@ -1,23 +1,51 @@
-import { readFile as fsReadFile, writeFile as fsWriteFile, lstat, realpath } from "node:fs/promises";
-import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { readFile as fsReadFile, writeFile as fsWriteFile, lstat, readdir, realpath, stat } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
+const DEFAULT_MAX_READ_BYTES = 64 * 1024;
+const DEFAULT_CHECK = "src/check.mjs";
 
 /**
  * A repairer never receives a raw worktree path — only a capability that enforces
- * the write policy, so a (future LLM) repairer literally cannot touch the pinned
- * reproduction, `.git`, or anything outside the worktree. The hash check in the
- * fix attempt stays as defense-in-depth.
+ * the policy, so a (future LLM) repairer literally cannot touch the pinned
+ * reproduction, `.git`, secrets, or anything outside the worktree. Reads are
+ * allowlist-gated (NOT default whole-repo read); the hash check in the fix attempt
+ * stays as defense-in-depth.
  */
-export type RepairPolicy = { allowedPaths: string[]; pinnedPaths: string[] };
+export type RepairPolicy = {
+  allowedPaths: string[];
+  pinnedPaths: string[];
+  /** Path prefixes the repairer may read/list (e.g. ["src/"]); reads outside are denied. */
+  readAllowlist: string[];
+  /** Reject reads larger than this many bytes (default 64KB). */
+  maxReadBytes?: number;
+};
 
 export type RepairContext = {
   readFile(rel: string): Promise<string>;
   writeFile(rel: string, content: string): Promise<void>;
+  listFiles(): Promise<string[]>;
+  runCheck(): Promise<{ exitCode: number; stderr: string }>;
   signal: AbortSignal;
 };
 
 export interface Repairer {
   repair(ctx: RepairContext): Promise<void>;
 }
+
+// Never readable, even inside the worktree — VCS internals, env/secrets, deps.
+const DENY_READ: RegExp[] = [
+  /(^|\/)\.git(\/|$)/,
+  /(^|\/)\.env(\.[^/]*)?$/,
+  /(^|\/)node_modules(\/|$)/,
+  /(^|\/)(id_rsa|id_ed25519|id_ecdsa|\.npmrc|\.netrc)(\/|$)/,
+  /\.(pem|key|p12|pfx|crt)$/i,
+];
+const isDeniedRead = (norm: string): boolean => DENY_READ.some((re) => re.test(norm));
+const inReadAllowlist = (norm: string, allow: string[]): boolean =>
+  allow.some((p) => norm === p || norm.startsWith(p.endsWith("/") ? p : `${p}/`));
 
 async function guard(worktreeRoot: string, rel: string, policy: RepairPolicy, forWrite: boolean): Promise<string> {
   const resolved = resolve(worktreeRoot, rel);
@@ -30,6 +58,10 @@ async function guard(worktreeRoot: string, rel: string, policy: RepairPolicy, fo
   if (forWrite) {
     if (policy.pinnedPaths.includes(norm)) throw new Error(`path is pinned (read-only): ${rel}`);
     if (!policy.allowedPaths.includes(norm)) throw new Error(`path not allowed for write: ${rel}`);
+  } else {
+    // Reads are allowlist-gated: the repairer has NO default whole-repo read.
+    if (!inReadAllowlist(norm, policy.readAllowlist)) throw new Error(`path not in read allowlist: ${rel}`);
+    if (isDeniedRead(norm)) throw new Error(`path is denied for read: ${rel}`);
   }
   // Symlink guard: the real parent directory must still resolve inside the worktree.
   const realRoot = await realpath(worktreeRoot);
@@ -46,14 +78,49 @@ async function guard(worktreeRoot: string, rel: string, policy: RepairPolicy, fo
   return resolved;
 }
 
-export function makeRepairContext(worktreeRoot: string, policy: RepairPolicy, signal: AbortSignal): RepairContext {
+export function makeRepairContext(
+  worktreeRoot: string,
+  policy: RepairPolicy,
+  signal: AbortSignal,
+  checkRelPath: string = DEFAULT_CHECK,
+): RepairContext {
+  const maxReadBytes = policy.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
   return {
     signal,
     async readFile(rel) {
-      return fsReadFile(await guard(worktreeRoot, rel, policy, false), "utf8");
+      const p = await guard(worktreeRoot, rel, policy, false);
+      const { size } = await stat(p);
+      if (size > maxReadBytes) throw new Error(`file too large to read (${size} > ${maxReadBytes}): ${rel}`);
+      const buf = await fsReadFile(p);
+      if (buf.includes(0)) throw new Error(`refusing to read a binary file: ${rel}`);
+      return buf.toString("utf8");
     },
     async writeFile(rel, content) {
       await fsWriteFile(await guard(worktreeRoot, rel, policy, true), content);
+    },
+    async listFiles() {
+      const out: string[] = [];
+      const walk = async (dir: string): Promise<void> => {
+        for (const e of await readdir(dir, { withFileTypes: true })) {
+          const abs = join(dir, e.name);
+          const norm = relative(worktreeRoot, abs).split(sep).join("/");
+          if (isDeniedRead(norm)) continue; // prune .git/, node_modules/, secrets
+          if (e.isDirectory()) await walk(abs);
+          else if (e.isFile() && inReadAllowlist(norm, policy.readAllowlist)) out.push(norm);
+        }
+      };
+      await walk(worktreeRoot);
+      return out.sort();
+    },
+    async runCheck() {
+      try {
+        await execFileAsync("node", [checkRelPath], { cwd: worktreeRoot, signal });
+        return { exitCode: 0, stderr: "" };
+      } catch (e) {
+        const err = e as { code?: number | string; stderr?: string; name?: string };
+        if (signal.aborted || err.name === "AbortError" || err.code === "ABORT_ERR") throw e; // abort propagates
+        return { exitCode: typeof err.code === "number" ? err.code : 1, stderr: err.stderr ?? String(e) };
+      }
     },
   };
 }

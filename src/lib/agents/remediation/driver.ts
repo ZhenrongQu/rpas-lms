@@ -131,7 +131,7 @@ export async function driveRepair(
       maxDiffLines: 200,
       maxPatchBytes: opts.maxPatchBytes ?? 1_000_000,
     },
-    repair: { allowedPaths: [fixture.sourceRelPath], pinnedPaths: ["src/check.mjs"] },
+    repair: { allowedPaths: [fixture.sourceRelPath], pinnedPaths: ["src/check.mjs"], readAllowlist: ["src/"] },
   };
 
   for (;;) {

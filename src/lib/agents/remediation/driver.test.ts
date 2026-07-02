@@ -172,7 +172,7 @@ describe("driveRepair", () => {
         target: frozenTarget(fixture),
         policy: {
           verify: { allowedPaths: ["src/score.mjs"], maxFiles: 5, maxDiffLines: 200, maxPatchBytes: 1000 },
-          repair: { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"] },
+          repair: { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"], readAllowlist: ["src/"] },
         },
       },
     });
@@ -196,7 +196,7 @@ describe("driveRepair", () => {
         target: { ...frozenTarget(fixture), mainCommit: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef" },
         policy: {
           verify: { allowedPaths: ["src/score.mjs"], maxFiles: 5, maxDiffLines: 200, maxPatchBytes: 1_000_000 },
-          repair: { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"] },
+          repair: { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"], readAllowlist: ["src/"] },
         },
       },
     });

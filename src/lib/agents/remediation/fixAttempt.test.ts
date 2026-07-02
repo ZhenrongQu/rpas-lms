@@ -8,7 +8,7 @@ import { fixtureRepairerFor, type Repairer } from "./repair";
 import { LeaseLost, runFixAttempt } from "./fixAttempt";
 
 const execFileAsync = promisify(execFile);
-const POLICY = { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"] };
+const POLICY = { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"], readAllowlist: ["src/"] };
 const created: RegressionFixture[] = [];
 
 afterEach(async () => {
