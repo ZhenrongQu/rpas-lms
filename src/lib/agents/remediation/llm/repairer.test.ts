@@ -62,6 +62,19 @@ describe("LlmRepairer", () => {
     expect(await ctx.readFile("src/check.mjs")).toBe(original); // pinned check untouched
   });
 
+  it("rejects a non-string tool input instead of coercing it (no [object Object] written)", async () => {
+    const fixture = await newFixture();
+    const ctx = makeRepairContext(fixture.repoRoot, POLICY, new AbortController().signal);
+    const repairer = new LlmRepairer({
+      createMessage: scripted([
+        msg([toolBlock("t1", "write_file", { path: "src/score.mjs", content: { not: "a string" } })], "tool_use"),
+        msg([textBlock("stopping")], "end_turn"),
+      ]),
+    });
+    await repairer.repair(ctx);
+    expect(await ctx.readFile("src/score.mjs")).not.toContain("[object Object]"); // original source intact
+  });
+
   it("gives up quietly when the budget is exhausted (no convergence)", async () => {
     const fixture = await newFixture();
     const ctx = makeRepairContext(fixture.repoRoot, POLICY, new AbortController().signal);

@@ -11,6 +11,16 @@ const DEFAULT_MODEL = "claude-haiku-4-5-20251001";
 const DEFAULT_MAX_STEPS = 12;
 const DEFAULT_MAX_TOKENS = 4096;
 const DEFAULT_MAX_TOTAL_TOKENS = 200_000; // hard cost ceiling so a runaway loop is bounded
+const MAX_LIST_FILES = 200;
+const MAX_TOOL_OUTPUT_BYTES = 8192; // cap list/check output fed back into the model context
+
+function reqString(v: unknown, field: string): string {
+  if (typeof v !== "string" || v.length === 0) throw new Error(`"${field}" must be a non-empty string`);
+  return v;
+}
+function clip(s: string): string {
+  return Buffer.byteLength(s) <= MAX_TOOL_OUTPUT_BYTES ? s : `${s.slice(0, MAX_TOOL_OUTPUT_BYTES)}\n…(truncated)`;
+}
 
 export type LlmRepairerOptions = {
   model?: string;
@@ -70,19 +80,26 @@ export class LlmRepairer implements Repairer {
   /** Route a tool call to the capability. Policy denials are fed back to the model
    *  as an error string (so it can adapt); an abort propagates. */
   private async runTool(ctx: RepairContext, name: string, input: unknown): Promise<string> {
-    const args = (input ?? {}) as { path?: unknown; content?: unknown };
+    const args = (input ?? {}) as Record<string, unknown>;
     try {
       switch (name) {
-        case "list_files":
-          return (await ctx.listFiles()).join("\n") || "(no files)";
+        case "list_files": {
+          const files = await ctx.listFiles();
+          const shown = files.slice(0, MAX_LIST_FILES);
+          const more = files.length > shown.length ? `\n…(+${files.length - shown.length} more)` : "";
+          return clip(shown.join("\n") + more) || "(no files)";
+        }
         case "read_file":
-          return await ctx.readFile(String(args.path));
-        case "write_file":
-          await ctx.writeFile(String(args.path), String(args.content ?? ""));
-          return `wrote ${String(args.path)}`;
+          return await ctx.readFile(reqString(args.path, "path")); // read size/binary capped by the capability
+        case "write_file": {
+          const path = reqString(args.path, "path");
+          if (typeof args.content !== "string") throw new Error('"content" must be a string'); // no [object Object] coercion
+          await ctx.writeFile(path, args.content);
+          return `wrote ${path} (${Buffer.byteLength(args.content)} bytes)`;
+        }
         case "run_check": {
           const r = await ctx.runCheck();
-          return r.exitCode === 0 ? "PASS" : `FAIL (exit ${r.exitCode})\n${r.stderr}`.trim();
+          return r.exitCode === 0 ? "PASS" : clip(`FAIL (exit ${r.exitCode})\n${r.stderr}`.trim());
         }
         default:
           return `Error: unknown tool "${name}"`;
