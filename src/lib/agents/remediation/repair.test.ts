@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRegressionFixture, type RegressionFixture } from "./fixtures";
@@ -44,6 +44,20 @@ describe("FixtureRepairer + capability context", () => {
     await symlink(outside, join(root, "src", "leak"));
     const ctx = makeRepairContext(root, POLICY, never);
     await expect(ctx.readFile("src/leak/secret.txt")).rejects.toThrow(/symlink/);
+  });
+
+  it("rejects a write whose target file itself is a symlink out of the worktree", async () => {
+    const root = await mkdtemp(join(tmpdir(), "repair-wt-"));
+    const outside = await mkdtemp(join(tmpdir(), "repair-outside-"));
+    dirs.push(root, outside);
+    await mkdir(join(root, "src"));
+    await writeFile(join(outside, "target.mjs"), "original");
+    // an allowed path (src/score.mjs) whose leaf is a symlink pointing outside —
+    // the parent dir is contained, so only a leaf-level check catches it.
+    await symlink(join(outside, "target.mjs"), join(root, "src", "score.mjs"));
+    const ctx = makeRepairContext(root, POLICY, never);
+    await expect(ctx.writeFile("src/score.mjs", "pwned")).rejects.toThrow(/symlink/);
+    expect(await readFile(join(outside, "target.mjs"), "utf8")).toBe("original"); // never followed
   });
 
   it("LlmRepairer is a not-implemented stub", async () => {

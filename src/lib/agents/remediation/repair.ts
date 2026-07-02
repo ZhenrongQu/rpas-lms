@@ -1,4 +1,4 @@
-import { readFile as fsReadFile, writeFile as fsWriteFile, realpath } from "node:fs/promises";
+import { readFile as fsReadFile, writeFile as fsWriteFile, lstat, realpath } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
 /**
@@ -38,6 +38,11 @@ async function guard(worktreeRoot: string, rel: string, policy: RepairPolicy, fo
   if (relParent.startsWith("..") || isAbsolute(relParent)) {
     throw new Error(`path traverses a symlink out of the worktree: ${rel}`);
   }
+  // The leaf itself may be a symlink even when its parent is contained; reading or
+  // writing it would follow the link out of the worktree. lstat (does not follow)
+  // and reject. A missing leaf (new-file write) throws ENOENT — that is fine.
+  const leaf = await lstat(resolved).catch(() => null);
+  if (leaf?.isSymbolicLink()) throw new Error(`path is a symlink (rejected): ${rel}`);
   return resolved;
 }
 
