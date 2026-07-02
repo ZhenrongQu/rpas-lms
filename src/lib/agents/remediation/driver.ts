@@ -65,6 +65,16 @@ export async function driveReproduction(
   fixture: RegressionFixture,
   opts: { repeats?: number } = {},
 ): Promise<ReproductionOutcome> {
+  // Correlate the fixture with THIS run's incident BEFORE reproducing — a fixture
+  // for a different defect must never be reproduced/fixed under this incident (its
+  // proposal would end up filed against the wrong one). Same fingerprint format on
+  // both sides here; if triage ever normalizes signatures, persist and compare that.
+  const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId }, include: { incident: true } });
+  if (fixture.incident.fingerprint !== run.incident.fingerprint) {
+    await transitionRun(runId, workerId, "CLASSIFIED", "NEEDS_HUMAN");
+    return "NEEDS_HUMAN";
+  }
+
   await transitionRun(runId, workerId, "CLASSIFIED", "REPRODUCING");
 
   const rep = await reproduce(fixture, opts);
@@ -77,7 +87,6 @@ export async function driveReproduction(
   if (outcome === "FIXING") {
     // Anchor the immutable target to the code state we just reproduced, in the
     // same CAS that advances the phase. Repair can only read/compare it.
-    const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId }, include: { incident: true } });
     await transitionRunWithTarget(runId, workerId, "REPRODUCING", "FIXING", buildTarget(fixture, run.incident));
   } else {
     await transitionRun(runId, workerId, "REPRODUCING", outcome);
