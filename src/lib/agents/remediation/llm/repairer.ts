@@ -1,19 +1,22 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { runAgent, type AgentConfig, type AgentStepInfo, type MessageCreator } from "../../runtime";
+import { BudgetExhausted, runAgent, type AgentConfig, type AgentStepInfo, type MessageCreator } from "../../runtime";
 import type { RepairContext, Repairer } from "../repair";
 import { REPAIR_SYSTEM_PROMPT, REPAIR_TASK, REPAIR_TOOLS } from "./prompt";
 
-// Haiku is a deliberately modest author: cheap to iterate, and MORE likely to err
-// or over-reach — which is exactly what stress-tests the deterministic verify +
-// capability sandbox. eval can override the model.
+// DEFAULT author model: Haiku is a deliberately modest author (cheap, and MORE
+// likely to err/over-reach — which stress-tests the deterministic verify +
+// capability sandbox). The "production author" model is a config choice — eval
+// overrides via REPAIR_EVAL_MODEL, and `model` here sets it per instance.
 const DEFAULT_MODEL = "claude-haiku-4-5-20251001";
 const DEFAULT_MAX_STEPS = 12;
 const DEFAULT_MAX_TOKENS = 4096;
+const DEFAULT_MAX_TOTAL_TOKENS = 200_000; // hard cost ceiling so a runaway loop is bounded
 
 export type LlmRepairerOptions = {
   model?: string;
   maxSteps?: number;
   maxTokens?: number;
+  maxTotalTokens?: number;
   thinking?: Anthropic.ThinkingConfigParam;
   /** Test seam: inject a scripted model so unit tests run hermetically. */
   createMessage?: MessageCreator;
@@ -42,6 +45,7 @@ export class LlmRepairer implements Repairer {
       model: this.opts.model ?? DEFAULT_MODEL,
       maxSteps: this.opts.maxSteps ?? DEFAULT_MAX_STEPS,
       maxTokens: this.opts.maxTokens ?? DEFAULT_MAX_TOKENS,
+      maxTotalTokens: this.opts.maxTotalTokens ?? DEFAULT_MAX_TOTAL_TOKENS,
       thinking: this.opts.thinking,
       signal: ctx.signal,
       createMessage: this.opts.createMessage,
@@ -55,10 +59,10 @@ export class LlmRepairer implements Repairer {
       await runAgent(config, REPAIR_TASK);
     } catch (e) {
       if (ctx.signal.aborted) throw e; // lease lost → propagate (resumable)
-      // Budget exhausted = the model did not converge. Return quietly and let the
-      // kernel's green-after / holdout gates route it to NEEDS_HUMAN, rather than
-      // crash-looping the run.
-      if (e instanceof Error && /exceeded maxSteps/.test(e.message)) return;
+      // Budget exhausted (steps or total tokens) = the model did not converge.
+      // Return quietly and let the kernel's green-after / holdout gates route it to
+      // NEEDS_HUMAN, rather than crash-looping the run.
+      if (e instanceof BudgetExhausted) return;
       throw e; // a genuine model/transport error is resumable — let it propagate
     }
   }

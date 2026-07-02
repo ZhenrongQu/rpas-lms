@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type Anthropic from "@anthropic-ai/sdk";
-import { runAgent, type MessageCreator, type AgentStepInfo } from "./runtime";
+import { BudgetExhausted, runAgent, type MessageCreator, type AgentStepInfo } from "./runtime";
 
 // Hermetic: the model is injected via createMessage, so no network / no API key.
 const textBlock = (text: string) => ({ type: "text", text, citations: null });
@@ -85,10 +85,23 @@ describe("runAgent", () => {
     await expect(runAgent({ system: "s", createMessage: create, signal: ctrl.signal }, "x")).rejects.toThrow(/abort/i);
   });
 
-  it("throws when maxSteps is exceeded without a final answer", async () => {
+  it("throws BudgetExhausted(maxSteps) when steps run out without a final answer", async () => {
     const { create } = scripted([fakeMsg([toolBlock("t", "noop", {})], "tool_use")]); // always tool_use
-    await expect(
-      runAgent({ system: "s", tools: [noopTool("noop")], runTool: async () => "x", createMessage: create, maxSteps: 2 }, "x"),
-    ).rejects.toThrow(/exceeded maxSteps/);
+    const err = await runAgent(
+      { system: "s", tools: [noopTool("noop")], runTool: async () => "x", createMessage: create, maxSteps: 2 },
+      "x",
+    ).catch((e) => e);
+    expect(err).toBeInstanceOf(BudgetExhausted);
+    expect((err as BudgetExhausted).reason).toBe("maxSteps");
+  });
+
+  it("throws BudgetExhausted(maxTotalTokens) once the cumulative-token cap is hit", async () => {
+    const { create } = scripted([fakeMsg([toolBlock("t", "noop", {})], "tool_use")]); // 5 tokens/step, never stops
+    const err = await runAgent(
+      { system: "s", tools: [noopTool("noop")], runTool: async () => "x", createMessage: create, maxTotalTokens: 8 },
+      "x",
+    ).catch((e) => e);
+    expect(err).toBeInstanceOf(BudgetExhausted);
+    expect((err as BudgetExhausted).reason).toBe("maxTotalTokens");
   });
 });

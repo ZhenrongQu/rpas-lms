@@ -24,6 +24,18 @@ function getClient(): Anthropic {
   return client;
 }
 
+/** Thrown when the loop hits a budget cap — a typed signal, so callers degrade on
+ *  the TYPE rather than matching an error string. Carries the tokens spent. */
+export class BudgetExhausted extends Error {
+  constructor(
+    readonly reason: "maxSteps" | "maxTotalTokens",
+    readonly tokens: number,
+  ) {
+    super(`agent budget exhausted (${reason}) after ${tokens} tokens`);
+    this.name = "BudgetExhausted";
+  }
+}
+
 /** The one call the loop makes — injectable so tests can script the model. */
 export type MessageCreator = (
   params: Anthropic.MessageCreateParamsNonStreaming,
@@ -46,6 +58,9 @@ export type AgentConfig = {
   model?: string;
   maxTokens?: number;
   maxSteps?: number;
+  /** Hard cap on CUMULATIVE tokens (input+output, all steps). maxTokens only bounds
+   *  a single call's output; this bounds total spend. Undefined = no cap. */
+  maxTotalTokens?: number;
   signal?: AbortSignal;
   thinking?: Anthropic.ThinkingConfigParam;
   onStep?: (step: AgentStepInfo) => void;
@@ -67,6 +82,10 @@ export async function runAgent(config: AgentConfig, input: string): Promise<Agen
 
   for (let step = 0; step < maxSteps; step++) {
     if (config.signal?.aborted) throw new Error("runAgent aborted");
+    // Enforce the cumulative-token cap BEFORE spending on the next call.
+    if (config.maxTotalTokens !== undefined && tokens >= config.maxTotalTokens) {
+      throw new BudgetExhausted("maxTotalTokens", tokens);
+    }
 
     const res = await create(
       {
@@ -113,5 +132,5 @@ export async function runAgent(config: AgentConfig, input: string): Promise<Agen
     messages.push({ role: "user", content: toolResults });
   }
 
-  throw new Error(`runAgent exceeded maxSteps (${maxSteps}) without a final answer`);
+  throw new BudgetExhausted("maxSteps", tokens);
 }
