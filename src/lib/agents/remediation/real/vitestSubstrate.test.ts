@@ -71,8 +71,10 @@ describe("vitestCheckRunner", () => {
 
   it("symlinks node_modules, invokes vitest with the adapter config, and returns the JSON report", async () => {
     const origin = await mkdtemp(join(tmpdir(), "origin-"));
-    const worktree = await mkdtemp(join(tmpdir(), "wt-"));
-    dirs.push(origin, worktree);
+    const base = await mkdtemp(join(tmpdir(), "base-"));
+    const worktree = join(base, "wt");
+    await mkdir(worktree);
+    dirs.push(origin, base);
     await mkdir(join(origin, "node_modules"));
 
     const calls: { file: string; args: string[] }[] = [];
@@ -90,10 +92,12 @@ describe("vitestCheckRunner", () => {
 
     expect(result.exitCode).toBe(1);
     expect(JSON.parse(result.stdout).numFailedTests).toBe(1); // report read back from the temp file
-    expect(calls[0]!.file).toBe(join(worktree, "node_modules", ".bin", "vitest"));
+    // node_modules is linked in the worktree's PARENT (outside the git worktree)
+    expect(calls[0]!.file).toBe(join(base, "node_modules", ".bin", "vitest"));
     expect(calls[0]!.args).toEqual(
       expect.arrayContaining(["run", "src/lib/exam/grade.test.ts", "--config", "vitest.adapter.config.mts", "--reporter=json"]),
     );
-    await expect(access(join(worktree, "node_modules"))).resolves.toBeUndefined(); // symlink created
+    await expect(access(join(base, "node_modules"))).resolves.toBeUndefined(); // symlink created in the parent
+    await expect(access(join(worktree, "node_modules"))).rejects.toThrow(); // NOT inside the worktree
   });
 });

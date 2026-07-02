@@ -11,6 +11,9 @@ export default defineConfig({
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
+  // node_modules is symlinked into the worktree's parent (outside the vite root),
+  // so relax the fs allow-list — this is a throwaway per-defect reproduction sandbox.
+  server: { fs: { strict: false } },
   test: {
     environment: "node",
   },

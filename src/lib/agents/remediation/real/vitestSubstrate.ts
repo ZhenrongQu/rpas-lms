@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { access, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
 import type { CheckResult, CheckRunner, SignatureStrategy } from "../substrate";
 
@@ -15,17 +15,19 @@ export type VitestExec = (
   options: { cwd: string; signal?: AbortSignal; maxBuffer?: number },
 ) => Promise<{ stdout: string; stderr: string }>;
 
-/** A checked-out worktree is a bare git checkout (no node_modules — it is gitignored),
- *  so link the origin repo's node_modules in once. Idempotent. */
-async function linkNodeModules(originRepo: string, worktreeRoot: string): Promise<void> {
-  const link = join(worktreeRoot, "node_modules");
+/** Link the origin's node_modules at `depsDir` (idempotent). depsDir is the
+ *  worktree's PARENT (a private temp dir): node resolution walks up and finds it,
+ *  but `git add -A` inside the worktree never sees it — a node_modules SYMLINK at
+ *  the worktree root is not matched by a `node_modules/` gitignore, so it would
+ *  otherwise pollute the repair diff and trip the path-policy gate. */
+async function ensureNodeModules(originRepo: string, depsDir: string): Promise<void> {
   try {
-    await access(link);
+    await access(depsDir);
     return; // already present
   } catch {
     /* absent → create */
   }
-  await symlink(join(originRepo, "node_modules"), link, "dir");
+  await symlink(join(originRepo, "node_modules"), depsDir, "dir");
 }
 
 /**
@@ -33,8 +35,10 @@ async function linkNodeModules(originRepo: string, worktreeRoot: string): Promis
  * worktree via the adapter config (no globalSetup / no DB) and return vitest's JSON
  * reporter output as CheckResult.stdout. The JSON is written to a temp file OUTSIDE
  * the worktree, so it never pollutes the repair's diff; node_modules is symlinked
- * from the origin repo. A red check (tests fail) is a non-zero exit, not a throw;
- * only an abort throws.
+ * from the origin repo into the worktree's temp parent (NOT the worktree itself,
+ * so it stays out of the diff). A red check (tests fail) is a non-zero exit, not a
+ * throw; only an abort throws. Assumes the worktree's parent is a private temp dir
+ * (both kernel call sites create the worktree as `<mkdtemp>/wt`).
  */
 export function vitestCheckRunner(
   originRepo: string,
@@ -42,10 +46,11 @@ export function vitestCheckRunner(
   exec: VitestExec = execFileAsync,
 ): CheckRunner {
   return async (worktreeRoot, signal) => {
-    await linkNodeModules(originRepo, worktreeRoot);
+    const depsDir = join(dirname(worktreeRoot), "node_modules");
+    await ensureNodeModules(originRepo, depsDir);
     const outDir = await mkdtemp(join(tmpdir(), "vitest-out-"));
     const outFile = join(outDir, "result.json");
-    const vitestBin = join(worktreeRoot, "node_modules", ".bin", "vitest");
+    const vitestBin = join(depsDir, ".bin", "vitest");
     const args = ["run", ...tests, "--config", ADAPTER_CONFIG, "--reporter=json", `--outputFile=${outFile}`];
     try {
       await exec(vitestBin, args, { cwd: worktreeRoot, signal, maxBuffer: 32 * 1024 * 1024 });
