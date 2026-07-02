@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { prisma } from "../db";
+import { prisma } from "../../db";
 import { runTool, type ToolContext } from "./tools";
 
 // The security properties of the agent's tools, verified deterministically (no

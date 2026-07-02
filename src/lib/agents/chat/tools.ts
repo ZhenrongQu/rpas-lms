@@ -1,10 +1,10 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { prisma } from "../db";
-import { findActiveCheckpoint, findActiveQuestion } from "../content/loadBank";
-import { listCompletedLessonIds } from "../lessons/progress";
-import { listUserExamHistory } from "../exam/history";
-import type { Localized, Question } from "../content/types";
+import { prisma } from "../../db";
+import { findActiveCheckpoint, findActiveQuestion } from "../../content/loadBank";
+import { listCompletedLessonIds } from "../../lessons/progress";
+import { listUserExamHistory } from "../../exam/history";
+import type { Localized, Question } from "../../content/types";
 
 /**
  * The harness's "hands". Every tool runs server-side and is scoped to the

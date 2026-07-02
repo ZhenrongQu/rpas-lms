@@ -8,7 +8,7 @@
 const ROSTER: { prefix: string; owner: string }[] = [
   { prefix: "src/lib/exam", owner: "elena (exam-platform)" },
   { prefix: "src/lib/payments", owner: "priya (payments)" },
-  { prefix: "src/lib/chat", owner: "ada (ai-assistant)" },
+  { prefix: "src/lib/agents/chat", owner: "ada (ai-assistant)" },
   { prefix: "src/lib/agents", owner: "ada (ai-assistant)" },
   { prefix: "src/lib/flightReview", owner: "sam (flight-review)" },
   { prefix: "app/api/mobile", owner: "marco (mobile)" },
