@@ -1,0 +1,16 @@
+# Isolated execution image for the remediation real-repo adapter. It contains ONLY
+# the dependency tree (built for linux), NEVER project source — the worktree is
+# mounted read-only at runtime. This is where UNTRUSTED, LLM-generated code runs, so
+# the container is launched with no secrets, no network, dropped capabilities, a
+# read-only rootfs and resource limits (see dockerCheckRunner.ts).
+#
+# node_modules lands at /workspace/node_modules; the worktree mounts at
+# /workspace/repo, so `vitest` (cwd=/workspace/repo) resolves deps by walking up.
+FROM node:20-slim
+RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+WORKDIR /workspace
+COPY package.json pnpm-lock.yaml ./
+# --ignore-scripts skips the repo's `prisma generate` postinstall (no schema is
+# copied; the current fixture is a pure module). DB-backed fixtures will need a
+# generate step later.
+RUN pnpm install --frozen-lockfile --ignore-scripts
