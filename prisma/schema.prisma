@@ -1,11 +1,16 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // postgresqlExtensions lets `prisma db push`/migrate manage the pgvector
+  // extension (declared on the datasource) so the KnowledgeChunk vector column
+  // can be created on both Supabase and the local pgvector test container.
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [vector]
 }
 
 // ─── Identity ────────────────────────────────────────────────────────────────
@@ -536,4 +541,29 @@ model ExternalActionVersion {
 
   @@unique([actionId, version])
   @@unique([actionId, cycle])
+}
+
+// ─── RAG knowledge base ──────────────────────────────────────────────────────
+// Chunked, embedded corpus backing the chat assistant's `search_course_content`
+// tool (hybrid semantic + keyword retrieval). Course lessons and externally
+// ingested documents share this table, distinguished by `source`. Chunks are
+// stored per-locale (EN/ZH separately) so retrieval stays in the reply language.
+// `embedding` is a pgvector column (voyage-3.5, 1024-dim); its HNSW cosine index
+// is created out-of-band by the reindex script (Prisma can't declare it).
+model KnowledgeChunk {
+  id         String                       @id @default(cuid())
+  source     String // "LESSON" | "DOCUMENT"
+  sourceId   String // lessonId, or a document slug
+  moduleId   String?
+  certLevel  String? // "BASIC" | "ADVANCED" | null
+  locale     String // "EN" | "ZH"
+  title      String
+  content    String // the chunk text
+  chunkIndex Int
+  embedding  Unsupported("vector(1024)")?
+  createdAt  DateTime                     @default(now())
+  updatedAt  DateTime                     @updatedAt
+
+  @@unique([source, sourceId, locale, chunkIndex])
+  @@index([locale])
 }
