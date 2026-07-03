@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -101,6 +101,7 @@ export function isolatedDockerArgs(o: {
     "--tmpfs", "/tmp",
     "--cap-drop", "ALL",
     "--security-opt", "no-new-privileges",
+    "--user", "1000:1000",
     "--cpus", cpus,
     "--memory", `${memoryMb}m`,
     "--pids-limit", String(pids),
@@ -126,6 +127,9 @@ export function dockerVitestCheckRunner(opts: DockerRunnerOptions, exec: DockerE
   const { image, tests, timeoutMs = 120_000, cpus = "1", memoryMb = 512, pids = 128 } = opts;
   const run: CheckRunner = async (worktreeRoot, signal) => {
     const outDir = await mkdtemp(join(tmpdir(), "docker-out-"));
+    // mkdtemp is 0700 and owned by the host worker. The fixed, non-root container
+    // UID needs write access only to this disposable report mount.
+    await chmod(outDir, 0o733);
     const name = `remediation-${randomUUID()}`;
     const args = [
       ...isolatedDockerArgs({ name, worktreeRoot, outDir, image, cpus, memoryMb, pids }),

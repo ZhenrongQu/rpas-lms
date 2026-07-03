@@ -14,3 +14,4 @@ COPY package.json pnpm-lock.yaml ./
 # copied; the current fixture is a pure module). DB-backed fixtures will need a
 # generate step later.
 RUN pnpm install --frozen-lockfile --ignore-scripts
+USER node

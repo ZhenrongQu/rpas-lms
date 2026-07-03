@@ -85,6 +85,7 @@ describe("dockerVitestCheckRunner", () => {
         "--read-only",
         "--cap-drop", "ALL",
         "--security-opt", "no-new-privileges",
+        "--user", "1000:1000",
         "--tmpfs", "/tmp",
         "--pids-limit",
         "--memory",

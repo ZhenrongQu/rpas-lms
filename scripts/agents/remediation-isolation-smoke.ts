@@ -89,6 +89,7 @@ function verifyStaticArgs(): void {
   assertArg(args, "--tmpfs", "/tmp");
   assertArg(args, "--cap-drop", "ALL");
   assertArg(args, "--security-opt", "no-new-privileges");
+  assertArg(args, "--user", "1000:1000");
   // Worktree must be :ro
   const roMount = args.find((a) => a.includes("/tmp/test-repo") && a.endsWith(":ro"));
   if (!roMount) throw new Error("Worktree mount is not :ro");
