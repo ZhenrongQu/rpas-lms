@@ -58,20 +58,6 @@ export function isTrustedRepairer(r: Repairer): boolean {
   return trustedRepairers.has(r);
 }
 
-/**
- * TEST-ONLY trust grant. Gated on NODE_ENV==="test" AND ALLOW_TEST_AUTH==="1" (the
- * SEC-05 pattern, set only in vitest.config) — it THROWS in production, so it can
- * never confer trust outside the test suite. Lets flow-tests mark a benign,
- * test-authored repairer trusted WITHOUT subclassing the production oracle.
- */
-export function __trustRepairerForTest<T extends Repairer>(r: T): T {
-  if (process.env.NODE_ENV !== "test" || process.env.ALLOW_TEST_AUTH !== "1") {
-    throw new Error("__trustRepairerForTest is only available under test auth (NODE_ENV=test, ALLOW_TEST_AUTH=1)");
-  }
-  trustedRepairers.add(r);
-  return r;
-}
-
 export interface Repairer {
   /** Returns a redacted report (LLM author) or void (deterministic oracle). */
   repair(ctx: RepairContext): Promise<RepairReport | void>;

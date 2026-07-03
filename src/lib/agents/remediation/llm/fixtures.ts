@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import type { RegressionFixture } from "../fixtures";
 import { nodeStackStrategy } from "../signature";
-import { scriptCheckRunner, scriptHoldoutRunner } from "../substrate";
+import { createSubstrateIdentity, scriptCheckRunner, scriptHoldoutRunner } from "../substrate";
 
 const execFileAsync = promisify(execFile);
 
@@ -73,6 +73,16 @@ async function buildRepairCase(spec: CaseSpec): Promise<RepairCase> {
       sourceRelPath: spec.sourceRelPath,
       incident: spec.incident,
       substrate: {
+        identity: createSubstrateIdentity({
+          kind: "script-v1",
+          checkPath: "src/check.mjs",
+          checkSource: spec.check,
+          holdoutPath: "src/__holdout__.mjs",
+          holdoutSource: spec.holdout,
+          signature: spec.incident,
+          pinnedPaths: ["src/check.mjs"],
+          readAllowlist: ["src/"],
+        }),
         runCheck: scriptCheckRunner("src/check.mjs"),
         runHoldout: scriptHoldoutRunner(spec.holdout),
         signature: nodeStackStrategy(spec.incident),

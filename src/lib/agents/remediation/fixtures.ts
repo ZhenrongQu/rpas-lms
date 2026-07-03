@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { nodeStackStrategy } from "./signature";
-import { scriptCheckRunner, scriptHoldoutRunner, type Substrate } from "./substrate";
+import { createSubstrateIdentity, scriptCheckRunner, scriptHoldoutRunner, type Substrate } from "./substrate";
 
 const execFileAsync = promisify(execFile);
 
@@ -130,6 +130,16 @@ export async function createRegressionFixture(
       sourceRelPath: "src/score.mjs",
       incident,
       substrate: {
+        identity: createSubstrateIdentity({
+          kind: "script-v1",
+          checkPath: "src/check.mjs",
+          checkSource: CHECK_SOURCE,
+          holdoutPath: "src/__holdout__.mjs",
+          holdoutSource: HOLDOUT_SOURCE,
+          signature: incident,
+          pinnedPaths: ["src/check.mjs"],
+          readAllowlist: ["src/"],
+        }),
         runCheck: scriptCheckRunner("src/check.mjs"),
         runHoldout: scriptHoldoutRunner(HOLDOUT_SOURCE),
         signature: nodeStackStrategy(incident),

@@ -19,13 +19,14 @@ export async function runCheckAtCommit(
   repoRoot: string,
   commit: string,
   runner: CheckRunner,
+  signal?: AbortSignal,
 ): Promise<CheckResult> {
   // mkdtemp makes the parent; git creates the worktree subdir (it must not exist).
   const base = await mkdtemp(join(tmpdir(), "remediation-worktree-"));
   const worktree = join(base, "wt");
   try {
-    await execFileAsync("git", ["worktree", "add", "--detach", worktree, commit], { cwd: repoRoot });
-    return await runner(worktree);
+    await execFileAsync("git", ["worktree", "add", "--detach", worktree, commit], { cwd: repoRoot, signal });
+    return await runner(worktree, signal);
   } finally {
     await execFileAsync("git", ["worktree", "remove", "--force", worktree], { cwd: repoRoot }).catch(() => {});
     await rm(base, { recursive: true, force: true }).catch(() => {});

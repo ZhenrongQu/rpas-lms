@@ -1,18 +1,17 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../../db";
 import { createRegressionFixture, type FixtureVariant, type RegressionFixture } from "./fixtures";
 import { claimRun, createRemediationRun, ingestIncident, transitionRun } from "./store";
 import { driveRepair, driveReproduction } from "./driver";
-import { __trustRepairerForTest, fixtureRepairerFor, type Repairer } from "./repair";
+import { fixtureRepairerFor, type Repairer } from "./repair";
 import { LeaseLost, type RepairEvidence } from "./fixAttempt";
 import { publishProposal } from "./publish";
 
 const created: RegressionFixture[] = [];
 
-// A benign, TEST-AUTHORED repairer marked trusted via the env-gated test helper (not
-// by subclassing the production oracle). Its repair() runs test-written JS; host
-// execution is safe. Untrusted authors (LlmRepairer) get no trust and must run isolated.
-const oracleRepairer = (fn: Repairer["repair"]): Repairer => __trustRepairerForTest({ repair: fn });
+// Guard enforcement has focused tests; these driver tests use benign test repairers.
+vi.mock("./isolated/guard", () => ({ assertIsolatedForUntrusted: vi.fn() }));
+const testRepairer = (fn: Repairer["repair"]): Repairer => ({ repair: fn });
 
 afterEach(async () => {
   await Promise.all(created.splice(0).map((fixture) => fixture.cleanup()));
@@ -64,6 +63,7 @@ function frozenTarget(fixture: RegressionFixture) {
     defectiveCommit: fixture.defectiveCommit,
     knownGoodCommit: fixture.knownGoodCommit,
     sourceRelPath: fixture.sourceRelPath,
+    substrateIdentity: fixture.substrate.identity,
   };
 }
 
@@ -143,7 +143,48 @@ describe("driveReproduction", () => {
       defectiveCommit: fixture.defectiveCommit,
       knownGoodCommit: fixture.knownGoodCommit,
       sourceRelPath: "src/score.mjs",
+      substrateIdentity: fixture.substrate.identity,
     });
+  });
+
+  it("resumes from REPRODUCING after a transient check infrastructure failure", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const runId = await classifiedRun(fixture);
+    const realRunCheck = fixture.substrate.runCheck;
+    let failOnce = true;
+    const transientFixture: RegressionFixture = {
+      ...fixture,
+      substrate: {
+        ...fixture.substrate,
+        runCheck: async (root, signal) => {
+          if (failOnce) {
+            failOnce = false;
+            return { kind: "infrastructure-failure", reason: "transient runner failure" };
+          }
+          return realRunCheck(root, signal);
+        },
+      },
+    };
+
+    await expect(driveReproduction(runId, "worker-a", transientFixture, { repeats: 2 }))
+      .rejects.toThrow("transient runner failure");
+    expect((await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } })).phase).toBe("REPRODUCING");
+
+    await expect(driveReproduction(runId, "worker-a", transientFixture, { repeats: 2 })).resolves.toBe("FIXING");
+  });
+
+  it("aborts reproduction on heartbeat loss and leaves the phase resumable", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const runId = await classifiedRun(fixture);
+
+    await expect(driveReproduction(runId, "worker-a", fixture, {
+      repeats: 2,
+      heartbeatMs: 1,
+      _beat: async () => false,
+    })).rejects.toThrow("lost lease or CAS race");
+    expect((await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } })).phase).toBe("REPRODUCING");
   });
 });
 
@@ -214,6 +255,20 @@ describe("driveRepair", () => {
     expect(await prisma.externalActionVersion.count()).toBe(0); // never verified/published a wrong repair
   });
 
+  it("escalates when a resume changes the frozen verification substrate", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const runId = await fixingRun(fixture);
+    const drifted = {
+      ...fixture,
+      substrate: { ...fixture.substrate, identity: "different-substrate" },
+    };
+
+    expect(await driveRepair(runId, "worker-a", drifted, fixtureRepairerFor(fixture))).toBe("NEEDS_HUMAN");
+    const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(stored.phase).toBe("NEEDS_HUMAN");
+  });
+
   it("refuses an invalid starting phase without writing any policy", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
@@ -244,7 +299,7 @@ describe("driveRepair", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const runId = await fixingRun(fixture);
-    const noop = oracleRepairer(async () => {});
+    const noop = testRepairer(async () => {});
     const outcome = await driveRepair(runId, "worker-a", fixture, noop, { heartbeatMs: 20 });
     expect(outcome).toBe("NEEDS_HUMAN");
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
@@ -257,7 +312,7 @@ describe("driveRepair", () => {
     created.push(fixture);
     const runId = await fixingRun(fixture);
     let n = 0;
-    const sleeper = oracleRepairer(async (ctx) => {
+    const sleeper = testRepairer(async (ctx) => {
       await new Promise<void>((res, rej) => {
         const t = setTimeout(res, 10_000);
         ctx.signal.addEventListener("abort", () => { clearTimeout(t); rej(new Error("aborted")); }, { once: true });
@@ -277,7 +332,7 @@ describe("driveRepair", () => {
     created.push(fixture);
     const runId = await fixingRun(fixture);
     let called = false;
-    const spy = oracleRepairer(async () => { called = true; });
+    const spy = testRepairer(async () => { called = true; });
     await expect(driveRepair(runId, "worker-b", fixture, spy)).rejects.toThrow("lost lease or CAS race");
     expect(called).toBe(false); // fast-failed before the expensive fix attempt
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });

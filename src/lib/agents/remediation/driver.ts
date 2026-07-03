@@ -19,6 +19,7 @@ type RepairTarget = {
   defectiveCommit: string;
   knownGoodCommit: string;
   sourceRelPath: string;
+  substrateIdentity: string;
 };
 
 /** The repair/verify rules frozen per run at first repair so a resume can never
@@ -36,6 +37,7 @@ function buildTarget(fixture: RegressionFixture, incident: { repository: string;
     defectiveCommit: fixture.defectiveCommit,
     knownGoodCommit: fixture.knownGoodCommit,
     sourceRelPath: fixture.sourceRelPath,
+    substrateIdentity: fixture.substrate.identity,
   };
 }
 
@@ -47,11 +49,29 @@ function sameTarget(a: RepairTarget, b: RepairTarget): boolean {
     a.mainCommit === b.mainCommit &&
     a.defectiveCommit === b.defectiveCommit &&
     a.knownGoodCommit === b.knownGoodCommit &&
-    a.sourceRelPath === b.sourceRelPath
+    a.sourceRelPath === b.sourceRelPath &&
+    a.substrateIdentity === b.substrateIdentity
   );
 }
 
 export type ReproductionOutcome = "FIXING" | "ALREADY_FIXED" | "NOT_REPRODUCIBLE" | "NEEDS_HUMAN";
+
+export type DriveReproductionOptions = {
+  repeats?: number;
+  leaseMs?: number;
+  heartbeatMs?: number;
+  /** test-only heartbeat seam. */
+  _beat?: () => Promise<boolean>;
+};
+
+function delay(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) return resolve();
+    const onAbort = () => { clearTimeout(timer); resolve(); };
+    const timer = setTimeout(() => { signal.removeEventListener("abort", onAbort); resolve(); }, ms);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
 
 /**
  * Advance a CLASSIFIED run through reproduction to exactly one outcome, moving the
@@ -63,35 +83,65 @@ export async function driveReproduction(
   runId: string,
   workerId: string,
   fixture: RegressionFixture,
-  opts: { repeats?: number } = {},
+  opts: DriveReproductionOptions = {},
 ): Promise<ReproductionOutcome> {
+  const leaseMs = opts.leaseMs ?? 60_000;
+  if (!(await heartbeatRun(runId, workerId, leaseMs))) {
+    throw new Error(`run ${runId} lost lease or CAS race`);
+  }
   // Correlate the fixture with THIS run's incident BEFORE reproducing — a fixture
   // for a different defect must never be reproduced/fixed under this incident (its
   // proposal would end up filed against the wrong one). Same fingerprint format on
   // both sides here; if triage ever normalizes signatures, persist and compare that.
   const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId }, include: { incident: true } });
+  if (run.phase !== "CLASSIFIED" && run.phase !== "REPRODUCING") {
+    throw new Error(`driveReproduction cannot run from phase ${run.phase}`);
+  }
   if (fixture.incident.fingerprint !== run.incident.fingerprint) {
-    await transitionRun(runId, workerId, "CLASSIFIED", "NEEDS_HUMAN");
+    await transitionRun(runId, workerId, run.phase, "NEEDS_HUMAN");
     return "NEEDS_HUMAN";
   }
 
-  await transitionRun(runId, workerId, "CLASSIFIED", "REPRODUCING");
-
-  const rep = await reproduce(fixture, opts);
-  const outcome: ReproductionOutcome = !rep.accepted
-    ? rep.reason === "signature-mismatch"
-      ? "NEEDS_HUMAN"
-      : "NOT_REPRODUCIBLE"
-    : await classifyOnLatestMain(fixture);
-
-  if (outcome === "FIXING") {
-    // Anchor the immutable target to the code state we just reproduced, in the
-    // same CAS that advances the phase. Repair can only read/compare it.
-    await transitionRunWithTarget(runId, workerId, "REPRODUCING", "FIXING", buildTarget(fixture, run.incident));
-  } else {
-    await transitionRun(runId, workerId, "REPRODUCING", outcome);
+  if (run.phase === "CLASSIFIED") {
+    await transitionRun(runId, workerId, "CLASSIFIED", "REPRODUCING");
   }
-  return outcome;
+
+  const work = new AbortController();
+  const stop = new AbortController();
+  const beat = opts._beat ?? (() => heartbeatRun(runId, workerId, leaseMs));
+  const heartbeatLoop = (async () => {
+    while (!stop.signal.aborted) {
+      await delay(opts.heartbeatMs ?? 5_000, stop.signal);
+      if (stop.signal.aborted) break;
+      if (!(await beat().catch(() => false))) { work.abort(); break; }
+    }
+  })();
+
+  try {
+    const rep = await reproduce(fixture, { repeats: opts.repeats, signal: work.signal });
+    if (work.signal.aborted) throw new Error(`run ${runId} lost lease or CAS race`);
+    const outcome: ReproductionOutcome = !rep.accepted
+      ? rep.reason === "signature-mismatch"
+        ? "NEEDS_HUMAN"
+        : "NOT_REPRODUCIBLE"
+      : await classifyOnLatestMain(fixture, { signal: work.signal });
+    if (work.signal.aborted) throw new Error(`run ${runId} lost lease or CAS race`);
+
+    if (outcome === "FIXING") {
+      // Anchor the immutable target to the code state + substrate we reproduced,
+      // in the same CAS that advances the phase.
+      await transitionRunWithTarget(runId, workerId, "REPRODUCING", "FIXING", buildTarget(fixture, run.incident));
+    } else {
+      await transitionRun(runId, workerId, "REPRODUCING", outcome);
+    }
+    return outcome;
+  } catch (error) {
+    if (work.signal.aborted) throw new Error(`run ${runId} lost lease or CAS race`);
+    throw error;
+  } finally {
+    stop.abort();
+    await heartbeatLoop.catch(() => {});
+  }
 }
 
 export type RepairOutcome = "PROPOSED" | "NEEDS_HUMAN";

@@ -1,20 +1,18 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { execFile } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { createRegressionFixture, type RegressionFixture } from "./fixtures";
-import { __trustRepairerForTest, fixtureRepairerFor, type Repairer } from "./repair";
+import { fixtureRepairerFor, type Repairer } from "./repair";
 import { LeaseLost, runFixAttempt } from "./fixAttempt";
 import { InfrastructureFailure, type CheckRunner } from "./substrate";
 
 const infraRunner: CheckRunner = async () => ({ kind: "infrastructure-failure", reason: "docker unavailable" });
 
-// A benign, TEST-AUTHORED repairer marked trusted via the env-gated test helper (NOT
-// by subclassing the production oracle — that would grant real trust). Its repair()
-// runs test-written JS writing test-controlled source, so host execution is safe; the
-// isolation guard is only for UNTRUSTED authors (LlmRepairer), which get no trust.
-const oracleRepairer = (fn: Repairer["repair"]): Repairer => __trustRepairerForTest({ repair: fn });
+// Guard enforcement has focused tests; these flow tests use benign test repairers.
+vi.mock("./isolated/guard", () => ({ assertIsolatedForUntrusted: vi.fn() }));
+const testRepairer = (fn: Repairer["repair"]): Repairer => ({ repair: fn });
 
 const execFileAsync = promisify(execFile);
 const POLICY = { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"], readAllowlist: ["src/"] };
@@ -69,7 +67,7 @@ describe("runFixAttempt", () => {
   it("persists a repairer's redacted trace in the evidence", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
-    const reporting = oracleRepairer(async (ctx) => {
+    const reporting = testRepairer(async (ctx) => {
       await ctx.writeFile("src/score.mjs", fixture.fixedSource);
       return { trace: [{ step: 0, tokens: 12, reasoning: "guarded", tools: [{ name: "write_file", status: "executed", path: "src/score.mjs", contentBytes: 42, contentSha256: "abcd" }] }], tokens: 12 };
     });
@@ -82,7 +80,7 @@ describe("runFixAttempt", () => {
   it("runs the hidden holdout: a hardcode games the visible check but fails the holdout", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
-    const hardcode = oracleRepairer(async (ctx) => {
+    const hardcode = testRepairer(async (ctx) => {
       await ctx.writeFile("src/score.mjs", "export function score() {\n  return 0;\n}\n");
     });
     const evidence = await runFixAttempt(fixture, hardcode, { policy: POLICY, maxPatchBytes: 1_000_000 });
@@ -95,7 +93,7 @@ describe("runFixAttempt", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const hb = countingBeat(() => true);
-    const slow = oracleRepairer(async (ctx) => {
+    const slow = testRepairer(async (ctx) => {
       await delay(50, ctx.signal); // ~2.5 intervals
       await ctx.writeFile(fixture.sourceRelPath, fixture.fixedSource);
     });
@@ -107,7 +105,7 @@ describe("runFixAttempt", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const hb = countingBeat((n) => n < 2); // true once, then false
-    const sleeper = oracleRepairer(async (ctx) => { await delay(10_000, ctx.signal, true); });
+    const sleeper = testRepairer(async (ctx) => { await delay(10_000, ctx.signal, true); });
     await expect(
       runFixAttempt(fixture, sleeper, { policy: POLICY, maxPatchBytes: 1_000_000, heartbeat: { intervalMs: 20, beat: hb.beat } }),
     ).rejects.toBeInstanceOf(LeaseLost);

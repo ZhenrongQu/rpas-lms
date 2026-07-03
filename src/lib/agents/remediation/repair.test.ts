@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRegressionFixture, type RegressionFixture } from "./fixtures";
-import { __trustRepairerForTest, FixtureRepairer, fixtureRepairerFor, isTrustedRepairer, makeRepairContext, type Repairer } from "./repair";
+import { FixtureRepairer, fixtureRepairerFor, isTrustedRepairer, makeRepairContext, type Repairer } from "./repair";
 import { InfrastructureFailure, type CheckRunner } from "./substrate";
 
 const infraRunner: CheckRunner = async () => ({ kind: "infrastructure-failure", reason: "docker unavailable" });
@@ -134,9 +134,8 @@ describe("repairer trust boundary", () => {
     expect(isTrustedRepairer(r)).toBe(true);
   });
 
-  it("a plain object is untrusted unless granted via the env-gated test helper", () => {
+  it("does not grant trust to a plain repairer", () => {
     const plain: Repairer = { async repair() {} };
     expect(isTrustedRepairer(plain)).toBe(false);
-    expect(isTrustedRepairer(__trustRepairerForTest(plain))).toBe(true);
   });
 });

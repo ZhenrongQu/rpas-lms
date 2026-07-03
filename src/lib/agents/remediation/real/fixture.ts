@@ -1,12 +1,13 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type { RegressionFixture } from "../fixtures";
-import type { Substrate } from "../substrate";
+import { createSubstrateIdentity, type Substrate } from "../substrate";
 import { dockerVitestCheckRunner, dockerVitestHoldoutRunner } from "../isolated/dockerCheckRunner";
-import { vitestCheckRunner, vitestHoldoutRunner, vitestJsonStrategy, type VitestIncident } from "./vitestSubstrate";
+import { ADAPTER_CONFIG, vitestCheckRunner, vitestHoldoutRunner, vitestJsonStrategy, type VitestIncident } from "./vitestSubstrate";
 
 const execFileAsync = promisify(execFile);
 
@@ -47,9 +48,28 @@ export async function buildRealRepoFixture(spec: RealRepoDefectSpec, opts: Fixtu
     throw new Error("isolation 'docker' requires an image tag (call ensureImage first)");
   }
   const signature = vitestJsonStrategy(spec.signature);
+  const isolation = opts.isolation === "docker" ? "docker" : "host";
+  // Bind the identity to the REAL adapter-config content (the file the runner passes
+  // as --config), not a hand-written tag: a semantic edit to it invalidates the frozen
+  // identity, so a resume that would verify under a changed toolchain fails sameTarget.
+  const adapterConfigContent = await readFile(join(spec.originRepo, ADAPTER_CONFIG), "utf8");
+  const adapterConfigSha = createHash("sha256").update(adapterConfigContent).digest("hex");
+  const identity = createSubstrateIdentity({
+    kind: "vitest-v1",
+    isolation,
+    image: opts.isolation === "docker" ? opts.image : null,
+    tests: [...spec.relatedTests].sort(),
+    adapterConfig: `${ADAPTER_CONFIG}:${adapterConfigSha}`,
+    holdoutPath: spec.holdout.relPath,
+    holdoutSource: spec.holdout.source,
+    signature: spec.signature,
+    pinnedPaths: [...spec.relatedTests].sort(),
+    readAllowlist: ["src/"],
+  });
   const substrate: Substrate =
     opts.isolation === "docker"
       ? {
+          identity,
           runCheck: dockerVitestCheckRunner({ image: opts.image, tests: spec.relatedTests }),
           runHoldout: dockerVitestHoldoutRunner(opts.image, spec.holdout.relPath, spec.holdout.source),
           signature,
@@ -57,6 +77,7 @@ export async function buildRealRepoFixture(spec: RealRepoDefectSpec, opts: Fixtu
           readAllowlist: ["src/"],
         }
       : {
+          identity,
           runCheck: vitestCheckRunner(spec.originRepo, spec.relatedTests),
           runHoldout: vitestHoldoutRunner(spec.originRepo, spec.holdout.relPath, spec.holdout.source),
           signature,

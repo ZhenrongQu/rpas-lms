@@ -6,7 +6,10 @@ import { promisify } from "node:util";
 import type { CheckRunner, CompletedCheck, SignatureStrategy } from "../substrate";
 
 const execFileAsync = promisify(execFile);
-const ADAPTER_CONFIG = "vitest.adapter.config.mts";
+/** The minimal per-defect vitest config the runner passes as --config. Exported so
+ *  the substrate identity can hash its real content (drift detection) using the same
+ *  filename the runner actually invokes. */
+export const ADAPTER_CONFIG = "vitest.adapter.config.mts";
 
 /** The one exec the runner makes — injectable so unit tests never spawn real vitest. */
 export type VitestExec = (

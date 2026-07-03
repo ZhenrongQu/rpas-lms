@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -47,6 +48,14 @@ export function expectCompleted(result: CheckResult): CompletedCheck {
  * LeaseLost-vs-propagate.
  */
 export type CheckRunner = (worktreeRoot: string, signal?: AbortSignal) => Promise<CheckResult>;
+
+/** Stable, serializable identity for the exact verification substrate frozen with
+ *  a reproduced target. Callers supply a manifest made only from deterministic
+ *  data (paths, source hashes/config, runner kind); executable closures are never
+ *  treated as identity. */
+export function createSubstrateIdentity(manifest: unknown): string {
+  return createHash("sha256").update(JSON.stringify(manifest)).digest("hex");
+}
 
 /**
  * How a failure is fingerprinted and matched to the incident. The kernel only calls
@@ -105,6 +114,8 @@ export function scriptHoldoutRunner(holdoutSource: string, relPath = "src/__hold
  * these instead of assuming `node src/check.mjs` + a Node stack signature.
  */
 export type Substrate = {
+  /** Digest of the exact check/holdout/signature/runner manifest. */
+  identity: string;
   runCheck: CheckRunner;
   runHoldout: CheckRunner;
   signature: SignatureStrategy;

@@ -24,6 +24,9 @@ async function fakeOrigin(source: string): Promise<string> {
   await git(["config", "user.email", "origin@example.invalid"]);
   await mkdir(join(dir, "src"));
   await writeFile(join(dir, "src/foo.ts"), source);
+  // The real origin always ships the adapter config; the fixture builder hashes its
+  // content into the substrate identity, so a fake origin must provide one too.
+  await writeFile(join(dir, "vitest.adapter.config.mts"), "export default {};\n");
   await git(["add", "-A"]);
   await git(["commit", "--quiet", "-m", "good"]);
   return dir;
