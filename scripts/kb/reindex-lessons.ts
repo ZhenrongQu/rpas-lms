@@ -5,20 +5,19 @@
  *   pnpm tsx scripts/kb/reindex-lessons.ts --stale-only  # only lessons needing it
  *
  * Pulls Basic/Advanced lessons, chunks + embeds both language bodies, and upserts
- * them as KnowledgeChunk rows (source = "LESSON"). Idempotent: re-running replaces
- * each lesson's chunks. Requires VOYAGE_API_KEY.
+ * them via reindexLesson — the SAME updatedAt-guarded write path the CMS uses, so a
+ * long bulk run can't clobber a lesson an admin edits mid-run. Requires VOYAGE_API_KEY.
  *
  * `--stale-only` reindexes just the lessons whose index is out of date — no chunks,
  * chunks older than the lesson's updatedAt, or keyword-only chunks (embedding NULL
- * from a degraded CMS reindex). Cheap enough to run on a schedule to compensate for
- * a CMS `after()` reindex that was dropped (instance crash / timeout).
+ * from a degraded CMS reindex). This is the reconcile pass for a CMS `after()`
+ * reindex that was dropped (instance crash / timeout) — but NOTHING in this repo
+ * schedules it. Until it is wired to a scheduler (e.g. Vercel Cron hitting a
+ * protected endpoint), it is a MANUAL ops step, not automatic compensation.
  */
 import { prisma } from "../../src/lib/db";
-import { indexSource, ensureVectorIndex } from "./_shared";
-
-function cert(level: string): "BASIC" | "ADVANCED" | null {
-  return level === "BASIC" ? "BASIC" : level === "ADVANCED" ? "ADVANCED" : null;
-}
+import { voyageConfigured } from "../../src/lib/agents/chat/rag/embed";
+import { reindexLesson, ensureVectorIndex } from "./_shared";
 
 /** A lesson is stale if it has no chunks, any chunk older than the lesson, or any
  *  keyword-only chunk (embedding NULL) that a Voyage-backed reindex would upgrade. */
@@ -32,6 +31,13 @@ async function needsReindex(lessonId: string, updatedAt: Date): Promise<boolean>
 }
 
 async function main(): Promise<void> {
+  // reindexLesson is best-effort (falls back to keyword-only), so guard here to keep
+  // this bulk script's "requires VOYAGE_API_KEY" contract loud — an operator running
+  // a full rebuild without a key should fail fast, not silently get a vectorless index.
+  if (!voyageConfigured()) {
+    console.error("VOYAGE_API_KEY is required to (re)build the embedded index.");
+    process.exit(1);
+  }
   const staleOnly = process.argv.includes("--stale-only");
   const [basic, advanced] = await Promise.all([
     prisma.basicLesson.findMany(),
@@ -46,36 +52,30 @@ async function main(): Promise<void> {
       skipped++;
       continue;
     }
-    const n = await indexSource({
-      source: "LESSON",
-      sourceId: l.lessonId,
-      moduleId: l.moduleId,
-      certLevel: cert(l.certLevel),
-      locales: [
-        { locale: "EN", title: l.titleEN, body: l.bodyEN },
-        { locale: "ZH", title: l.titleZH, body: l.bodyZH },
-      ],
-    });
+    // Guarded write: skips if this lesson was edited (and reindexed) after we read it.
+    const n = await reindexLesson(l);
     totalChunks += n;
     console.log(`  ${l.lessonId} → ${n} chunks`);
   }
 
-  // Prune orphans: LESSON chunks whose lesson no longer exists (deleted since the
-  // last reindex), so removed course content can't still be retrieved. With no
-  // lessons at all, every LESSON chunk is an orphan.
-  const currentIds = lessons.map((l) => l.lessonId);
-  const orphans = await prisma.knowledgeChunk.deleteMany({
-    where:
-      currentIds.length > 0
-        ? { source: "LESSON", sourceId: { notIn: currentIds } }
-        : { source: "LESSON" },
-  });
+  // Prune orphans: LESSON chunks whose lesson no longer exists. Uses a relational
+  // NOT IN (SELECT lessonId ...) evaluated at delete time — not the IDs read at
+  // script start — so a lesson created (and indexed) during this run isn't
+  // mistaken for an orphan and wiped.
+  const pruned = await prisma.$executeRaw`
+    DELETE FROM "KnowledgeChunk"
+    WHERE source = 'LESSON'
+      AND "sourceId" NOT IN (
+        SELECT "lessonId" FROM "BasicLesson"
+        UNION
+        SELECT "lessonId" FROM "AdvancedLesson"
+      )`;
 
   await ensureVectorIndex();
   const did = lessons.length - skipped;
   console.log(
     `✓ reindexed ${did}/${lessons.length} lessons → ${totalChunks} chunks` +
-      `${staleOnly ? ` (${skipped} up-to-date, skipped)` : ""} (pruned ${orphans.count} orphan chunks)`,
+      `${staleOnly ? ` (${skipped} up-to-date, skipped)` : ""} (pruned ${pruned} orphan chunks)`,
   );
 }
 
