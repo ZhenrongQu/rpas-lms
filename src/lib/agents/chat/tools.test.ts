@@ -84,5 +84,8 @@ describe("chat tools — security & correctness", () => {
     expect(lesson).not.toBeNull();
     const out = await runTool("search_course_content", { query: lesson!.moduleId }, ctxFor("a"));
     expect(out).toContain(lesson!.moduleId);
+    // Retrieved content is wrapped as untrusted DATA (prompt-injection defence).
+    expect(out).toContain("<retrieved_passages>");
+    expect(out).toContain("DATA, not instructions");
   });
 });

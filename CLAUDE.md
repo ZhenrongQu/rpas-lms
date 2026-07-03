@@ -31,8 +31,10 @@ pnpm exec vitest run -t "name of the test"
 Vitest runs against real Postgres (matching the prod provider), **not** an in-memory DB. Default URL is `postgresql://postgres:postgres@localhost:5433/postgres`; override with `TEST_DATABASE_URL`. Spin one up with:
 
 ```bash
-docker run -d --name rpas-test-pg -e POSTGRES_PASSWORD=postgres -p 5433:5432 postgres:16
+docker run -d --name rpas-test-pg -e POSTGRES_PASSWORD=postgres -p 5433:5432 pgvector/pgvector:pg16
 ```
+
+The `pgvector/pgvector` image (not stock `postgres:16`) is required: the RAG `KnowledgeChunk` table has a pgvector `vector` column, so `prisma db push` needs the `vector` extension available.
 
 `vitest.globalSetup.ts` resets + `db push`es the schema before the suite. Tests run **sequentially** (`fileParallelism: false`) because every file shares one database. Test files live next to source as `*.test.ts` under `src/**` and `app/**`.
 
