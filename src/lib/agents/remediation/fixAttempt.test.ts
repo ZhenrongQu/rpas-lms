@@ -4,26 +4,17 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { createRegressionFixture, type RegressionFixture } from "./fixtures";
-import { FixtureRepairer, fixtureRepairerFor, type RepairContext, type RepairReport } from "./repair";
+import { __trustRepairerForTest, fixtureRepairerFor, type Repairer } from "./repair";
 import { LeaseLost, runFixAttempt } from "./fixAttempt";
 import { InfrastructureFailure, type CheckRunner } from "./substrate";
 
 const infraRunner: CheckRunner = async () => ({ kind: "infrastructure-failure", reason: "docker unavailable" });
 
-// A deterministic, TEST-AUTHORED oracle repairer. It is trusted (extends
-// FixtureRepairer, so the oracle-family constructor registers it), which is honest:
-// its repair() runs test-written JS and the source it writes is test-controlled, so
-// executing on the host is safe. The kernel's isolation is therefore not required —
-// only UNTRUSTED authors (LlmRepairer, which implements Repairer directly and gets NO
-// trust) must run in Docker. This construct is test-only (defined in a *.test.ts).
-class OracleRepairer extends FixtureRepairer {
-  constructor(private readonly fn: (ctx: RepairContext) => Promise<RepairReport | void>) {
-    super("", "");
-  }
-  override repair(ctx: RepairContext): Promise<RepairReport | void> {
-    return this.fn(ctx);
-  }
-}
+// A benign, TEST-AUTHORED repairer marked trusted via the env-gated test helper (NOT
+// by subclassing the production oracle — that would grant real trust). Its repair()
+// runs test-written JS writing test-controlled source, so host execution is safe; the
+// isolation guard is only for UNTRUSTED authors (LlmRepairer), which get no trust.
+const oracleRepairer = (fn: Repairer["repair"]): Repairer => __trustRepairerForTest({ repair: fn });
 
 const execFileAsync = promisify(execFile);
 const POLICY = { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"], readAllowlist: ["src/"] };
@@ -78,7 +69,7 @@ describe("runFixAttempt", () => {
   it("persists a repairer's redacted trace in the evidence", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
-    const reporting = new OracleRepairer(async (ctx) => {
+    const reporting = oracleRepairer(async (ctx) => {
       await ctx.writeFile("src/score.mjs", fixture.fixedSource);
       return { trace: [{ step: 0, tokens: 12, reasoning: "guarded", tools: [{ name: "write_file", status: "executed", path: "src/score.mjs", contentBytes: 42, contentSha256: "abcd" }] }], tokens: 12 };
     });
@@ -91,7 +82,7 @@ describe("runFixAttempt", () => {
   it("runs the hidden holdout: a hardcode games the visible check but fails the holdout", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
-    const hardcode = new OracleRepairer(async (ctx) => {
+    const hardcode = oracleRepairer(async (ctx) => {
       await ctx.writeFile("src/score.mjs", "export function score() {\n  return 0;\n}\n");
     });
     const evidence = await runFixAttempt(fixture, hardcode, { policy: POLICY, maxPatchBytes: 1_000_000 });
@@ -104,7 +95,7 @@ describe("runFixAttempt", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const hb = countingBeat(() => true);
-    const slow = new OracleRepairer(async (ctx) => {
+    const slow = oracleRepairer(async (ctx) => {
       await delay(50, ctx.signal); // ~2.5 intervals
       await ctx.writeFile(fixture.sourceRelPath, fixture.fixedSource);
     });
@@ -116,7 +107,7 @@ describe("runFixAttempt", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const hb = countingBeat((n) => n < 2); // true once, then false
-    const sleeper = new OracleRepairer(async (ctx) => { await delay(10_000, ctx.signal, true); });
+    const sleeper = oracleRepairer(async (ctx) => { await delay(10_000, ctx.signal, true); });
     await expect(
       runFixAttempt(fixture, sleeper, { policy: POLICY, maxPatchBytes: 1_000_000, heartbeat: { intervalMs: 20, beat: hb.beat } }),
     ).rejects.toBeInstanceOf(LeaseLost);

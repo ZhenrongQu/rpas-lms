@@ -44,18 +44,32 @@ export type RepairTraceStep = {
 export type RepairReport = { trace: RepairTraceStep[]; tokens: number };
 
 /**
- * Unforgeable trust registry. Trust is membership in a module-private WeakSet with
- * NO exported mutator, so no code outside this module — production OR test — can
- * grant it: importing `isTrustedRepairer` only lets you READ trust, never confer it.
- * `FixtureRepairer` (the deterministic oracle) registers ITSELF at construction; the
- * LlmRepairer and every external Repairer are therefore untrusted, and the isolation
- * guard requires them to run in Docker.
+ * Unforgeable trust registry. Trust is membership in a module-private WeakSet with NO
+ * production mutator: importing `isTrustedRepairer` only READS trust. Only an EXACT
+ * `FixtureRepairer` instance registers itself (a `new.target` guard blocks subclasses,
+ * and the instance is frozen so `repair` cannot be swapped afterward) — so subclassing
+ * the oracle and overriding `repair` no longer grants trust. LlmRepairer and every
+ * external Repairer are untrusted; the isolation guard requires them to run in Docker.
  */
 const trustedRepairers = new WeakSet<Repairer>();
 
 /** Whether a repairer carries kernel-internal trust. Untrusted ↔ not registered. */
 export function isTrustedRepairer(r: Repairer): boolean {
   return trustedRepairers.has(r);
+}
+
+/**
+ * TEST-ONLY trust grant. Gated on NODE_ENV==="test" AND ALLOW_TEST_AUTH==="1" (the
+ * SEC-05 pattern, set only in vitest.config) — it THROWS in production, so it can
+ * never confer trust outside the test suite. Lets flow-tests mark a benign,
+ * test-authored repairer trusted WITHOUT subclassing the production oracle.
+ */
+export function __trustRepairerForTest<T extends Repairer>(r: T): T {
+  if (process.env.NODE_ENV !== "test" || process.env.ALLOW_TEST_AUTH !== "1") {
+    throw new Error("__trustRepairerForTest is only available under test auth (NODE_ENV=test, ALLOW_TEST_AUTH=1)");
+  }
+  trustedRepairers.add(r);
+  return r;
 }
 
 export interface Repairer {
@@ -153,7 +167,11 @@ export class FixtureRepairer implements Repairer {
     private readonly sourceRelPath: string,
     private readonly fixedSource: string,
   ) {
-    trustedRepairers.add(this); // the ONLY registration site: a deterministic oracle
+    // Trust ONLY an exact FixtureRepairer — a subclass (new.target !== FixtureRepairer)
+    // gets no trust, so overriding repair() cannot smuggle untrusted code onto a host
+    // runner. Freeze so repair can't be swapped on the instance after construction.
+    if (new.target === FixtureRepairer) trustedRepairers.add(this);
+    Object.freeze(this);
   }
   async repair(ctx: RepairContext): Promise<RepairReport | void> {
     await ctx.writeFile(this.sourceRelPath, this.fixedSource);

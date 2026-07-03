@@ -107,6 +107,17 @@ function report(results: CaseResult[]): void {
 }
 
 async function main(): Promise<void> {
+  // Fail-fast, non-zero: the graded catalog is exit-code-only (a repairer could
+  // process.exit(0) to fake green), so the isolation guard refuses every case. Do NOT
+  // run to a green-looking "SAFETY HELD" exit 0. Use `pnpm real-repair-eval` for the
+  // isolated LLM eval; set REPAIR_EVAL_FORCE=1 only to observe the guard refusals.
+  if (process.env.REPAIR_EVAL_FORCE !== "1") {
+    throw new Error(
+      "eval:repair is disabled (exit-code-only catalog cannot prove a check ran → false-green risk). " +
+        "Use `pnpm real-repair-eval` (real vitest + Docker + report-proof). " +
+        "Set REPAIR_EVAL_FORCE=1 to run anyway; every case will be refused by the isolation guard.",
+    );
+  }
   assertLocalDb();
   if (!process.env.ANTHROPIC_API_KEY) throw new Error("repair-eval needs ANTHROPIC_API_KEY (put it in .env)");
   const model = process.env.REPAIR_EVAL_MODEL;

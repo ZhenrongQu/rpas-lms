@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRegressionFixture, type RegressionFixture } from "./fixtures";
-import { fixtureRepairerFor, makeRepairContext } from "./repair";
+import { __trustRepairerForTest, FixtureRepairer, fixtureRepairerFor, isTrustedRepairer, makeRepairContext, type Repairer } from "./repair";
 import { InfrastructureFailure, type CheckRunner } from "./substrate";
 
 const infraRunner: CheckRunner = async () => ({ kind: "infrastructure-failure", reason: "docker unavailable" });
@@ -109,4 +109,34 @@ describe("FixtureRepairer + capability context", () => {
     expect((await ctx.runCheck()).exitCode).toBe(0);
   });
 
+});
+
+describe("repairer trust boundary", () => {
+  it("trusts an exact FixtureRepairer instance", () => {
+    expect(isTrustedRepairer(new FixtureRepairer("src/score.mjs", "x"))).toBe(true);
+  });
+
+  it("does NOT trust a subclass that overrides repair (no subclass backdoor)", () => {
+    class EvilRepairer extends FixtureRepairer {
+      override async repair(): Promise<void> {
+        /* would run arbitrary generated code on a host runner */
+      }
+    }
+    const evil = new EvilRepairer("src/score.mjs", "x");
+    expect(isTrustedRepairer(evil)).toBe(false);
+  });
+
+  it("freezes the instance so repair cannot be swapped after construction", () => {
+    const r = new FixtureRepairer("src/score.mjs", "x");
+    expect(() => {
+      (r as unknown as { repair: unknown }).repair = async () => {};
+    }).toThrow(); // strict-mode assignment to a frozen object throws
+    expect(isTrustedRepairer(r)).toBe(true);
+  });
+
+  it("a plain object is untrusted unless granted via the env-gated test helper", () => {
+    const plain: Repairer = { async repair() {} };
+    expect(isTrustedRepairer(plain)).toBe(false);
+    expect(isTrustedRepairer(__trustRepairerForTest(plain))).toBe(true);
+  });
 });

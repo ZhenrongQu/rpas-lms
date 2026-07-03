@@ -3,24 +3,16 @@ import { prisma } from "../../db";
 import { createRegressionFixture, type FixtureVariant, type RegressionFixture } from "./fixtures";
 import { claimRun, createRemediationRun, ingestIncident, transitionRun } from "./store";
 import { driveRepair, driveReproduction } from "./driver";
-import { FixtureRepairer, fixtureRepairerFor, type RepairContext, type RepairReport } from "./repair";
+import { __trustRepairerForTest, fixtureRepairerFor, type Repairer } from "./repair";
 import { LeaseLost, type RepairEvidence } from "./fixAttempt";
 import { publishProposal } from "./publish";
 
 const created: RegressionFixture[] = [];
 
-// A deterministic, TEST-AUTHORED oracle repairer — trusted via the FixtureRepairer
-// oracle family (its repair() runs test-written JS writing test-controlled source, so
-// host execution is safe). Untrusted authors (LlmRepairer) get no trust and must run
-// isolated. Test-only (defined in a *.test.ts).
-class OracleRepairer extends FixtureRepairer {
-  constructor(private readonly fn: (ctx: RepairContext) => Promise<RepairReport | void>) {
-    super("", "");
-  }
-  override repair(ctx: RepairContext): Promise<RepairReport | void> {
-    return this.fn(ctx);
-  }
-}
+// A benign, TEST-AUTHORED repairer marked trusted via the env-gated test helper (not
+// by subclassing the production oracle). Its repair() runs test-written JS; host
+// execution is safe. Untrusted authors (LlmRepairer) get no trust and must run isolated.
+const oracleRepairer = (fn: Repairer["repair"]): Repairer => __trustRepairerForTest({ repair: fn });
 
 afterEach(async () => {
   await Promise.all(created.splice(0).map((fixture) => fixture.cleanup()));
@@ -252,7 +244,7 @@ describe("driveRepair", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const runId = await fixingRun(fixture);
-    const noop = new OracleRepairer(async () => {});
+    const noop = oracleRepairer(async () => {});
     const outcome = await driveRepair(runId, "worker-a", fixture, noop, { heartbeatMs: 20 });
     expect(outcome).toBe("NEEDS_HUMAN");
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
@@ -265,7 +257,7 @@ describe("driveRepair", () => {
     created.push(fixture);
     const runId = await fixingRun(fixture);
     let n = 0;
-    const sleeper = new OracleRepairer(async (ctx) => {
+    const sleeper = oracleRepairer(async (ctx) => {
       await new Promise<void>((res, rej) => {
         const t = setTimeout(res, 10_000);
         ctx.signal.addEventListener("abort", () => { clearTimeout(t); rej(new Error("aborted")); }, { once: true });
@@ -285,7 +277,7 @@ describe("driveRepair", () => {
     created.push(fixture);
     const runId = await fixingRun(fixture);
     let called = false;
-    const spy = new OracleRepairer(async () => { called = true; });
+    const spy = oracleRepairer(async () => { called = true; });
     await expect(driveRepair(runId, "worker-b", fixture, spy)).rejects.toThrow("lost lease or CAS race");
     expect(called).toBe(false); // fast-failed before the expensive fix attempt
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
