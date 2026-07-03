@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import type { RegressionFixture } from "../fixtures";
+import { dockerScriptCheckRunner, dockerScriptHoldoutRunner } from "../isolated/dockerCheckRunner";
 import { nodeStackStrategy } from "../signature";
 import { scriptCheckRunner, scriptHoldoutRunner } from "../substrate";
 
@@ -38,7 +39,13 @@ type CaseSpec = {
   incident: { fingerprint: string; errorType: string; sourceFile: string; symbol: string };
 };
 
-async function buildRepairCase(spec: CaseSpec): Promise<RepairCase> {
+export type RepairCasesOptions =
+  | { isolation?: "host"; nodeImage?: never }
+  | { isolation: "docker"; nodeImage?: string };
+
+async function buildRepairCase(spec: CaseSpec, opts: RepairCasesOptions = {}): Promise<RepairCase> {
+  const useDocker = opts.isolation === "docker";
+  const nodeImage = (opts as { nodeImage?: string }).nodeImage ?? "node:20-slim";
   const repoRoot = await mkdtemp(join(tmpdir(), `repair-case-${spec.id}-`));
   const git = (args: string[]) => execFileAsync("git", args, { cwd: repoRoot });
   const head = async () => (await git(["rev-parse", "HEAD"])).stdout.trim();
@@ -73,8 +80,12 @@ async function buildRepairCase(spec: CaseSpec): Promise<RepairCase> {
       sourceRelPath: spec.sourceRelPath,
       incident: spec.incident,
       substrate: {
-        runCheck: scriptCheckRunner("src/check.mjs"),
-        runHoldout: scriptHoldoutRunner(spec.holdout),
+        runCheck: useDocker
+          ? dockerScriptCheckRunner({ script: "src/check.mjs", image: nodeImage })
+          : scriptCheckRunner("src/check.mjs"),
+        runHoldout: useDocker
+          ? dockerScriptHoldoutRunner({ holdoutSource: spec.holdout, image: nodeImage })
+          : scriptHoldoutRunner(spec.holdout),
         signature: nodeStackStrategy(spec.incident),
         pinnedPaths: ["src/check.mjs"],
         readAllowlist: ["src/"],
@@ -152,6 +163,6 @@ const UNFIXABLE_OUT_OF_SCOPE: CaseSpec = {
 export const REPAIR_CASE_SPECS: CaseSpec[] = [GUARD_NULLISH, REGEX_FIRST_TAG, UNFIXABLE_OUT_OF_SCOPE];
 
 /** Build all graded cases (each a fresh throwaway repo; remember to cleanup()). */
-export function createRepairCases(): Promise<RepairCase[]> {
-  return Promise.all(REPAIR_CASE_SPECS.map(buildRepairCase));
+export function createRepairCases(opts: RepairCasesOptions = {}): Promise<RepairCase[]> {
+  return Promise.all(REPAIR_CASE_SPECS.map((spec) => buildRepairCase(spec, opts)));
 }

@@ -33,14 +33,20 @@ export type DockerRunnerOptions = {
 };
 
 /**
- * Validate that a JSON string is a parseable vitest reporter object (has testResults).
- * Any exit code that produced a structurally invalid report is treated as infra, not
- * a real red — fail-closed.
+ * Validate a vitest JSON reporter string: must be an object with testResults (Array)
+ * and success (boolean), and success must agree with the exit code (0↔true, 1↔false).
+ * Any deviation is treated as infrastructure noise, not a real red/green — fail-closed.
  */
-function parseReport(json: string): unknown | null {
+function parseReport(json: string, exitCode: 0 | 1): unknown | null {
   try {
-    const parsed = JSON.parse(json);
-    return typeof parsed === "object" && parsed !== null && "testResults" in parsed ? parsed : null;
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    if (typeof parsed !== "object" || parsed === null) return null;
+    if (!Array.isArray(parsed.testResults)) return null;
+    if (typeof parsed.success !== "boolean") return null;
+    // Cross-validate: exit 0 ↔ success:true, exit 1 ↔ success:false.
+    if (exitCode === 0 && !parsed.success) return null;
+    if (exitCode === 1 && parsed.success) return null;
+    return parsed;
   } catch {
     return null;
   }
@@ -56,14 +62,15 @@ function parseReport(json: string): unknown | null {
 export function isolatedDockerArgs(o: {
   name: string;
   worktreeRoot: string;
-  outDir: string;
+  /** Optional output bind-mount (needed for vitest JSON report; omit for script runners). */
+  outDir?: string;
   image: string;
   cpus?: string;
   memoryMb?: number;
   pids?: number;
 }): string[] {
   const { name, worktreeRoot, outDir, image, cpus = "1", memoryMb = 512, pids = 128 } = o;
-  return [
+  const args = [
     "run", "--rm", "--name", name,
     "--network", "none",
     "--read-only",
@@ -74,12 +81,15 @@ export function isolatedDockerArgs(o: {
     "--memory", `${memoryMb}m`,
     "--pids-limit", String(pids),
     "-v", `${worktreeRoot}:/workspace/repo:ro`,
-    "-v", `${outDir}:/out`,
+  ];
+  if (outDir) args.push("-v", `${outDir}:/out`);
+  args.push(
     "-w", "/workspace/repo",
     "-e", "HOME=/tmp",
     "-e", "PATH=/usr/local/bin:/usr/bin:/bin",
     image,
-  ];
+  );
+  return args;
 }
 
 /**
@@ -116,11 +126,12 @@ export function dockerVitestCheckRunner(opts: DockerRunnerOptions, exec: DockerE
     const readReport = () => readFile(join(outDir, "result.json"), "utf8").catch(() => null);
     try {
       await exec("docker", args, { signal: ctrl.signal, maxBuffer: 32 * 1024 * 1024 });
-      // exit 0: green — but only if the report is present and structurally valid.
+      // exit 0: green — but only if the report is present, structurally valid, and
+      // success:true (cross-validates that vitest agrees with exit 0).
       const report = await readReport();
       if (report == null) return { kind: "infrastructure-failure", reason: "vitest produced no report (exit 0)" };
-      return parseReport(report) == null
-        ? { kind: "infrastructure-failure", reason: "vitest report malformed (exit 0)" }
+      return parseReport(report, 0) == null
+        ? { kind: "infrastructure-failure", reason: "vitest report malformed or success mismatch (exit 0)" }
         : { kind: "completed", exitCode: 0, stdout: report, stderr: "" };
     } catch (e) {
       if (timedOut) return { kind: "infrastructure-failure", reason: `timeout after ${timeoutMs}ms` };
@@ -133,11 +144,11 @@ export function dockerVitestCheckRunner(opts: DockerRunnerOptions, exec: DockerE
       if (code !== 1) {
         return { kind: "infrastructure-failure", reason: `docker exit ${code}: ${(err.stderr ?? "").slice(0, 200)}` };
       }
-      // exit 1: genuine vitest failure — but only with a valid report.
+      // exit 1: genuine vitest failure — but only with a valid report where success:false.
       const report = await readReport();
       if (report == null) return { kind: "infrastructure-failure", reason: "no report (exit 1)" };
-      return parseReport(report) == null
-        ? { kind: "infrastructure-failure", reason: "vitest report malformed (exit 1)" }
+      return parseReport(report, 1) == null
+        ? { kind: "infrastructure-failure", reason: "vitest report malformed or success mismatch (exit 1)" }
         : { kind: "completed", exitCode: 1, stdout: report, stderr: err.stderr ?? "" };
     } finally {
       clearTimeout(timer);
@@ -198,6 +209,81 @@ export async function ensureImage(originRepo: string, exec: DockerExec = execFil
   } finally {
     await rm(ctx, { recursive: true, force: true }).catch(() => {});
   }
+}
+
+export type DockerScriptRunnerOptions = {
+  /** Repo-relative path to the Node.js script to execute (e.g. "src/check.mjs"). */
+  script: string;
+  /** Docker image with Node available. Defaults to node:20-slim (no build needed). */
+  image?: string;
+  timeoutMs?: number;
+  cpus?: string;
+  memoryMb?: number;
+  pids?: number;
+};
+
+/**
+ * A CheckRunner that executes a plain Node.js script inside a locked-down Docker
+ * container. Simpler than `dockerVitestCheckRunner` — no JSON report, just exit code:
+ * 0 = green, 1 = red, anything else = infrastructure-failure. Intended for graded
+ * eval fixtures that use hand-written `.mjs` scripts rather than vitest.
+ */
+export function dockerScriptCheckRunner(opts: DockerScriptRunnerOptions, exec: DockerExec = execFileAsync): IsolatedCheckRunner {
+  const { script, image = "node:20-slim", timeoutMs = 30_000, cpus = "1", memoryMb = 128, pids = 64 } = opts;
+  const run: CheckRunner = async (worktreeRoot, signal) => {
+    const name = `remediation-script-${randomUUID()}`;
+    const args = [
+      ...isolatedDockerArgs({ name, worktreeRoot, image, cpus, memoryMb, pids }),
+      "node", `/workspace/repo/${script}`,
+    ];
+
+    const ctrl = new AbortController();
+    const onLeaseAbort = () => ctrl.abort();
+    signal?.addEventListener("abort", onLeaseAbort, { once: true });
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      ctrl.abort();
+      void exec("docker", ["kill", name], {}).catch(() => {});
+    }, timeoutMs);
+
+    try {
+      await exec("docker", args, { signal: ctrl.signal });
+      return { kind: "completed", exitCode: 0, stdout: "", stderr: "" };
+    } catch (e) {
+      if (timedOut) return { kind: "infrastructure-failure", reason: `timeout after ${timeoutMs}ms` };
+      if (signal?.aborted) throw e;
+      const err = e as { code?: number | string; stderr?: string };
+      const code = typeof err.code === "number" ? err.code : -1;
+      if (code !== 1) {
+        return { kind: "infrastructure-failure", reason: `docker exit ${code}: ${(err.stderr ?? "").slice(0, 200)}` };
+      }
+      return { kind: "completed", exitCode: 1, stdout: "", stderr: err.stderr ?? "" };
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onLeaseAbort);
+      await exec("docker", ["kill", name], {}).catch(() => {});
+    }
+  };
+  return Object.assign(run, { isolated: true as const });
+}
+
+/**
+ * The hidden holdout runner for script fixtures: write the holdout source into the
+ * worktree on the host, then run it inside the isolated container. Mirrors
+ * `scriptHoldoutRunner` but isolated.
+ */
+export function dockerScriptHoldoutRunner(
+  opts: Omit<DockerScriptRunnerOptions, "script"> & { holdoutSource: string; holdoutRelPath?: string },
+  exec?: DockerExec,
+): IsolatedCheckRunner {
+  const { holdoutSource, holdoutRelPath = "src/__holdout__.mjs", ...baseOpts } = opts;
+  const inner = dockerScriptCheckRunner({ ...baseOpts, script: holdoutRelPath }, exec);
+  const run: CheckRunner = async (worktreeRoot, signal) => {
+    await writeFile(join(worktreeRoot, holdoutRelPath), holdoutSource);
+    return inner(worktreeRoot, signal);
+  };
+  return Object.assign(run, { isolated: true as const });
 }
 
 /** Whether a CheckRunner is the isolated (Docker) runner — used by the untrusted guard. */

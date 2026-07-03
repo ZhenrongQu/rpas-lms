@@ -43,11 +43,27 @@ export type RepairTraceStep = {
 
 export type RepairReport = { trace: RepairTraceStep[]; tokens: number };
 
+/**
+ * Unforgeable trust brand: attached only by `brandTrusted()` using this module-
+ * private Symbol. External code cannot acquire the Symbol (it is never exported),
+ * so no code outside this module can forge a trusted Repairer. The guard reads it
+ * via `isTrustedRepairer()`. LlmRepairer must NEVER call brandTrusted.
+ */
+const TRUSTED_BRAND = Symbol("trusted-repairer");
+
+/** Brand a kernel-internal oracle repairer as trusted. Only `FixtureRepairer` and
+ *  similar deterministic oracles should call this; LlmRepairer must never be branded. */
+export function brandTrusted<T extends Repairer>(r: T): T {
+  (r as unknown as Record<symbol, unknown>)[TRUSTED_BRAND] = true;
+  return r;
+}
+
+/** Whether a repairer carries the unforgeable trust brand. Untrusted ↔ brand absent. */
+export function isTrustedRepairer(r: Repairer): boolean {
+  return (r as unknown as Record<symbol, unknown>)[TRUSTED_BRAND] === true;
+}
+
 export interface Repairer {
-  /** Whether this repairer writes only safe, pre-validated source. Untrusted repairers
-   *  (LlmRepairer) execute model-generated code — they MUST use isolated (Docker)
-   *  runners; the kernel enforces this in runFixAttempt. */
-  readonly trusted: boolean;
   /** Returns a redacted report (LLM author) or void (deterministic oracle). */
   repair(ctx: RepairContext): Promise<RepairReport | void>;
 }
@@ -138,11 +154,12 @@ export function makeRepairContext(
 
 /** Deterministic repairer: applies a known-correct source to one path. */
 export class FixtureRepairer implements Repairer {
-  readonly trusted = true;
   constructor(
     private readonly sourceRelPath: string,
     private readonly fixedSource: string,
-  ) {}
+  ) {
+    brandTrusted(this);
+  }
   async repair(ctx: RepairContext): Promise<void> {
     await ctx.writeFile(this.sourceRelPath, this.fixedSource);
   }

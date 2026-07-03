@@ -117,6 +117,35 @@ describe("dockerVitestCheckRunner", () => {
     );
   });
 
+  it("success/exit-code mismatch is infrastructure-failure (cross-validation)", async () => {
+    // exit 0 but success:false — vitest and the exit code disagree
+    const exitZeroSuccessFalse: RunBehavior = async (outDir) => {
+      await writeFile(join(outDir, "result.json"), JSON.stringify({ success: false, testResults: [] }));
+      return { stdout: "", stderr: "" };
+    };
+    expect((await dockerVitestCheckRunner({ image: "i", tests: ["t"] }, makeExec(exitZeroSuccessFalse).exec)("/wt")).kind).toBe(
+      "infrastructure-failure",
+    );
+
+    // exit 1 but success:true — also contradictory
+    const exitOneSuccessTrue: RunBehavior = async (outDir) => {
+      await writeFile(join(outDir, "result.json"), JSON.stringify({ success: true, testResults: [] }));
+      throw Object.assign(new Error("tests failed"), { code: 1 });
+    };
+    expect((await dockerVitestCheckRunner({ image: "i", tests: ["t"] }, makeExec(exitOneSuccessTrue).exec)("/wt")).kind).toBe(
+      "infrastructure-failure",
+    );
+
+    // testResults not an array — structural failure
+    const testResultsNull: RunBehavior = async (outDir) => {
+      await writeFile(join(outDir, "result.json"), JSON.stringify({ success: true, testResults: null }));
+      return { stdout: "", stderr: "" };
+    };
+    expect((await dockerVitestCheckRunner({ image: "i", tests: ["t"] }, makeExec(testResultsNull).exec)("/wt")).kind).toBe(
+      "infrastructure-failure",
+    );
+  });
+
   it("fails closed: docker error / OOM / missing report / timeout are infrastructure failures", async () => {
     expect((await dockerVitestCheckRunner({ image: "i", tests: ["t"] }, makeExec(dockerDown).exec)("/wt")).kind).toBe(
       "infrastructure-failure",

@@ -104,7 +104,7 @@ async function main(): Promise<void> {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error("repair-eval needs ANTHROPIC_API_KEY (put it in .env)");
   const model = process.env.REPAIR_EVAL_MODEL;
 
-  const cases = await createRepairCases();
+  const cases = await createRepairCases({ isolation: "docker" });
   const createdIds: string[] = [];
   try {
     const results: CaseResult[] = [];

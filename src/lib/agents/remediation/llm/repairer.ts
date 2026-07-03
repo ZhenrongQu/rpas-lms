@@ -80,7 +80,6 @@ export type LlmRepairerOptions = {
  * sole authority on whether its work is accepted.
  */
 export class LlmRepairer implements Repairer {
-  readonly trusted = false;
   /** The raw in-memory steps of the last repair() (for the eval's counts/tokens). */
   readonly steps: AgentStepInfo[] = [];
   /** The redacted, persist-safe report of the last repair(). */

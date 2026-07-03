@@ -3,7 +3,7 @@ import { prisma } from "../../db";
 import { createRegressionFixture, type FixtureVariant, type RegressionFixture } from "./fixtures";
 import { claimRun, createRemediationRun, ingestIncident, transitionRun } from "./store";
 import { driveRepair, driveReproduction } from "./driver";
-import { fixtureRepairerFor, type Repairer } from "./repair";
+import { brandTrusted, fixtureRepairerFor, type Repairer } from "./repair";
 import { LeaseLost, type RepairEvidence } from "./fixAttempt";
 import { publishProposal } from "./publish";
 
@@ -239,7 +239,7 @@ describe("driveRepair", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const runId = await fixingRun(fixture);
-    const noop: Repairer = { trusted: true, async repair() {} };
+    const noop: Repairer = brandTrusted({ async repair() {} });
     const outcome = await driveRepair(runId, "worker-a", fixture, noop, { heartbeatMs: 20 });
     expect(outcome).toBe("NEEDS_HUMAN");
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
@@ -252,15 +252,14 @@ describe("driveRepair", () => {
     created.push(fixture);
     const runId = await fixingRun(fixture);
     let n = 0;
-    const sleeper: Repairer = {
-      trusted: true,
+    const sleeper: Repairer = brandTrusted({
       async repair(ctx) {
         await new Promise<void>((res, rej) => {
           const t = setTimeout(res, 10_000);
           ctx.signal.addEventListener("abort", () => { clearTimeout(t); rej(new Error("aborted")); }, { once: true });
         });
       },
-    };
+    });
     await expect(
       driveRepair(runId, "worker-a", fixture, sleeper, { heartbeatMs: 20, _beat: async () => ++n < 2 }),
     ).rejects.toBeInstanceOf(LeaseLost);
@@ -275,7 +274,7 @@ describe("driveRepair", () => {
     created.push(fixture);
     const runId = await fixingRun(fixture);
     let called = false;
-    const spy: Repairer = { trusted: true, async repair() { called = true; } };
+    const spy: Repairer = brandTrusted({ async repair() { called = true; } });
     await expect(driveRepair(runId, "worker-b", fixture, spy)).rejects.toThrow("lost lease or CAS race");
     expect(called).toBe(false); // fast-failed before the expensive fix attempt
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
