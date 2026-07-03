@@ -7,8 +7,16 @@ import { dockerVitestCheckRunner, ensureImage, type DockerExec } from "./dockerC
 // Hermetic: NO real Docker daemon. A fake exec captures the argv and simulates the
 // container outcome, writing the vitest JSON report to the bound /out dir when it
 // "runs".
-const PASSING = JSON.stringify({ numFailedTests: 0, success: true, testResults: [] });
-const FAILING = JSON.stringify({ numFailedTests: 1, success: false, testResults: [] });
+// Realistic vitest JSON reporter shape: counts prove tests ran, testResults[].name
+// proves WHICH tests (matched against the requested "t").
+const PASSING = JSON.stringify({
+  success: true, numTotalTests: 1, numPassedTests: 1, numFailedTests: 0,
+  testResults: [{ name: "/workspace/repo/t", status: "passed", assertionResults: [{ status: "passed" }] }],
+});
+const FAILING = JSON.stringify({
+  success: false, numTotalTests: 1, numPassedTests: 0, numFailedTests: 1,
+  testResults: [{ name: "/workspace/repo/t", status: "failed", assertionResults: [{ status: "failed" }] }],
+});
 
 type RunBehavior = (outDir: string, options: { signal?: AbortSignal }) => Promise<{ stdout: string; stderr: string }>;
 
@@ -48,7 +56,7 @@ const hang: RunBehavior = (_outDir, options) =>
 describe("dockerVitestCheckRunner", () => {
   it("launches with fixed, model-uncontrollable safety args and returns the report", async () => {
     const { exec, calls } = makeExec(green);
-    const runner = dockerVitestCheckRunner({ image: "img:tag", tests: ["src/lib/exam/grade.test.ts"] }, exec);
+    const runner = dockerVitestCheckRunner({ image: "img:tag", tests: ["t"] }, exec);
     expect(runner.isolated).toBe(true);
 
     const result = expectCompleted(await runner("/host/wt"));
@@ -118,18 +126,24 @@ describe("dockerVitestCheckRunner", () => {
   });
 
   it("success/exit-code mismatch is infrastructure-failure (cross-validation)", async () => {
-    // exit 0 but success:false — vitest and the exit code disagree
+    // exit 0 but success:false + a failure count — vitest disagrees with the exit code
     const exitZeroSuccessFalse: RunBehavior = async (outDir) => {
-      await writeFile(join(outDir, "result.json"), JSON.stringify({ success: false, testResults: [] }));
+      await writeFile(join(outDir, "result.json"), JSON.stringify({
+        success: false, numTotalTests: 1, numPassedTests: 0, numFailedTests: 1,
+        testResults: [{ name: "/workspace/repo/t", assertionResults: [{ status: "failed" }] }],
+      }));
       return { stdout: "", stderr: "" };
     };
     expect((await dockerVitestCheckRunner({ image: "i", tests: ["t"] }, makeExec(exitZeroSuccessFalse).exec)("/wt")).kind).toBe(
       "infrastructure-failure",
     );
 
-    // exit 1 but success:true — also contradictory
+    // exit 1 but success:true + no failures — also contradictory
     const exitOneSuccessTrue: RunBehavior = async (outDir) => {
-      await writeFile(join(outDir, "result.json"), JSON.stringify({ success: true, testResults: [] }));
+      await writeFile(join(outDir, "result.json"), JSON.stringify({
+        success: true, numTotalTests: 1, numPassedTests: 1, numFailedTests: 0,
+        testResults: [{ name: "/workspace/repo/t", assertionResults: [{ status: "passed" }] }],
+      }));
       throw Object.assign(new Error("tests failed"), { code: 1 });
     };
     expect((await dockerVitestCheckRunner({ image: "i", tests: ["t"] }, makeExec(exitOneSuccessTrue).exec)("/wt")).kind).toBe(
@@ -142,6 +156,32 @@ describe("dockerVitestCheckRunner", () => {
       return { stdout: "", stderr: "" };
     };
     expect((await dockerVitestCheckRunner({ image: "i", tests: ["t"] }, makeExec(testResultsNull).exec)("/wt")).kind).toBe(
+      "infrastructure-failure",
+    );
+  });
+
+  it("a green with ZERO executed tests is infrastructure-failure (must prove the tests ran)", async () => {
+    const emptyRun: RunBehavior = async (outDir) => {
+      // exit 0, success:true, but nothing actually ran — the classic false green.
+      await writeFile(join(outDir, "result.json"), JSON.stringify({
+        success: true, numTotalTests: 0, numPassedTests: 0, numFailedTests: 0, testResults: [],
+      }));
+      return { stdout: "", stderr: "" };
+    };
+    expect((await dockerVitestCheckRunner({ image: "i", tests: ["t"] }, makeExec(emptyRun).exec)("/wt")).kind).toBe(
+      "infrastructure-failure",
+    );
+  });
+
+  it("a report that does not cover the requested tests is infrastructure-failure (no masquerade)", async () => {
+    const foreign: RunBehavior = async (outDir) => {
+      await writeFile(join(outDir, "result.json"), JSON.stringify({
+        success: true, numTotalTests: 1, numPassedTests: 1, numFailedTests: 0,
+        testResults: [{ name: "/workspace/repo/other.test.ts", assertionResults: [{ status: "passed" }] }],
+      }));
+      return { stdout: "", stderr: "" };
+    };
+    expect((await dockerVitestCheckRunner({ image: "i", tests: ["wanted.test.ts"] }, makeExec(foreign).exec)("/wt")).kind).toBe(
       "infrastructure-failure",
     );
   });

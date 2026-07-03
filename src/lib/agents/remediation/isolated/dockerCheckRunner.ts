@@ -33,23 +33,36 @@ export type DockerRunnerOptions = {
 };
 
 /**
- * Validate a vitest JSON reporter string: must be an object with testResults (Array)
- * and success (boolean), and success must agree with the exit code (0↔true, 1↔false).
- * Any deviation is treated as infrastructure noise, not a real red/green — fail-closed.
+ * Validate a vitest JSON reporter string as a REAL result for the requested tests.
+ * A green must PROVE the target tests actually executed — a vitest exit 0 with zero
+ * tests run (empty selection, filter typo, stale/foreign report) is NOT a pass. So we
+ * require: an object with a non-empty testResults array; numeric total/passed/failed
+ * counts; at least one test executed; the pass/fail counts AND the success flag agree
+ * with the exit code (0 → success, no failures, ≥1 pass; 1 → not success, ≥1 fail);
+ * and each requested test path appears (suffix) in some testResults[].name, so a
+ * report for other tests can't masquerade as ours. Anything else → fail-closed (null).
  */
-function parseReport(json: string, exitCode: 0 | 1): unknown | null {
+function parseReport(json: string, exitCode: 0 | 1, requestedTests: string[]): unknown | null {
+  let p: Record<string, unknown>;
   try {
-    const parsed = JSON.parse(json) as Record<string, unknown>;
-    if (typeof parsed !== "object" || parsed === null) return null;
-    if (!Array.isArray(parsed.testResults)) return null;
-    if (typeof parsed.success !== "boolean") return null;
-    // Cross-validate: exit 0 ↔ success:true, exit 1 ↔ success:false.
-    if (exitCode === 0 && !parsed.success) return null;
-    if (exitCode === 1 && parsed.success) return null;
-    return parsed;
+    p = JSON.parse(json) as Record<string, unknown>;
   } catch {
     return null;
   }
+  if (typeof p !== "object" || p === null) return null;
+  const { success, numTotalTests: total, numPassedTests: passed, numFailedTests: failed, testResults } = p;
+  if (typeof success !== "boolean") return null;
+  if (!Array.isArray(testResults) || testResults.length === 0) return null;
+  if (typeof total !== "number" || typeof passed !== "number" || typeof failed !== "number") return null;
+  if (total <= 0) return null; // zero tests executed is not a green (or a red)
+  if (exitCode === 0 && !(success && failed === 0 && passed > 0)) return null;
+  if (exitCode === 1 && !(!success && failed > 0)) return null;
+  // The report must be FOR the tests we asked to run.
+  const names = testResults.map((r) =>
+    r && typeof (r as { name?: unknown }).name === "string" ? (r as { name: string }).name : "",
+  );
+  if (!requestedTests.every((t) => names.some((n) => n.endsWith(t)))) return null;
+  return p;
 }
 
 /**
@@ -126,12 +139,12 @@ export function dockerVitestCheckRunner(opts: DockerRunnerOptions, exec: DockerE
     const readReport = () => readFile(join(outDir, "result.json"), "utf8").catch(() => null);
     try {
       await exec("docker", args, { signal: ctrl.signal, maxBuffer: 32 * 1024 * 1024 });
-      // exit 0: green — but only if the report is present, structurally valid, and
-      // success:true (cross-validates that vitest agrees with exit 0).
+      // exit 0: green — but only if the report proves the requested tests actually
+      // ran and passed (cross-validates counts + success + coverage against exit 0).
       const report = await readReport();
       if (report == null) return { kind: "infrastructure-failure", reason: "vitest produced no report (exit 0)" };
-      return parseReport(report, 0) == null
-        ? { kind: "infrastructure-failure", reason: "vitest report malformed or success mismatch (exit 0)" }
+      return parseReport(report, 0, tests) == null
+        ? { kind: "infrastructure-failure", reason: "vitest report unproven or inconsistent (exit 0)" }
         : { kind: "completed", exitCode: 0, stdout: report, stderr: "" };
     } catch (e) {
       if (timedOut) return { kind: "infrastructure-failure", reason: `timeout after ${timeoutMs}ms` };
@@ -144,11 +157,12 @@ export function dockerVitestCheckRunner(opts: DockerRunnerOptions, exec: DockerE
       if (code !== 1) {
         return { kind: "infrastructure-failure", reason: `docker exit ${code}: ${(err.stderr ?? "").slice(0, 200)}` };
       }
-      // exit 1: genuine vitest failure — but only with a valid report where success:false.
+      // exit 1: genuine vitest failure — but only with a report that proves the
+      // requested tests ran and at least one failed.
       const report = await readReport();
       if (report == null) return { kind: "infrastructure-failure", reason: "no report (exit 1)" };
-      return parseReport(report, 1) == null
-        ? { kind: "infrastructure-failure", reason: "vitest report malformed or success mismatch (exit 1)" }
+      return parseReport(report, 1, tests) == null
+        ? { kind: "infrastructure-failure", reason: "vitest report unproven or inconsistent (exit 1)" }
         : { kind: "completed", exitCode: 1, stdout: report, stderr: err.stderr ?? "" };
     } finally {
       clearTimeout(timer);

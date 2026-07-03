@@ -44,23 +44,18 @@ export type RepairTraceStep = {
 export type RepairReport = { trace: RepairTraceStep[]; tokens: number };
 
 /**
- * Unforgeable trust brand: attached only by `brandTrusted()` using this module-
- * private Symbol. External code cannot acquire the Symbol (it is never exported),
- * so no code outside this module can forge a trusted Repairer. The guard reads it
- * via `isTrustedRepairer()`. LlmRepairer must NEVER call brandTrusted.
+ * Unforgeable trust registry. Trust is membership in a module-private WeakSet with
+ * NO exported mutator, so no code outside this module — production OR test — can
+ * grant it: importing `isTrustedRepairer` only lets you READ trust, never confer it.
+ * `FixtureRepairer` (the deterministic oracle) registers ITSELF at construction; the
+ * LlmRepairer and every external Repairer are therefore untrusted, and the isolation
+ * guard requires them to run in Docker.
  */
-const TRUSTED_BRAND = Symbol("trusted-repairer");
+const trustedRepairers = new WeakSet<Repairer>();
 
-/** Brand a kernel-internal oracle repairer as trusted. Only `FixtureRepairer` and
- *  similar deterministic oracles should call this; LlmRepairer must never be branded. */
-export function brandTrusted<T extends Repairer>(r: T): T {
-  (r as unknown as Record<symbol, unknown>)[TRUSTED_BRAND] = true;
-  return r;
-}
-
-/** Whether a repairer carries the unforgeable trust brand. Untrusted ↔ brand absent. */
+/** Whether a repairer carries kernel-internal trust. Untrusted ↔ not registered. */
 export function isTrustedRepairer(r: Repairer): boolean {
-  return (r as unknown as Record<symbol, unknown>)[TRUSTED_BRAND] === true;
+  return trustedRepairers.has(r);
 }
 
 export interface Repairer {
@@ -158,7 +153,7 @@ export class FixtureRepairer implements Repairer {
     private readonly sourceRelPath: string,
     private readonly fixedSource: string,
   ) {
-    brandTrusted(this);
+    trustedRepairers.add(this); // the ONLY registration site: a deterministic oracle
   }
   async repair(ctx: RepairContext): Promise<void> {
     await ctx.writeFile(this.sourceRelPath, this.fixedSource);

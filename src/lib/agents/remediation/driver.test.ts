@@ -3,11 +3,20 @@ import { prisma } from "../../db";
 import { createRegressionFixture, type FixtureVariant, type RegressionFixture } from "./fixtures";
 import { claimRun, createRemediationRun, ingestIncident, transitionRun } from "./store";
 import { driveRepair, driveReproduction } from "./driver";
-import { brandTrusted, fixtureRepairerFor, type Repairer } from "./repair";
+import { fixtureRepairerFor, type Repairer } from "./repair";
 import { LeaseLost, type RepairEvidence } from "./fixAttempt";
 import { publishProposal } from "./publish";
 
 const created: RegressionFixture[] = [];
+
+// Untrusted repairers below run benignly on the host (hermetic suite — no real Docker).
+// Mark the host runners as isolated so they satisfy the kernel's untrusted-isolation
+// guard without a production trust bypass; execution still happens on the host.
+function withIsolatedRunners(fixture: RegressionFixture): RegressionFixture {
+  Object.assign(fixture.substrate.runCheck, { isolated: true });
+  Object.assign(fixture.substrate.runHoldout, { isolated: true });
+  return fixture;
+}
 
 afterEach(async () => {
   await Promise.all(created.splice(0).map((fixture) => fixture.cleanup()));
@@ -239,8 +248,8 @@ describe("driveRepair", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const runId = await fixingRun(fixture);
-    const noop: Repairer = brandTrusted({ async repair() {} });
-    const outcome = await driveRepair(runId, "worker-a", fixture, noop, { heartbeatMs: 20 });
+    const noop: Repairer = { async repair() {} };
+    const outcome = await driveRepair(runId, "worker-a", withIsolatedRunners(fixture), noop, { heartbeatMs: 20 });
     expect(outcome).toBe("NEEDS_HUMAN");
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
     expect(run.phase).toBe("NEEDS_HUMAN");
@@ -252,16 +261,16 @@ describe("driveRepair", () => {
     created.push(fixture);
     const runId = await fixingRun(fixture);
     let n = 0;
-    const sleeper: Repairer = brandTrusted({
+    const sleeper: Repairer = {
       async repair(ctx) {
         await new Promise<void>((res, rej) => {
           const t = setTimeout(res, 10_000);
           ctx.signal.addEventListener("abort", () => { clearTimeout(t); rej(new Error("aborted")); }, { once: true });
         });
       },
-    });
+    };
     await expect(
-      driveRepair(runId, "worker-a", fixture, sleeper, { heartbeatMs: 20, _beat: async () => ++n < 2 }),
+      driveRepair(runId, "worker-a", withIsolatedRunners(fixture), sleeper, { heartbeatMs: 20, _beat: async () => ++n < 2 }),
     ).rejects.toBeInstanceOf(LeaseLost);
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
     expect(run.phase).toBe("FIXING");
@@ -274,7 +283,7 @@ describe("driveRepair", () => {
     created.push(fixture);
     const runId = await fixingRun(fixture);
     let called = false;
-    const spy: Repairer = brandTrusted({ async repair() { called = true; } });
+    const spy: Repairer = { async repair() { called = true; } };
     await expect(driveRepair(runId, "worker-b", fixture, spy)).rejects.toThrow("lost lease or CAS race");
     expect(called).toBe(false); // fast-failed before the expensive fix attempt
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
