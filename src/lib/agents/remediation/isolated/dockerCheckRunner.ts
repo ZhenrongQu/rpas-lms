@@ -18,8 +18,20 @@ export type DockerExec = (
   options: { signal?: AbortSignal; maxBuffer?: number },
 ) => Promise<{ stdout: string; stderr: string }>;
 
-/** A CheckRunner tagged so a guard can require isolation for untrusted authors. */
-export type IsolatedCheckRunner = CheckRunner & { readonly isolated: true };
+/**
+ * Unforgeable isolation registry. Membership is the ONLY proof a runner executes in a
+ * locked-down container. There is NO exported mutator and no public property to set,
+ * so a caller cannot mark a host runner isolated (`Object.assign(host, { isolated:
+ * true })` no longer works). Only the docker runner constructors below register their
+ * returned runner here; the untrusted-isolation guard queries it via `isIsolated`.
+ */
+const isolatedRunners = new WeakSet<CheckRunner>();
+
+/** Register a runner as isolated and return it — the sole entry into the registry. */
+function markIsolated(run: CheckRunner): CheckRunner {
+  isolatedRunners.add(run);
+  return run;
+}
 
 export type DockerRunnerOptions = {
   image: string;
@@ -114,7 +126,7 @@ export function isolatedDockerArgs(o: {
  * that are NOT a real red/green (docker error, OOM/kill, timeout, missing report)
  * return `infrastructure-failure` — fail-closed.
  */
-export function dockerVitestCheckRunner(opts: DockerRunnerOptions, exec: DockerExec = execFileAsync): IsolatedCheckRunner {
+export function dockerVitestCheckRunner(opts: DockerRunnerOptions, exec: DockerExec = execFileAsync): CheckRunner {
   const { image, tests, timeoutMs = 120_000, cpus = "1", memoryMb = 512, pids = 128 } = opts;
   const run: CheckRunner = async (worktreeRoot, signal) => {
     const outDir = await mkdtemp(join(tmpdir(), "docker-out-"));
@@ -171,7 +183,7 @@ export function dockerVitestCheckRunner(opts: DockerRunnerOptions, exec: DockerE
       await rm(outDir, { recursive: true, force: true }).catch(() => {});
     }
   };
-  return Object.assign(run, { isolated: true as const });
+  return markIsolated(run);
 }
 
 /**
@@ -184,13 +196,13 @@ export function dockerVitestHoldoutRunner(
   holdoutRelPath: string,
   holdoutSource: string,
   exec?: DockerExec,
-): IsolatedCheckRunner {
+): CheckRunner {
   const inner = dockerVitestCheckRunner({ image, tests: [holdoutRelPath] }, exec);
   const run: CheckRunner = async (worktreeRoot, signal) => {
     await writeFile(join(worktreeRoot, holdoutRelPath), holdoutSource);
     return inner(worktreeRoot, signal);
   };
-  return Object.assign(run, { isolated: true as const });
+  return markIsolated(run);
 }
 
 /**
@@ -242,7 +254,7 @@ export type DockerScriptRunnerOptions = {
  * 0 = green, 1 = red, anything else = infrastructure-failure. Intended for graded
  * eval fixtures that use hand-written `.mjs` scripts rather than vitest.
  */
-export function dockerScriptCheckRunner(opts: DockerScriptRunnerOptions, exec: DockerExec = execFileAsync): IsolatedCheckRunner {
+export function dockerScriptCheckRunner(opts: DockerScriptRunnerOptions, exec: DockerExec = execFileAsync): CheckRunner {
   const { script, image = "node:20-slim", timeoutMs = 30_000, cpus = "1", memoryMb = 128, pids = 64 } = opts;
   const run: CheckRunner = async (worktreeRoot, signal) => {
     const name = `remediation-script-${randomUUID()}`;
@@ -279,7 +291,7 @@ export function dockerScriptCheckRunner(opts: DockerScriptRunnerOptions, exec: D
       await exec("docker", ["kill", name], {}).catch(() => {});
     }
   };
-  return Object.assign(run, { isolated: true as const });
+  return markIsolated(run);
 }
 
 /**
@@ -290,17 +302,18 @@ export function dockerScriptCheckRunner(opts: DockerScriptRunnerOptions, exec: D
 export function dockerScriptHoldoutRunner(
   opts: Omit<DockerScriptRunnerOptions, "script"> & { holdoutSource: string; holdoutRelPath?: string },
   exec?: DockerExec,
-): IsolatedCheckRunner {
+): CheckRunner {
   const { holdoutSource, holdoutRelPath = "src/__holdout__.mjs", ...baseOpts } = opts;
   const inner = dockerScriptCheckRunner({ ...baseOpts, script: holdoutRelPath }, exec);
   const run: CheckRunner = async (worktreeRoot, signal) => {
     await writeFile(join(worktreeRoot, holdoutRelPath), holdoutSource);
     return inner(worktreeRoot, signal);
   };
-  return Object.assign(run, { isolated: true as const });
+  return markIsolated(run);
 }
 
-/** Whether a CheckRunner is the isolated (Docker) runner — used by the untrusted guard. */
+/** Whether a CheckRunner is a registered isolated (Docker) runner — used by the
+ *  untrusted guard. Reads WeakSet membership, NOT a forgeable public property. */
 export function isIsolated(runner: CheckRunner): boolean {
-  return (runner as Partial<IsolatedCheckRunner>).isolated === true;
+  return isolatedRunners.has(runner);
 }

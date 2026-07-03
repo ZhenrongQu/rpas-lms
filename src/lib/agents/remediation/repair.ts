@@ -155,7 +155,7 @@ export class FixtureRepairer implements Repairer {
   ) {
     trustedRepairers.add(this); // the ONLY registration site: a deterministic oracle
   }
-  async repair(ctx: RepairContext): Promise<void> {
+  async repair(ctx: RepairContext): Promise<RepairReport | void> {
     await ctx.writeFile(this.sourceRelPath, this.fixedSource);
   }
 }

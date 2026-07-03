@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expectCompleted } from "../substrate";
-import { dockerVitestCheckRunner, ensureImage, type DockerExec } from "./dockerCheckRunner";
+import type { CheckRunner } from "../substrate";
+import { dockerVitestCheckRunner, ensureImage, isIsolated, type DockerExec } from "./dockerCheckRunner";
 
 // Hermetic: NO real Docker daemon. A fake exec captures the argv and simulates the
 // container outcome, writing the vitest JSON report to the bound /out dir when it
@@ -53,11 +54,25 @@ const hang: RunBehavior = (_outDir, options) =>
     options.signal?.addEventListener("abort", () => rej(Object.assign(new Error("killed"), { code: 137 })), { once: true });
   });
 
+describe("isolation identity is unforgeable", () => {
+  it("only a real docker runner is isolated — a host runner cannot fake it", () => {
+    const real = dockerVitestCheckRunner({ image: "i", tests: ["t"] }, makeExec(green).exec);
+    expect(isIsolated(real)).toBe(true);
+
+    // A plain runner with a forged public property is NOT isolated (WeakSet, not a prop).
+    const forged = Object.assign(
+      (async () => ({ kind: "completed", exitCode: 0, stdout: "", stderr: "" })) as CheckRunner,
+      { isolated: true },
+    );
+    expect(isIsolated(forged)).toBe(false);
+  });
+});
+
 describe("dockerVitestCheckRunner", () => {
   it("launches with fixed, model-uncontrollable safety args and returns the report", async () => {
     const { exec, calls } = makeExec(green);
     const runner = dockerVitestCheckRunner({ image: "img:tag", tests: ["t"] }, exec);
-    expect(runner.isolated).toBe(true);
+    expect(isIsolated(runner)).toBe(true);
 
     const result = expectCompleted(await runner("/host/wt"));
     expect(result.exitCode).toBe(0);
