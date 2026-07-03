@@ -17,6 +17,7 @@
     "remediation:smoke": "tsx scripts/agents/remediation-smoke.ts",
     "remediation:real-smoke": "tsx scripts/agents/remediation-real-smoke.ts",
     "eval:repair": "tsx scripts/agents/repair-eval.ts",
+    "remediation:isolation-smoke": "tsx scripts/agents/remediation-isolation-smoke.ts",
     "postinstall": "prisma generate"
   },
   "devDependencies": {

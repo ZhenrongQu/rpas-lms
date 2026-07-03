@@ -36,6 +36,42 @@ export type DockerRunnerOptions = {
 const DOCKER_INFRA_CODES = new Set([125, 126, 127, 137, 139, 143]);
 
 /**
+ * The fixed, model-uncontrollable isolation flags for a `docker run`, up to and
+ * including the image — the boundary itself. Shared by the runner and the escape
+ * smoke so the smoke verifies the REAL config. Worktree is READ-ONLY; only /out
+ * (report) and /tmp (tmpfs) are writable; no secrets, no network, no caps, no
+ * privilege escalation, read-only rootfs, resource limits, and NO docker socket.
+ */
+export function isolatedDockerArgs(o: {
+  name: string;
+  worktreeRoot: string;
+  outDir: string;
+  image: string;
+  cpus?: string;
+  memoryMb?: number;
+  pids?: number;
+}): string[] {
+  const { name, worktreeRoot, outDir, image, cpus = "1", memoryMb = 512, pids = 128 } = o;
+  return [
+    "run", "--rm", "--name", name,
+    "--network", "none",
+    "--read-only",
+    "--tmpfs", "/tmp",
+    "--cap-drop", "ALL",
+    "--security-opt", "no-new-privileges",
+    "--cpus", cpus,
+    "--memory", `${memoryMb}m`,
+    "--pids-limit", String(pids),
+    "-v", `${worktreeRoot}:/workspace/repo:ro`,
+    "-v", `${outDir}:/out`,
+    "-w", "/workspace/repo",
+    "-e", "HOME=/tmp",
+    "-e", "PATH=/usr/local/bin:/usr/bin:/bin",
+    image,
+  ];
+}
+
+/**
  * A CheckRunner that runs the vitest check inside a locked-down Docker container —
  * the isolation boundary for UNTRUSTED, LLM-generated code. The LLM's edit already
  * landed on the host (capability write) BEFORE this runs; the container only READS
@@ -49,26 +85,8 @@ export function dockerVitestCheckRunner(opts: DockerRunnerOptions, exec: DockerE
   const run: CheckRunner = async (worktreeRoot, signal) => {
     const outDir = await mkdtemp(join(tmpdir(), "docker-out-"));
     const name = `remediation-${randomUUID()}`;
-    // Fixed, model-uncontrollable safety args. The worktree is READ-ONLY; only /out
-    // (report) and /tmp (vitest cache) are writable. No secrets, no network, no caps,
-    // no privilege escalation, read-only rootfs, resource limits, and — critically —
-    // the Docker socket is NEVER mounted.
     const args = [
-      "run", "--rm", "--name", name,
-      "--network", "none",
-      "--read-only",
-      "--tmpfs", "/tmp",
-      "--cap-drop", "ALL",
-      "--security-opt", "no-new-privileges",
-      "--cpus", cpus,
-      "--memory", `${memoryMb}m`,
-      "--pids-limit", String(pids),
-      "-v", `${worktreeRoot}:/workspace/repo:ro`,
-      "-v", `${outDir}:/out`,
-      "-w", "/workspace/repo",
-      "-e", "HOME=/tmp",
-      "-e", "PATH=/usr/local/bin:/usr/bin:/bin",
-      image,
+      ...isolatedDockerArgs({ name, worktreeRoot, outDir, image, cpus, memoryMb, pids }),
       "node", "/workspace/node_modules/.bin/vitest", "run", ...tests,
       "--config", ADAPTER_CONFIG, "--reporter=json", "--outputFile=/out/result.json",
     ];
