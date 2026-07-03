@@ -82,6 +82,41 @@ describe("dockerVitestCheckRunner", () => {
     expect(JSON.parse(result.stdout).success).toBe(false);
   });
 
+  it("unknown exit codes (exit 2, 3, …) are infrastructure-failure even with a valid report", async () => {
+    const badExit: RunBehavior = async (outDir) => {
+      await writeFile(join(outDir, "result.json"), PASSING);
+      throw Object.assign(new Error("bad exit"), { code: 2 });
+    };
+    const result = await dockerVitestCheckRunner({ image: "i", tests: ["t"] }, makeExec(badExit).exec)("/wt");
+    expect(result.kind).toBe("infrastructure-failure");
+  });
+
+  it("malformed vitest report is infrastructure-failure (exit 0 or 1)", async () => {
+    const malformedExit0: RunBehavior = async (outDir) => {
+      await writeFile(join(outDir, "result.json"), "not valid json { {{ ");
+      return { stdout: "", stderr: "" };
+    };
+    expect((await dockerVitestCheckRunner({ image: "i", tests: ["t"] }, makeExec(malformedExit0).exec)("/wt")).kind).toBe(
+      "infrastructure-failure",
+    );
+
+    const noStructure: RunBehavior = async (outDir) => {
+      await writeFile(join(outDir, "result.json"), '"just a string, no testResults"');
+      return { stdout: "", stderr: "" };
+    };
+    expect((await dockerVitestCheckRunner({ image: "i", tests: ["t"] }, makeExec(noStructure).exec)("/wt")).kind).toBe(
+      "infrastructure-failure",
+    );
+
+    const malformedExit1: RunBehavior = async (outDir) => {
+      await writeFile(join(outDir, "result.json"), "not valid json");
+      throw Object.assign(new Error("tests failed"), { code: 1 });
+    };
+    expect((await dockerVitestCheckRunner({ image: "i", tests: ["t"] }, makeExec(malformedExit1).exec)("/wt")).kind).toBe(
+      "infrastructure-failure",
+    );
+  });
+
   it("fails closed: docker error / OOM / missing report / timeout are infrastructure failures", async () => {
     expect((await dockerVitestCheckRunner({ image: "i", tests: ["t"] }, makeExec(dockerDown).exec)("/wt")).kind).toBe(
       "infrastructure-failure",
@@ -99,7 +134,7 @@ describe("dockerVitestCheckRunner", () => {
 });
 
 describe("ensureImage", () => {
-  it("returns the cached tag (pnpm-lock.yaml hash) without building when present", async () => {
+  it("returns the cached tag (lock+package.json+Dockerfile hash) without building when present", async () => {
     const calls: string[][] = [];
     const exec: DockerExec = async (_f, args) => {
       calls.push(args);

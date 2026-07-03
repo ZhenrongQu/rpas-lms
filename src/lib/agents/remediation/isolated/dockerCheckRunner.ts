@@ -32,8 +32,19 @@ export type DockerRunnerOptions = {
   pids?: number;
 };
 
-/** docker exit codes that mean the container did not run to a trustworthy result. */
-const DOCKER_INFRA_CODES = new Set([125, 126, 127, 137, 139, 143]);
+/**
+ * Validate that a JSON string is a parseable vitest reporter object (has testResults).
+ * Any exit code that produced a structurally invalid report is treated as infra, not
+ * a real red — fail-closed.
+ */
+function parseReport(json: string): unknown | null {
+  try {
+    const parsed = JSON.parse(json);
+    return typeof parsed === "object" && parsed !== null && "testResults" in parsed ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * The fixed, model-uncontrollable isolation flags for a `docker run`, up to and
@@ -105,23 +116,29 @@ export function dockerVitestCheckRunner(opts: DockerRunnerOptions, exec: DockerE
     const readReport = () => readFile(join(outDir, "result.json"), "utf8").catch(() => null);
     try {
       await exec("docker", args, { signal: ctrl.signal, maxBuffer: 32 * 1024 * 1024 });
+      // exit 0: green — but only if the report is present and structurally valid.
       const report = await readReport();
-      return report == null
-        ? { kind: "infrastructure-failure", reason: "vitest produced no report (exit 0)" }
+      if (report == null) return { kind: "infrastructure-failure", reason: "vitest produced no report (exit 0)" };
+      return parseReport(report) == null
+        ? { kind: "infrastructure-failure", reason: "vitest report malformed (exit 0)" }
         : { kind: "completed", exitCode: 0, stdout: report, stderr: "" };
     } catch (e) {
       if (timedOut) return { kind: "infrastructure-failure", reason: `timeout after ${timeoutMs}ms` };
       if (signal?.aborted) throw e; // lease loss → propagate
       const err = e as { code?: number | string; stderr?: string };
-      const code = typeof err.code === "number" ? err.code : 1;
-      if (DOCKER_INFRA_CODES.has(code)) {
+      const code = typeof err.code === "number" ? err.code : -1;
+      // Fail-closed: only exit 0 (success path above) and exit 1 are trusted vitest
+      // signals. ALL other exit codes — docker errors (125/126/127), OOM (137), bad
+      // config (2), unexpected signals — are infra, even if a partial report exists.
+      if (code !== 1) {
         return { kind: "infrastructure-failure", reason: `docker exit ${code}: ${(err.stderr ?? "").slice(0, 200)}` };
       }
-      // A genuine vitest failure (exit 1) is a real RED — but only if it produced a report.
+      // exit 1: genuine vitest failure — but only with a valid report.
       const report = await readReport();
-      return report == null
-        ? { kind: "infrastructure-failure", reason: `no report (exit ${code})` }
-        : { kind: "completed", exitCode: code, stdout: report, stderr: err.stderr ?? "" };
+      if (report == null) return { kind: "infrastructure-failure", reason: "no report (exit 1)" };
+      return parseReport(report) == null
+        ? { kind: "infrastructure-failure", reason: "vitest report malformed (exit 1)" }
+        : { kind: "completed", exitCode: 1, stdout: report, stderr: err.stderr ?? "" };
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener("abort", onLeaseAbort);
@@ -158,8 +175,13 @@ export function dockerVitestHoldoutRunner(
  * change. Returns the image tag.
  */
 export async function ensureImage(originRepo: string, exec: DockerExec = execFileAsync): Promise<string> {
-  const lock = await readFile(join(originRepo, "pnpm-lock.yaml"), "utf8");
-  const tag = `remediation-vitest:${createHash("sha256").update(lock).digest("hex").slice(0, 12)}`;
+  // Hash all three inputs so any change to deps, package metadata, or the Dockerfile
+  // itself causes a rebuild. pnpm-lock.yaml alone would miss Dockerfile edits.
+  const h = createHash("sha256");
+  for (const f of ["pnpm-lock.yaml", "package.json", DOCKERFILE]) {
+    h.update(f + "\0").update(await readFile(join(originRepo, f)));
+  }
+  const tag = `remediation-vitest:${h.digest("hex").slice(0, 12)}`;
   try {
     await exec("docker", ["image", "inspect", tag], {});
     return tag; // already built

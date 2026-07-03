@@ -239,7 +239,7 @@ describe("driveRepair", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const runId = await fixingRun(fixture);
-    const noop: Repairer = { async repair() {} };
+    const noop: Repairer = { trusted: true, async repair() {} };
     const outcome = await driveRepair(runId, "worker-a", fixture, noop, { heartbeatMs: 20 });
     expect(outcome).toBe("NEEDS_HUMAN");
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
@@ -253,6 +253,7 @@ describe("driveRepair", () => {
     const runId = await fixingRun(fixture);
     let n = 0;
     const sleeper: Repairer = {
+      trusted: true,
       async repair(ctx) {
         await new Promise<void>((res, rej) => {
           const t = setTimeout(res, 10_000);
@@ -274,7 +275,7 @@ describe("driveRepair", () => {
     created.push(fixture);
     const runId = await fixingRun(fixture);
     let called = false;
-    const spy: Repairer = { async repair() { called = true; } };
+    const spy: Repairer = { trusted: true, async repair() { called = true; } };
     await expect(driveRepair(runId, "worker-b", fixture, spy)).rejects.toThrow("lost lease or CAS race");
     expect(called).toBe(false); // fast-failed before the expensive fix attempt
     const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });

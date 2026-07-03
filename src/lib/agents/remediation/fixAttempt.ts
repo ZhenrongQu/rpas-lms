@@ -5,6 +5,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RegressionFixture } from "./fixtures";
+import { assertIsolatedForUntrusted } from "./isolated/guard";
 import { makeRepairContext, type RepairPolicy, type Repairer, type RepairTraceStep } from "./repair";
 import { expectCompleted, type CheckRunner, type CompletedCheck } from "./substrate";
 
@@ -48,8 +49,9 @@ export type FixAttemptOptions = {
 function delay(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
     if (signal.aborted) return resolve();
-    const t = setTimeout(resolve, ms);
-    signal.addEventListener("abort", () => { clearTimeout(t); resolve(); }, { once: true });
+    const onAbort = () => { clearTimeout(t); resolve(); };
+    const t = setTimeout(() => { signal.removeEventListener("abort", onAbort); resolve(); }, ms);
+    signal.addEventListener("abort", onAbort, { once: true });
   });
 }
 
@@ -116,6 +118,10 @@ export async function runFixAttempt(
   repairer: Repairer,
   opts: FixAttemptOptions,
 ): Promise<RepairEvidence> {
+  // Kernel-enforced isolation gate: untrusted repairers must run inside Docker for
+  // BOTH check and holdout — they execute their own generated code in those runners.
+  assertIsolatedForUntrusted(repairer, fixture);
+
   const base = await mkdtemp(join(tmpdir(), "remediation-fix-"));
   const worktree = join(base, "wt");
   const work = new AbortController(); // aborts child processes on lease loss

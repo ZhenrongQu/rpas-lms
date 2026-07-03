@@ -44,6 +44,10 @@ export type RepairTraceStep = {
 export type RepairReport = { trace: RepairTraceStep[]; tokens: number };
 
 export interface Repairer {
+  /** Whether this repairer writes only safe, pre-validated source. Untrusted repairers
+   *  (LlmRepairer) execute model-generated code — they MUST use isolated (Docker)
+   *  runners; the kernel enforces this in runFixAttempt. */
+  readonly trusted: boolean;
   /** Returns a redacted report (LLM author) or void (deterministic oracle). */
   repair(ctx: RepairContext): Promise<RepairReport | void>;
 }
@@ -134,6 +138,7 @@ export function makeRepairContext(
 
 /** Deterministic repairer: applies a known-correct source to one path. */
 export class FixtureRepairer implements Repairer {
+  readonly trusted = true;
   constructor(
     private readonly sourceRelPath: string,
     private readonly fixedSource: string,

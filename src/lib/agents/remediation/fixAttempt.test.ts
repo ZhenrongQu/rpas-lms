@@ -64,6 +64,7 @@ describe("runFixAttempt", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const reporting: Repairer = {
+      trusted: true,
       async repair(ctx) {
         await ctx.writeFile("src/score.mjs", fixture.fixedSource);
         return { trace: [{ step: 0, tokens: 12, reasoning: "guarded", tools: [{ name: "write_file", status: "executed", path: "src/score.mjs", contentBytes: 42, contentSha256: "abcd" }] }], tokens: 12 };
@@ -79,6 +80,7 @@ describe("runFixAttempt", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const hardcode: Repairer = {
+      trusted: true,
       async repair(ctx) {
         await ctx.writeFile("src/score.mjs", "export function score() {\n  return 0;\n}\n");
       },
@@ -94,6 +96,7 @@ describe("runFixAttempt", () => {
     created.push(fixture);
     const hb = countingBeat(() => true);
     const slow: Repairer = {
+      trusted: true,
       async repair(ctx) {
         await delay(50, ctx.signal); // ~2.5 intervals
         await ctx.writeFile(fixture.sourceRelPath, fixture.fixedSource);
@@ -107,7 +110,7 @@ describe("runFixAttempt", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const hb = countingBeat((n) => n < 2); // true once, then false
-    const sleeper: Repairer = { async repair(ctx) { await delay(10_000, ctx.signal, true); } };
+    const sleeper: Repairer = { trusted: true, async repair(ctx) { await delay(10_000, ctx.signal, true); } };
     await expect(
       runFixAttempt(fixture, sleeper, { policy: POLICY, maxPatchBytes: 1_000_000, heartbeat: { intervalMs: 20, beat: hb.beat } }),
     ).rejects.toBeInstanceOf(LeaseLost);

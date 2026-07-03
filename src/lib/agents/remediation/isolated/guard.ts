@@ -1,21 +1,22 @@
 import type { RegressionFixture } from "../fixtures";
-import { FixtureRepairer, type Repairer } from "../repair";
+import type { Repairer } from "../repair";
 import { isIsolated } from "./dockerCheckRunner";
 
 /**
- * Fail-closed production guard. Only the deterministic oracle (FixtureRepairer) is
- * trusted to run against a non-isolated (host) check runner. ANY other author —
- * notably LlmRepairer, whose written source `run_check` then EXECUTES — MUST drive
- * an isolated (Docker) runner, or its code would run on the host with the worker's
- * secrets / filesystem / network. Call this at the eval/production entry, before
- * driveRepair, so an untrusted author can never fall back to host execution.
+ * Fail-closed isolation guard. Untrusted repairers (Repairer.trusted === false,
+ * notably LlmRepairer) MUST drive BOTH runCheck AND runHoldout through an isolated
+ * (Docker) runner — their written source executes inside those containers and must
+ * never reach host secrets, the network, the worktree, or git metadata. The kernel
+ * enforces this in runFixAttempt; this function is also available for early script-
+ * level validation.
  */
 export function assertIsolatedForUntrusted(repairer: Repairer, fixture: RegressionFixture): void {
-  const trusted = repairer instanceof FixtureRepairer;
-  if (!trusted && !isIsolated(fixture.substrate.runCheck)) {
+  if (repairer.trusted) return;
+  const { runCheck, runHoldout } = fixture.substrate;
+  if (!isIsolated(runCheck) || !isIsolated(runHoldout)) {
     throw new Error(
-      "refusing to run an untrusted repairer against a non-isolated check runner: " +
-        "its executed code would run on the host. Build the fixture with isolation: 'docker'.",
+      "isolation guard: untrusted repairer requires isolated (Docker) runners for both " +
+        "runCheck and runHoldout. Build the fixture with isolation: 'docker'.",
     );
   }
 }
