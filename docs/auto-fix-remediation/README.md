@@ -1,6 +1,6 @@
 # Auto-Fix Remediation Kernel
 
-Status: Revised design draft for review
+Status: Revised design draft for review — see §19 for where the built kernel has since diverged from this draft; `STATUS.md` is the living handover doc.
 
 Current milestone: learning sandbox with mock adapters
 
@@ -509,3 +509,22 @@ No Sentry route, GitHub client, deployed-worker entry point, repository ruleset,
 - maximizing the number of generated patches;
 - automatic learning from reviewer feedback;
 - broad multi-repository remediation.
+
+## 19. Implementation Delta Record (as of 2026-07-03)
+
+The kernel was built, hardened over multiple review rounds, and has diverged from this draft in ways that are decisions, not gaps. Recorded here so the draft stays honest; day-to-day state lives in `STATUS.md`.
+
+**Mechanisms added beyond the draft:**
+
+- **Substrate seam** — `CheckRunner` / `SignatureStrategy` / `Substrate` abstract how a defect is checked and fingerprinted, so the same kernel drives dependency-free script fixtures, real Vitest fixtures, and Docker-isolated runners. A sha256 **substrate identity** (manifest of check/holdout sources, signature, runner kind, isolation, image) is frozen into the run target at reproduction and compared on resume, so a resume cannot swap in a weaker verifier.
+- **Fail-closed check results** — `CheckResult` is a discriminated union (`CompletedCheck | InfraFailure`); infrastructure failures can never be misread as red or green, and Vitest runs must produce a parseable report proving the tests actually executed (no exit-code-only greens).
+- **Repairer trust boundary + isolation guard** — repairer trust is an unforgeable module-private `WeakSet` brand granted only by the `FixtureRepairer` constructor (no production mutator, no test backdoor, subclassing blocked). `assertIsolatedForUntrusted`, enforced inside `runFixAttempt`, refuses any untrusted repairer (notably `LlmRepairer`) unless both `runCheck` and `runHoldout` are Docker-isolated (`--network=none`, `--cap-drop=ALL`, `no-new-privileges`, `--read-only`, non-root `--user 1000:1000`, resource limits, write access only to a disposable report mount).
+- **Hidden holdout** — a verification test injected only after patch capture, never visible to the repair author; a fix that games the visible check fails the holdout and routes to `NEEDS_HUMAN`.
+- **LLM Repairer** — a budgeted, capability-confined tool-use author behind the `Repairer` seam, with a redacted, disposition-stamped trace persisted into the proposal. Proven end-to-end on a real `grade.ts` defect inside Docker (T7).
+
+**Draft components superseded or deferred:**
+
+- §5.2 Triage Agent: the prototype was deleted; `TRIAGING → CLASSIFIED` is currently a stub transition. The zod-validated `TriageAssessment` idea will be re-harvested when a real ingestion front-end is built.
+- §16 file boundary: superseded by the actual layout (`store.ts`, `driver.ts`, `reproduce.ts`, `fixAttempt.ts`, `repair.ts`, `verify.ts`, `publish.ts`, `substrate.ts`, `worktree.ts`, `signature.ts`, plus `real/`, `isolated/`, `llm/`).
+- §5.8 CodeGraph-derived related-test sets and §11 trusted-set qualification (60-run certification): not yet implemented; deferred to the real-repo milestone where they become meaningful.
+- The graded script-fixture LLM eval (`pnpm eval:repair`) is permanently disabled — exit-code-only checks cannot prove execution, so the untrusted-author eval moved to `pnpm real-repair-eval` (real Vitest + Docker + report-proof).
