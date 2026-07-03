@@ -130,9 +130,11 @@ export type LessonRow = {
  *  lesson's `updatedAt` against the snapshot this call was built from. If a newer
  *  edit has landed (or the lesson was deleted), this reindex is stale and skips —
  *  so a slow reindex can't clobber a newer one written before it (the race the
- *  async `after()` scheduling would otherwise allow). Best-effort: callers must
- *  not fail the admin write on a RAG error. */
-export async function reindexLesson(lesson: LessonRow): Promise<void> {
+ *  async `after()` scheduling, or a long bulk run, would otherwise allow). This is
+ *  why the bulk reindex script uses this path, not the unguarded indexSource.
+ *  Best-effort: callers must not fail the admin write on a RAG error. Returns the
+ *  number of chunks written (0 if skipped as stale, or the body was empty). */
+export async function reindexLesson(lesson: LessonRow): Promise<number> {
   const certLevel =
     lesson.certLevel === "BASIC" ? "BASIC" : lesson.certLevel === "ADVANCED" ? "ADVANCED" : null;
   const input: SourceInput = {
@@ -167,16 +169,17 @@ export async function reindexLesson(lesson: LessonRow): Promise<void> {
 
   const where = chunkWhere(input);
   const inserts = jobs.map((j, i) => buildInsert(input, j, vectors[i]!));
-  await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
     const current =
       lesson.course === "basic"
         ? await tx.basicLesson.findUnique({ where: { lessonId: lesson.lessonId }, select: { updatedAt: true } })
         : await tx.advancedLesson.findUnique({ where: { lessonId: lesson.lessonId }, select: { updatedAt: true } });
     // Superseded by a newer edit (or lesson deleted) → that edit owns the index.
-    if (!current || current.updatedAt.getTime() !== lesson.updatedAt.getTime()) return;
+    if (!current || current.updatedAt.getTime() !== lesson.updatedAt.getTime()) return 0;
 
     await tx.knowledgeChunk.deleteMany({ where });
     for (const insert of inserts) await tx.$executeRaw(insert);
+    return jobs.length;
   });
 }
 
