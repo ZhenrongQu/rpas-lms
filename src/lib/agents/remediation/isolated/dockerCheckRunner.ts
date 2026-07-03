@@ -87,15 +87,14 @@ function parseReport(json: string, exitCode: 0 | 1, requestedTests: string[]): u
 export function isolatedDockerArgs(o: {
   name: string;
   worktreeRoot: string;
-  /** Optional output bind-mount (needed for vitest JSON report; omit for script runners). */
-  outDir?: string;
+  outDir: string;
   image: string;
   cpus?: string;
   memoryMb?: number;
   pids?: number;
 }): string[] {
   const { name, worktreeRoot, outDir, image, cpus = "1", memoryMb = 512, pids = 128 } = o;
-  const args = [
+  return [
     "run", "--rm", "--name", name,
     "--network", "none",
     "--read-only",
@@ -106,15 +105,12 @@ export function isolatedDockerArgs(o: {
     "--memory", `${memoryMb}m`,
     "--pids-limit", String(pids),
     "-v", `${worktreeRoot}:/workspace/repo:ro`,
-  ];
-  if (outDir) args.push("-v", `${outDir}:/out`);
-  args.push(
+    "-v", `${outDir}:/out`,
     "-w", "/workspace/repo",
     "-e", "HOME=/tmp",
     "-e", "PATH=/usr/local/bin:/usr/bin:/bin",
     image,
-  );
-  return args;
+  ];
 }
 
 /**
@@ -235,81 +231,6 @@ export async function ensureImage(originRepo: string, exec: DockerExec = execFil
   } finally {
     await rm(ctx, { recursive: true, force: true }).catch(() => {});
   }
-}
-
-export type DockerScriptRunnerOptions = {
-  /** Repo-relative path to the Node.js script to execute (e.g. "src/check.mjs"). */
-  script: string;
-  /** Docker image with Node available. Defaults to node:20-slim (no build needed). */
-  image?: string;
-  timeoutMs?: number;
-  cpus?: string;
-  memoryMb?: number;
-  pids?: number;
-};
-
-/**
- * A CheckRunner that executes a plain Node.js script inside a locked-down Docker
- * container. Simpler than `dockerVitestCheckRunner` — no JSON report, just exit code:
- * 0 = green, 1 = red, anything else = infrastructure-failure. Intended for graded
- * eval fixtures that use hand-written `.mjs` scripts rather than vitest.
- */
-export function dockerScriptCheckRunner(opts: DockerScriptRunnerOptions, exec: DockerExec = execFileAsync): CheckRunner {
-  const { script, image = "node:20-slim", timeoutMs = 30_000, cpus = "1", memoryMb = 128, pids = 64 } = opts;
-  const run: CheckRunner = async (worktreeRoot, signal) => {
-    const name = `remediation-script-${randomUUID()}`;
-    const args = [
-      ...isolatedDockerArgs({ name, worktreeRoot, image, cpus, memoryMb, pids }),
-      "node", `/workspace/repo/${script}`,
-    ];
-
-    const ctrl = new AbortController();
-    const onLeaseAbort = () => ctrl.abort();
-    signal?.addEventListener("abort", onLeaseAbort, { once: true });
-    let timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      ctrl.abort();
-      void exec("docker", ["kill", name], {}).catch(() => {});
-    }, timeoutMs);
-
-    try {
-      await exec("docker", args, { signal: ctrl.signal });
-      return { kind: "completed", exitCode: 0, stdout: "", stderr: "" };
-    } catch (e) {
-      if (timedOut) return { kind: "infrastructure-failure", reason: `timeout after ${timeoutMs}ms` };
-      if (signal?.aborted) throw e;
-      const err = e as { code?: number | string; stderr?: string };
-      const code = typeof err.code === "number" ? err.code : -1;
-      if (code !== 1) {
-        return { kind: "infrastructure-failure", reason: `docker exit ${code}: ${(err.stderr ?? "").slice(0, 200)}` };
-      }
-      return { kind: "completed", exitCode: 1, stdout: "", stderr: err.stderr ?? "" };
-    } finally {
-      clearTimeout(timer);
-      signal?.removeEventListener("abort", onLeaseAbort);
-      await exec("docker", ["kill", name], {}).catch(() => {});
-    }
-  };
-  return markIsolated(run);
-}
-
-/**
- * The hidden holdout runner for script fixtures: write the holdout source into the
- * worktree on the host, then run it inside the isolated container. Mirrors
- * `scriptHoldoutRunner` but isolated.
- */
-export function dockerScriptHoldoutRunner(
-  opts: Omit<DockerScriptRunnerOptions, "script"> & { holdoutSource: string; holdoutRelPath?: string },
-  exec?: DockerExec,
-): CheckRunner {
-  const { holdoutSource, holdoutRelPath = "src/__holdout__.mjs", ...baseOpts } = opts;
-  const inner = dockerScriptCheckRunner({ ...baseOpts, script: holdoutRelPath }, exec);
-  const run: CheckRunner = async (worktreeRoot, signal) => {
-    await writeFile(join(worktreeRoot, holdoutRelPath), holdoutSource);
-    return inner(worktreeRoot, signal);
-  };
-  return markIsolated(run);
 }
 
 /** Whether a CheckRunner is a registered isolated (Docker) runner — used by the

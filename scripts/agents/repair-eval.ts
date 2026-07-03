@@ -3,6 +3,13 @@
  * deterministic kernel, so scoring is objective (a case is "fixed" only if it
  * reached PROPOSED, which requires green-after + the hidden holdout).
  *
+ * NOTE (fail-closed): the graded catalog uses exit-code-only Node scripts, which
+ * cannot PROVE the check ran to completion — an untrusted repairer could write
+ * `process.exit(0)` into the source to fake a green. So the kernel's isolation guard
+ * REFUSES an untrusted LlmRepairer on these host script fixtures, and this eval will
+ * error per case until the catalog runs on a report-proof substrate. The trustworthy
+ * isolated LLM eval today is `pnpm real-repair-eval` (real vitest + Docker + report).
+ *
  * Needs ANTHROPIC_API_KEY (loaded from .env). Writes to the DB, so it REFUSES to
  * run against anything but a local Postgres — point DATABASE_URL at the local test
  * DB, e.g.:
@@ -104,7 +111,7 @@ async function main(): Promise<void> {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error("repair-eval needs ANTHROPIC_API_KEY (put it in .env)");
   const model = process.env.REPAIR_EVAL_MODEL;
 
-  const cases = await createRepairCases({ isolation: "docker" });
+  const cases = await createRepairCases();
   const createdIds: string[] = [];
   try {
     const results: CaseResult[] = [];
