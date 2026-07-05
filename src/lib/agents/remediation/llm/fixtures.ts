@@ -89,6 +89,11 @@ async function buildRepairCase(spec: CaseSpec): Promise<RepairCase> {
         pinnedPaths: ["src/check.mjs"],
         readAllowlist: ["src/"],
       },
+      // The graded catalog's expectedOutcome is validated by the deterministic ORACLE
+      // ("can this defect be fixed at all"), so these are sandbox-fixture. (The disabled
+      // repair-eval that would drive them with an untrusted LLM is a separate concern;
+      // an untrusted author under sandbox is rejected at the FIXING gate anyway.)
+      verificationProfile: "sandbox-fixture",
       cleanup: () => rm(repoRoot, { recursive: true, force: true }),
       id: spec.id,
       category: spec.category,

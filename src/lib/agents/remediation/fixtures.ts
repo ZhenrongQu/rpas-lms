@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { nodeStackStrategy } from "./signature";
 import { createSubstrateIdentity, scriptCheckRunner, scriptHoldoutRunner, type Substrate } from "./substrate";
+import type { VerificationProfile } from "./types";
 
 const execFileAsync = promisify(execFile);
 
@@ -29,6 +30,10 @@ export type RegressionFixture = {
   /** How this fixture runs its check + hidden holdout, fingerprints failures, and
    *  bounds the repairer — script (`node`) here, real vitest for real-repo fixtures. */
   substrate: Substrate;
+  /** Which proof this fixture's PROPOSED rests on. Declared explicitly (never inferred
+   *  from repairer trust); frozen into the target at reproduction. Script fixtures are
+   *  `sandbox-fixture` (deterministic oracle self-test). */
+  verificationProfile: VerificationProfile;
   cleanup: () => Promise<void>;
 };
 
@@ -146,6 +151,7 @@ export async function createRegressionFixture(
         pinnedPaths: ["src/check.mjs"],
         readAllowlist: ["src/"],
       },
+      verificationProfile: "sandbox-fixture",
       cleanup: () => rm(repoRoot, { recursive: true, force: true }),
     };
   } catch (error) {

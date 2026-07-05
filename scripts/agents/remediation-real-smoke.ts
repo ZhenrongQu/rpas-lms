@@ -36,7 +36,8 @@ function assertLocalDb(): void {
 async function main(): Promise<void> {
   assertLocalDb();
   const t0 = Date.now();
-  const fixture = await buildRealRepoFixture(gradeDedupDefect(process.cwd()));
+  // Trusted deterministic oracle self-test → sandbox-fixture (may reach PROPOSED).
+  const fixture = await buildRealRepoFixture(gradeDedupDefect(process.cwd()), { verificationProfile: "sandbox-fixture" });
   const tBuilt = Date.now();
   let incidentId: string | null = null;
   try {

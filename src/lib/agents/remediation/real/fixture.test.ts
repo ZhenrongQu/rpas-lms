@@ -51,7 +51,7 @@ describe("buildRealRepoFixture", () => {
       signature: { testFile: "src/foo.test.ts", testName: "answer", errorName: "AssertionError" },
     };
 
-    const fixture = await buildRealRepoFixture(spec);
+    const fixture = await buildRealRepoFixture(spec, { verificationProfile: "sandbox-fixture" });
     cleanups.push(fixture.cleanup);
 
     expect(fixture.knownGoodCommit).toMatch(/^[0-9a-f]{40}$/);
@@ -80,7 +80,7 @@ describe("buildRealRepoFixture", () => {
       fingerprint: "AssertionError:foo.test.ts:answer",
       signature: { testFile: "src/foo.test.ts", testName: "answer", errorName: "AssertionError" },
     };
-    const fixture = await buildRealRepoFixture(spec, { isolation: "docker", image: "remediation-vitest:test" });
+    const fixture = await buildRealRepoFixture(spec, { isolation: "docker", image: "remediation-vitest:test", verificationProfile: "production-black-box" });
     cleanups.push(fixture.cleanup);
     expect(isIsolated(fixture.substrate.runCheck)).toBe(true);
     expect(isIsolated(fixture.substrate.runHoldout)).toBe(true);
@@ -98,7 +98,7 @@ describe("buildRealRepoFixture", () => {
       signature: { testFile: "src/foo.test.ts", testName: "x", errorName: "AssertionError" },
     };
     // @ts-expect-error docker isolation must supply an image
-    await expect(buildRealRepoFixture(spec, { isolation: "docker" })).rejects.toThrow();
+    await expect(buildRealRepoFixture(spec, { isolation: "docker", verificationProfile: "production-black-box" })).rejects.toThrow();
   });
 
   it("refuses a mutation that does not change the source", async () => {
@@ -112,7 +112,7 @@ describe("buildRealRepoFixture", () => {
       fingerprint: "x",
       signature: { testFile: "src/foo.test.ts", testName: "x", errorName: "AssertionError" },
     };
-    await expect(buildRealRepoFixture(spec)).rejects.toThrow(/did not change/);
+    await expect(buildRealRepoFixture(spec, { verificationProfile: "sandbox-fixture" })).rejects.toThrow(/did not change/);
   });
 });
 

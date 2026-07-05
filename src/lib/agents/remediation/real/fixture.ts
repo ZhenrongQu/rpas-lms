@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import type { RegressionFixture } from "../fixtures";
 import { createSubstrateIdentity, type Substrate } from "../substrate";
+import type { VerificationProfile } from "../types";
 import { dockerVitestCheckRunner, dockerVitestHoldoutRunner } from "../isolated/dockerCheckRunner";
 import { ADAPTER_CONFIG, vitestCheckRunner, vitestHoldoutRunner, vitestJsonStrategy, type VitestIncident } from "./vitestSubstrate";
 
@@ -14,6 +15,12 @@ const execFileAsync = promisify(execFile);
 /** Where the (possibly untrusted) check code executes: `host` = real vitest on the
  *  worker (trusted authors only); `docker` = isolated container (required for LLM). */
 export type FixtureIsolation = { isolation?: "host"; image?: never } | { isolation: "docker"; image: string };
+
+/** Options for a real-repo fixture. `verificationProfile` is REQUIRED and has no safe
+ *  default: a caller must choose explicitly, so a forgotten profile can never silently
+ *  re-grant white-box publish rights. Real defects verified by an untrusted author must
+ *  be `production-black-box`; only the deterministic oracle smokes may be `sandbox-fixture`. */
+export type RealFixtureOptions = FixtureIsolation & { verificationProfile: VerificationProfile };
 
 /**
  * A synthesized real-repo defect: a KNOWN mutation of a real source file whose real
@@ -43,7 +50,7 @@ export type RealRepoDefectSpec = {
  * ONLY in that clone (a separate object store) — the origin's history is never
  * touched. The same deterministic kernel drives it; only the substrate is real.
  */
-export async function buildRealRepoFixture(spec: RealRepoDefectSpec, opts: FixtureIsolation = {}): Promise<RegressionFixture> {
+export async function buildRealRepoFixture(spec: RealRepoDefectSpec, opts: RealFixtureOptions): Promise<RegressionFixture> {
   if (opts.isolation === "docker" && !opts.image) {
     throw new Error("isolation 'docker' requires an image tag (call ensureImage first)");
   }
@@ -117,6 +124,7 @@ export async function buildRealRepoFixture(spec: RealRepoDefectSpec, opts: Fixtu
         symbol: "",
       },
       substrate,
+      verificationProfile: opts.verificationProfile,
       cleanup: () => rm(clone, { recursive: true, force: true }),
     };
   } catch (e) {

@@ -3,10 +3,10 @@ import type { RegressionFixture } from "./fixtures";
 import { runFixAttempt, type RepairEvidence } from "./fixAttempt";
 import { publishProposal } from "./publish";
 import { classifyOnLatestMain, reproduce } from "./reproduce";
-import type { Repairer, RepairPolicy } from "./repair";
+import { isTrustedRepairer, type Repairer, type RepairPolicy } from "./repair";
 import { freezeRunPolicy, heartbeatRun, transitionRun, transitionRunWithEvidence, transitionRunWithTarget } from "./store";
 import { verify, type VerifyPolicy } from "./verify";
-import type { RemediationPhase } from "./types";
+import { verificationProfileFromTarget, type RemediationPhase, type VerificationProfile } from "./types";
 
 /** The immutable identity of the code state that was reproduced. Frozen on the run
  *  at REPRODUCING→FIXING (NOT at first repair), so a repair/resume can only ever
@@ -20,6 +20,7 @@ type RepairTarget = {
   knownGoodCommit: string;
   sourceRelPath: string;
   substrateIdentity: string;
+  verificationProfile: VerificationProfile;
 };
 
 /** The repair/verify rules frozen per run at first repair so a resume can never
@@ -38,6 +39,7 @@ function buildTarget(fixture: RegressionFixture, incident: { repository: string;
     knownGoodCommit: fixture.knownGoodCommit,
     sourceRelPath: fixture.sourceRelPath,
     substrateIdentity: fixture.substrate.identity,
+    verificationProfile: fixture.verificationProfile,
   };
 }
 
@@ -50,7 +52,8 @@ function sameTarget(a: RepairTarget, b: RepairTarget): boolean {
     a.defectiveCommit === b.defectiveCommit &&
     a.knownGoodCommit === b.knownGoodCommit &&
     a.sourceRelPath === b.sourceRelPath &&
-    a.substrateIdentity === b.substrateIdentity
+    a.substrateIdentity === b.substrateIdentity &&
+    a.verificationProfile === b.verificationProfile
   );
 }
 
@@ -204,6 +207,13 @@ export async function driveRepair(
     // The target was frozen at reproduction; repair only reads and compares it.
     const frozenTarget = run.target as RepairTarget | null;
     if (!frozenTarget) throw new Error(`run ${runId} reached ${run.phase} without a reproduced target`);
+    // Fail closed on a missing / legacy / unknown profile — never default to sandbox,
+    // or heuristic evidence could silently gain publish rights on a legacy target.
+    const profile = verificationProfileFromTarget(frozenTarget);
+    if (!profile) {
+      await transitionRun(runId, workerId, run.phase as RemediationPhase, "NEEDS_HUMAN");
+      return "NEEDS_HUMAN";
+    }
     if (!sameTarget(buildTarget(fixture, run.incident), frozenTarget)) {
       // This resume is pointed at a different fixture/commit than was reproduced —
       // escalate rather than verify a self-consistent but wrong repair.
@@ -214,6 +224,14 @@ export async function driveRepair(
 
     switch (run.phase) {
       case "FIXING": {
+        // An untrusted author may NEVER self-attest under a sandbox profile — reject
+        // BEFORE the repairer runs, so it produces no evidence and can never reach
+        // VERIFYING. (A production run DOES run the heuristic repair, but its evidence
+        // can never reach PROPOSED — VERIFYING and publish both fail closed below.)
+        if (profile === "sandbox-fixture" && !isTrustedRepairer(repairer)) {
+          await transitionRun(runId, workerId, "FIXING", "NEEDS_HUMAN");
+          return "NEEDS_HUMAN";
+        }
         const evidence = await runFixAttempt(fixture, repairer, {
           policy: policy.repair,
           maxPatchBytes: policy.verify.maxPatchBytes,
@@ -229,8 +247,18 @@ export async function driveRepair(
       case "VERIFYING": {
         const evidence = JSON.parse(run.evidence ?? "null") as RepairEvidence | null;
         if (!evidence) throw new Error(`run ${runId} at VERIFYING has no evidence`);
+        // Local heuristic gates run FIRST, so a genuine repair failure keeps its own
+        // failure meaning rather than being masked as "black-box unavailable".
         const verdict = verify(evidence, policy.verify);
         if (!verdict.ok) {
+          await transitionRun(runId, workerId, "VERIFYING", "NEEDS_HUMAN");
+          return "NEEDS_HUMAN";
+        }
+        // Local gates passing is sufficient ONLY for a sandbox self-test. A production
+        // run needs an external black-box attestation the code under test cannot forge;
+        // none exists yet, so fail closed. (The reason is not persisted this round — the
+        // schema has no reason field; only the terminal NEEDS_HUMAN is guaranteed.)
+        if (profile === "production-black-box") {
           await transitionRun(runId, workerId, "VERIFYING", "NEEDS_HUMAN");
           return "NEEDS_HUMAN";
         }

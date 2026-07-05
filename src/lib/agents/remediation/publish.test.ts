@@ -33,13 +33,21 @@ async function incident(fingerprint: string) {
 
 /** A run parked at PROPOSING with a claimed lease and persisted evidence — the
  *  only state from which publishing is legitimate. */
-async function proposingRun(fingerprint: string, patch: string) {
+async function proposingRun(fingerprint: string, patch: string, verificationProfile: string = "sandbox-fixture") {
   const inc = await incident(fingerprint);
   const run = await createRemediationRun(inc.id);
   await claimRun(run.id, "worker-a", 60_000);
   await prisma.remediationRun.update({
     where: { id: run.id },
-    data: { phase: "PROPOSING", evidence: JSON.stringify({ ...EVIDENCE, patch }) },
+    // Publishing is only legitimate for a sandbox-fixture target (allowlist). Tests that
+    // exercise the reject path pass a production/unknown/undefined profile explicitly.
+    data: {
+      phase: "PROPOSING",
+      evidence: JSON.stringify({ ...EVIDENCE, patch }),
+      // sentinel "__NO_TARGET__" leaves target null (createRemediationRun default) —
+      // NOT `undefined` as an arg, which would trigger the default param below.
+      target: verificationProfile === "__NO_TARGET__" ? undefined : { verificationProfile },
+    },
   });
   return run;
 }
@@ -75,7 +83,7 @@ describe("publishProposal", () => {
     await claimRun(run2.id, "worker-a", 60_000);
     await prisma.remediationRun.update({
       where: { id: run2.id },
-      data: { phase: "PROPOSING", evidence: JSON.stringify({ ...EVIDENCE, patch: "PATCH-B" }) },
+      data: { phase: "PROPOSING", evidence: JSON.stringify({ ...EVIDENCE, patch: "PATCH-B" }), target: { verificationProfile: "sandbox-fixture" } },
     });
     await publishProposal(run2.id, "worker-a");
 
@@ -96,6 +104,27 @@ describe("publishProposal", () => {
   it("refuses a worker that does not hold the lease", async () => {
     const run = await proposingRun("pub-not-owner", "PATCH-A");
     await expect(publishProposal(run.id, "worker-b")).rejects.toThrow(/lost lease/);
+    expect(await prisma.externalActionVersion.count()).toBe(0);
+  });
+
+  // Publish boundary is an ALLOWLIST: only sandbox-fixture may publish heuristic
+  // evidence. A production / missing / unknown profile must be refused, even when the
+  // run is parked at PROPOSING with green-looking evidence — no attestor exists yet.
+  it("refuses to publish a production-black-box run (no valid attestation)", async () => {
+    const run = await proposingRun("pub-production", "PATCH-A", "production-black-box");
+    await expect(publishProposal(run.id, "worker-a")).rejects.toThrow(/black-box attestation/);
+    expect(await prisma.externalActionVersion.count()).toBe(0);
+  });
+
+  it("refuses to publish a run whose target has no profile (legacy/missing → fail closed)", async () => {
+    const run = await proposingRun("pub-missing", "PATCH-A", "__NO_TARGET__");
+    await expect(publishProposal(run.id, "worker-a")).rejects.toThrow(/black-box attestation/);
+    expect(await prisma.externalActionVersion.count()).toBe(0);
+  });
+
+  it("refuses to publish a run with an unknown profile value (allowlist, not denylist)", async () => {
+    const run = await proposingRun("pub-unknown", "PATCH-A", "totally-made-up");
+    await expect(publishProposal(run.id, "worker-a")).rejects.toThrow(/black-box attestation/);
     expect(await prisma.externalActionVersion.count()).toBe(0);
   });
 });

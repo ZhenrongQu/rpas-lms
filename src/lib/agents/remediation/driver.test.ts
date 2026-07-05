@@ -64,6 +64,7 @@ function frozenTarget(fixture: RegressionFixture) {
     knownGoodCommit: fixture.knownGoodCommit,
     sourceRelPath: fixture.sourceRelPath,
     substrateIdentity: fixture.substrate.identity,
+    verificationProfile: fixture.verificationProfile,
   };
 }
 
@@ -144,6 +145,7 @@ describe("driveReproduction", () => {
       knownGoodCommit: fixture.knownGoodCommit,
       sourceRelPath: "src/score.mjs",
       substrateIdentity: fixture.substrate.identity,
+      verificationProfile: "sandbox-fixture",
     });
   });
 
@@ -269,6 +271,68 @@ describe("driveRepair", () => {
     expect(stored.phase).toBe("NEEDS_HUMAN");
   });
 
+  // ── VerificationProfile gates (fail-closed) ────────────────────────────────
+  it("rejects an untrusted repairer under a sandbox profile at FIXING — repairer never runs", async () => {
+    const fixture = await createRegressionFixture(); // sandbox-fixture
+    created.push(fixture);
+    const runId = await fixingRun(fixture);
+    let called = false;
+    const untrusted = testRepairer(async (ctx) => { called = true; await ctx.writeFile(fixture.sourceRelPath, fixture.fixedSource); });
+    expect(await driveRepair(runId, "worker-a", fixture, untrusted)).toBe("NEEDS_HUMAN");
+    expect(called).toBe(false); // rejected BEFORE runFixAttempt → produced no evidence
+    const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(stored.phase).toBe("NEEDS_HUMAN");
+    expect(stored.evidence).toBeNull();
+  });
+
+  it("a production-black-box run fails closed to NEEDS_HUMAN even with a trusted oracle (profile decides, not trust)", async () => {
+    const fixture = await createRegressionFixture();
+    fixture.verificationProfile = "production-black-box";
+    created.push(fixture);
+    const runId = await fixingRun(fixture);
+    // The trusted oracle produces a genuine green + holdout-passing fix, yet no attestor
+    // exists, so a production-black-box run must never PROPOSED.
+    expect(await driveRepair(runId, "worker-a", fixture, fixtureRepairerFor(fixture))).toBe("NEEDS_HUMAN");
+    const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(stored.phase).toBe("NEEDS_HUMAN");
+    expect(await prisma.externalActionVersion.count()).toBe(0);
+  });
+
+  it("a production-black-box run with an untrusted author also NEEDS_HUMAN (never PROPOSED)", async () => {
+    const fixture = await createRegressionFixture();
+    fixture.verificationProfile = "production-black-box";
+    created.push(fixture);
+    const runId = await fixingRun(fixture);
+    const untrusted = testRepairer(async (ctx) => { await ctx.writeFile(fixture.sourceRelPath, fixture.fixedSource); });
+    expect(await driveRepair(runId, "worker-a", fixture, untrusted)).toBe("NEEDS_HUMAN");
+    const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(stored.phase).toBe("NEEDS_HUMAN");
+    expect(await prisma.externalActionVersion.count()).toBe(0);
+  });
+
+  it("escalates a resume whose target verification profile drifted", async () => {
+    const fixture = await createRegressionFixture(); // frozen sandbox
+    created.push(fixture);
+    const runId = await fixingRun(fixture);
+    const drifted = { ...fixture, verificationProfile: "production-black-box" as const };
+    expect(await driveRepair(runId, "worker-a", drifted, fixtureRepairerFor(fixture))).toBe("NEEDS_HUMAN");
+    const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(stored.phase).toBe("NEEDS_HUMAN");
+  });
+
+  it("escalates a legacy target that has no verification profile (fail closed)", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const inc = await ingestIncident({ repository: "rpas-lms", defaultBranch: "main", fingerprint: fixture.incident.fingerprint, payload: {} });
+    const run = await createRemediationRun(inc.id);
+    await claimRun(run.id, "worker-a", 60_000);
+    const { verificationProfile: _drop, ...legacyTarget } = frozenTarget(fixture);
+    await prisma.remediationRun.update({ where: { id: run.id }, data: { phase: "FIXING", target: legacyTarget } });
+    expect(await driveRepair(run.id, "worker-a", fixture, fixtureRepairerFor(fixture))).toBe("NEEDS_HUMAN");
+    const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: run.id } });
+    expect(stored.phase).toBe("NEEDS_HUMAN");
+  });
+
   it("refuses an invalid starting phase without writing any policy", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
@@ -309,6 +373,10 @@ describe("driveRepair", () => {
 
   it("aborts on lease loss, leaving the phase resumable and no proposal", async () => {
     const fixture = await createRegressionFixture();
+    // An untrusted custom repairer only RUNS under a non-sandbox profile (sandbox +
+    // untrusted is rejected at the FIXING gate before it runs); use production-black-box
+    // so this test actually exercises the lease-loss abort inside the fix attempt.
+    fixture.verificationProfile = "production-black-box";
     created.push(fixture);
     const runId = await fixingRun(fixture);
     let n = 0;

@@ -1,5 +1,6 @@
 import { prisma } from "../../db";
 import type { RepairEvidence } from "./fixAttempt";
+import { verificationProfileFromTarget } from "./types";
 
 const KIND = "draft_pr";
 
@@ -28,6 +29,17 @@ export async function publishProposal(runId: string, workerId: string): Promise<
   }
   const evidence = JSON.parse(run.evidence ?? "null") as RepairEvidence | null;
   if (!evidence) throw new Error(`run ${runId} at PROPOSING has no evidence`);
+
+  // Publish boundary (defense-in-depth; a kernel-wide invariant, not a driver-only
+  // convention): only a sandbox self-test may publish from heuristic evidence. This is
+  // an ALLOWLIST, not a denylist — a missing / legacy / unknown profile is rejected too,
+  // so a run parked at PROPOSING (e.g. via a direct transitionRun) cannot be published.
+  // Until a real attestor exists, anything but sandbox-fixture needs a black-box
+  // attestation we cannot yet produce.
+  const profile = verificationProfileFromTarget(run.target);
+  if (profile !== "sandbox-fixture") {
+    throw new Error(`run ${runId} requires a valid black-box attestation to publish (profile=${profile ?? "none"})`);
+  }
 
   const inc = run.incident;
   const body = `Automated remediation: reproduction went red→green. Files: ${evidence.changedFiles.join(", ")}`;

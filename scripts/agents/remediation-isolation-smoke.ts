@@ -266,9 +266,12 @@ async function main(): Promise<void> {
 
   // ── 4. Oracle-in-Docker smoke ──────────────────────────────────────────────
   console.log("\n4. Oracle-in-Docker smoke (reproduce → repair → PROPOSED)");
+  // Trusted oracle running THROUGH the container to smoke isolation → sandbox-fixture
+  // (this smoke asserts PROPOSED; the untrusted-LLM path is real-repair-eval).
   const fixture = await buildRealRepoFixture(gradeDedupDefect(process.cwd()), {
     isolation: "docker",
     image,
+    verificationProfile: "sandbox-fixture",
   });
   // Guard: FixtureRepairer is trusted → passes; confirms guard is wired
   const repairer = fixtureRepairerFor(fixture);
