@@ -6,7 +6,10 @@ const EDGES: Readonly<Record<RemediationPhase, readonly RemediationPhase[]>> = {
   CLASSIFIED: ["REPRODUCING", "NEEDS_HUMAN", "FAILED", "CANCELLED"],
   REPRODUCING: ["FIXING", "ALREADY_FIXED", "NOT_REPRODUCIBLE", "NEEDS_HUMAN", "FAILED", "CANCELLED"],
   FIXING: ["VERIFYING", "NEEDS_HUMAN", "FAILED", "CANCELLED"],
-  VERIFYING: ["PROPOSING", "NEEDS_HUMAN", "FAILED", "CANCELLED"],
+  // VERIFYING → PROPOSING is the sandbox-fixture self-test path; production-black-box
+  // runs must go through ATTESTING (an external black-box verdict) first.
+  VERIFYING: ["ATTESTING", "PROPOSING", "NEEDS_HUMAN", "FAILED", "CANCELLED"],
+  ATTESTING: ["PROPOSING", "NEEDS_HUMAN", "FAILED", "CANCELLED"],
   PROPOSING: ["PROPOSED", "NEEDS_HUMAN", "FAILED", "CANCELLED"],
   PROPOSED: [],
   ALREADY_FIXED: [],

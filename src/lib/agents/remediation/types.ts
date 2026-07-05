@@ -5,6 +5,7 @@ export const ACTIVE_PHASES = [
   "REPRODUCING",
   "FIXING",
   "VERIFYING",
+  "ATTESTING",
   "PROPOSING",
 ] as const;
 
@@ -41,4 +42,47 @@ export function verificationProfileFromTarget(target: unknown): VerificationProf
   if (!target || typeof target !== "object") return null;
   const p = (target as Record<string, unknown>).verificationProfile;
   return p === "sandbox-fixture" || p === "production-black-box" ? p : null;
+}
+
+/**
+ * A request the kernel sends to an external black-box verifier. Every field binds the
+ * attestation to exactly this run / patch / verifier bundle / VM image, so a signed
+ * verdict can never be replayed for a different run, patch, test bundle, or image. The
+ * `nonce` is generated ONCE when the run enters ATTESTING and frozen on the run, so a
+ * resume re-requests the identical request and a stale attestation cannot be reused.
+ */
+export type BlackBoxRequest = {
+  version: 1;
+  runId: string;
+  nonce: string;
+  incidentFingerprint: string;
+  baseCommit: string;
+  patchSha256: string;
+  verifierBundleSha256: string;
+  vmImageSha256: string;
+};
+
+/**
+ * The signed verdict a verifier returns. `requestDigest` must equal the kernel's own
+ * digest of the BlackBoxRequest it sent (per-field binding); the signature covers the
+ * verdict + digests + key id + expiry. The kernel trusts ONLY this — never a guest self-report.
+ */
+export type BlackBoxAttestation = {
+  version: 1;
+  requestDigest: string;
+  verdict: "pass" | "fail";
+  observationsDigest: string;
+  verifierKeyId: string;
+  issuedAt: string;
+  expiresAt: string;
+  signature: string;
+};
+
+/**
+ * The seam an external black-box verifier plugs into. The kernel sends a request and
+ * trusts only the returned signature + its bound fields. `MockAttestor` is the hermetic /
+ * dev implementation; a real Firecracker attestor is a frozen future adapter.
+ */
+export interface Attestor {
+  requestAttestation(request: BlackBoxRequest): Promise<BlackBoxAttestation>;
 }
