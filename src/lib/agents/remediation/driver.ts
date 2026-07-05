@@ -4,9 +4,11 @@ import { runFixAttempt, type RepairEvidence } from "./fixAttempt";
 import { publishProposal } from "./publish";
 import { classifyOnLatestMain, reproduce } from "./reproduce";
 import { isTrustedRepairer, type Repairer, type RepairPolicy } from "./repair";
-import { freezeRunPolicy, heartbeatRun, transitionRun, transitionRunWithEvidence, transitionRunWithTarget } from "./store";
+import { freezeRunPolicy, heartbeatRun, transitionRun, transitionRunWithAttestation, transitionRunWithEvidence, transitionRunWithTarget } from "./store";
 import { verify, type VerifyPolicy } from "./verify";
-import { verificationProfileFromTarget, type RemediationPhase, type VerificationProfile } from "./types";
+import { buildAttestationRequest, newNonce, verifyAttestation } from "./attestation";
+import { verificationProfileFromTarget, type Attestor, type BlackBoxRequest, type RemediationPhase, type VerificationProfile } from "./types";
+import type { KeyObject } from "node:crypto";
 
 /** The immutable identity of the code state that was reproduced. Frozen on the run
  *  at REPRODUCING→FIXING (NOT at first repair), so a repair/resume can only ever
@@ -27,7 +29,12 @@ type RepairTarget = {
  *  use different ones. (The target is frozen separately, earlier, at reproduction.) */
 type FrozenPolicy = { verify: VerifyPolicy; repair: RepairPolicy };
 
-const REPAIRABLE_PHASES = new Set(["FIXING", "VERIFYING", "PROPOSING"]);
+const REPAIRABLE_PHASES = new Set(["FIXING", "VERIFYING", "ATTESTING", "PROPOSING"]);
+
+/** The external black-box verifier + its trust anchor. The kernel trusts ONLY a signature
+ *  it can verify against `knownKeys` (configured out-of-band), never a key the attestor
+ *  supplies inline. Absent this, a production-black-box run fails closed to NEEDS_HUMAN. */
+export type AttestationConfig = { attestor: Attestor; knownKeys: Map<string, KeyObject> };
 
 function buildTarget(fixture: RegressionFixture, incident: { repository: string; defaultBranch: string }): RepairTarget {
   return {
@@ -153,6 +160,9 @@ export type DriveRepairOptions = {
   leaseMs?: number;
   heartbeatMs?: number;
   maxPatchBytes?: number;
+  /** External black-box verifier for production-black-box runs. Absent → such a run
+   *  fails closed to NEEDS_HUMAN at VERIFYING (sandbox-fixture runs never need it). */
+  attestation?: AttestationConfig;
   /** test-only: override the heartbeat beat / tamper the worktree. */
   _beat?: () => Promise<boolean>;
   _tamperCheckAfterRepair?: (worktreeRoot: string) => Promise<void>;
@@ -162,7 +172,8 @@ export type DriveRepairOptions = {
  * Resumable repair driver: dispatches on the run's CURRENT phase, so a crash at
  * any point resumes without redoing prior work.
  *   FIXING     → run the attempt, persist evidence atomically with → VERIFYING
- *   VERIFYING  → verify persisted evidence → PROPOSING (ok) or NEEDS_HUMAN
+ *   VERIFYING  → verify persisted evidence → PROPOSING (sandbox) / ATTESTING (production) / NEEDS_HUMAN
+ *   ATTESTING  → external black-box verdict → PROPOSING (pass) or NEEDS_HUMAN
  *   PROPOSING  → idempotently publish → PROPOSED
  * A LeaseLost/exception leaves the phase un-advanced (re-invoke resumes).
  */
@@ -254,21 +265,56 @@ export async function driveRepair(
           await transitionRun(runId, workerId, "VERIFYING", "NEEDS_HUMAN");
           return "NEEDS_HUMAN";
         }
-        // Local gates passing is sufficient ONLY for a sandbox self-test. A production
-        // run needs an external black-box attestation the code under test cannot forge;
-        // none exists yet, so fail closed. (The reason is not persisted this round — the
-        // schema has no reason field; only the terminal NEEDS_HUMAN is guaranteed.)
+        // Local gates passing is sufficient ONLY for a sandbox self-test. A production run
+        // needs an external black-box attestation the code under test cannot forge: freeze
+        // the request (nonce generated once) and move to ATTESTING. Without a configured
+        // verifier it fails closed to NEEDS_HUMAN. (Decision reason is not persisted this
+        // round — schema has no reason field; only the terminal state is guaranteed.)
         if (profile === "production-black-box") {
-          await transitionRun(runId, workerId, "VERIFYING", "NEEDS_HUMAN");
-          return "NEEDS_HUMAN";
+          if (!opts.attestation) {
+            await transitionRun(runId, workerId, "VERIFYING", "NEEDS_HUMAN");
+            return "NEEDS_HUMAN";
+          }
+          const request = buildAttestationRequest({
+            runId,
+            nonce: newNonce(),
+            incidentFingerprint: frozenTarget.fingerprint,
+            baseCommit: frozenTarget.mainCommit,
+            patch: evidence.patch,
+            substrateIdentity: frozenTarget.substrateIdentity,
+          });
+          await transitionRunWithAttestation(runId, workerId, "VERIFYING", "ATTESTING", { request });
+          break;
         }
         await transitionRun(runId, workerId, "VERIFYING", "PROPOSING");
         break;
       }
+      case "ATTESTING": {
+        // The kernel trusts ONLY a signed verdict bound to the frozen request; the attestor
+        // is transport, the trust anchor is opts.attestation.knownKeys (configured out-of-band).
+        if (!opts.attestation) {
+          // Reached ATTESTING (a verifier WAS configured earlier) but this resume has none —
+          // a transient outage. Stay ATTESTING (resumable); never escalate or publish blindly.
+          throw new Error(`run ${runId} at ATTESTING has no attestor (verifier unavailable) — resume when available`);
+        }
+        const stored = (run.attestation ?? null) as { request?: BlackBoxRequest } | null;
+        if (!stored?.request) throw new Error(`run ${runId} at ATTESTING has no frozen request`);
+        // A verifier crash/timeout throws out of here, leaving the phase at ATTESTING (resumable).
+        const att = await opts.attestation.attestor.requestAttestation(stored.request);
+        const result = verifyAttestation(stored.request, att, opts.attestation.knownKeys);
+        if (!result.ok) {
+          await transitionRun(runId, workerId, "ATTESTING", "NEEDS_HUMAN");
+          return "NEEDS_HUMAN";
+        }
+        // Persist the verified attestation with the frozen request (audit), in the CAS.
+        await transitionRunWithAttestation(runId, workerId, "ATTESTING", "PROPOSING", { request: stored.request, attestation: att });
+        break;
+      }
       case "PROPOSING": {
-        // publishProposal reads the run's own persisted evidence + enforces the
-        // lease; the driver injects no truthfulness material.
-        await publishProposal(runId, workerId);
+        // publishProposal reads the run's own persisted evidence + enforces the lease;
+        // the driver injects no truthfulness material. The trust anchor is passed so
+        // publish can RE-VERIFY a production-black-box run's attestation (defense-in-depth).
+        await publishProposal(runId, workerId, { knownKeys: opts.attestation?.knownKeys });
         await transitionRun(runId, workerId, "PROPOSING", "PROPOSED");
         return "PROPOSED";
       }

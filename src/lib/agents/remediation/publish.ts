@@ -1,6 +1,8 @@
+import { createHash, type KeyObject } from "node:crypto";
 import { prisma } from "../../db";
 import type { RepairEvidence } from "./fixAttempt";
-import { verificationProfileFromTarget } from "./types";
+import { verifyAttestation } from "./attestation";
+import { verificationProfileFromTarget, type BlackBoxAttestation, type BlackBoxRequest } from "./types";
 
 const KIND = "draft_pr";
 
@@ -21,7 +23,11 @@ const KIND = "draft_pr";
  * check-then-act, but the exclusive lease (only one owner) plus this idempotency
  * make a race benign.
  */
-export async function publishProposal(runId: string, workerId: string): Promise<{ actionId: string; version: number }> {
+export async function publishProposal(
+  runId: string,
+  workerId: string,
+  opts: { knownKeys?: Map<string, KeyObject> } = {},
+): Promise<{ actionId: string; version: number }> {
   const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId }, include: { incident: true } });
   if (run.phase !== "PROPOSING") throw new Error(`run ${runId} is not at PROPOSING (phase=${run.phase})`);
   if (run.leaseOwner !== workerId || !run.leaseExpiresAt || run.leaseExpiresAt <= new Date()) {
@@ -31,13 +37,26 @@ export async function publishProposal(runId: string, workerId: string): Promise<
   if (!evidence) throw new Error(`run ${runId} at PROPOSING has no evidence`);
 
   // Publish boundary (defense-in-depth; a kernel-wide invariant, not a driver-only
-  // convention): only a sandbox self-test may publish from heuristic evidence. This is
-  // an ALLOWLIST, not a denylist — a missing / legacy / unknown profile is rejected too,
-  // so a run parked at PROPOSING (e.g. via a direct transitionRun) cannot be published.
-  // Until a real attestor exists, anything but sandbox-fixture needs a black-box
-  // attestation we cannot yet produce.
+  // convention). Exactly two kinds of run may publish:
+  //   • sandbox-fixture — the deterministic oracle self-test.
+  //   • production-black-box — ONLY with a persisted attestation that RE-VERIFIES here
+  //     (signature under the trust anchor + request bound to THIS patch). Re-verifying
+  //     rather than trusting the phase means a run parked at PROPOSING via a direct
+  //     transitionRun, or carrying a forged/foreign attestation, still cannot publish.
+  // A missing / legacy / unknown profile is rejected (allowlist, not denylist).
   const profile = verificationProfileFromTarget(run.target);
-  if (profile !== "sandbox-fixture") {
+  if (profile === "production-black-box") {
+    const stored = (run.attestation ?? null) as { request?: BlackBoxRequest; attestation?: BlackBoxAttestation } | null;
+    if (!stored?.request || !stored?.attestation) {
+      throw new Error(`run ${runId} has no valid black-box attestation to publish`);
+    }
+    const verdict = verifyAttestation(stored.request, stored.attestation, opts.knownKeys ?? new Map());
+    if (!verdict.ok) throw new Error(`run ${runId} black-box attestation failed re-verification at publish: ${verdict.reason}`);
+    const patchSha = createHash("sha256").update(evidence.patch).digest("hex");
+    if (stored.request.patchSha256 !== patchSha) {
+      throw new Error(`run ${runId} black-box attestation is not bound to the patch being published`);
+    }
+  } else if (profile !== "sandbox-fixture") {
     throw new Error(`run ${runId} requires a valid black-box attestation to publish (profile=${profile ?? "none"})`);
   }
 
