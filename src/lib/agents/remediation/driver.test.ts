@@ -6,8 +6,6 @@ import { driveRepair, driveReproduction } from "./driver";
 import { fixtureRepairerFor, type Repairer } from "./repair";
 import { LeaseLost, type RepairEvidence } from "./fixAttempt";
 import { publishProposal } from "./publish";
-import { MockAttestor } from "./attestation";
-import type { Attestor } from "./types";
 
 const created: RegressionFixture[] = [];
 
@@ -335,80 +333,20 @@ describe("driveRepair", () => {
     expect(stored.phase).toBe("NEEDS_HUMAN");
   });
 
-  // ── ATTESTING (external black-box verdict) ─────────────────────────────────
-  it("a production-black-box run with a passing attestor reaches PROPOSED via ATTESTING", async () => {
+  // A production-black-box run passes local gates (trusted repairer, so FIXING lets it
+  // through) but still fails closed to NEEDS_HUMAN at VERIFYING: it needs an external
+  // black-box attestation the code under test cannot forge, and no real attestor exists yet
+  // (deferred to Firecracker). It never reaches PROPOSING.
+  it("a production-black-box run fails closed to NEEDS_HUMAN at VERIFYING (no attestor yet)", async () => {
     const fixture = await createRegressionFixture();
     fixture.verificationProfile = "production-black-box";
     created.push(fixture);
     const runId = await fixingRun(fixture);
-    const attestor = new MockAttestor();
-    const outcome = await driveRepair(runId, "worker-a", fixture, fixtureRepairerFor(fixture), {
-      attestation: { attestor, knownKeys: attestor.knownKeys() },
-    });
-    expect(outcome).toBe("PROPOSED");
-    const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
-    expect(stored.phase).toBe("PROPOSED");
-    expect(await prisma.externalActionVersion.count()).toBe(1);
-  });
-
-  it("a production-black-box run with a failing verdict escalates to NEEDS_HUMAN (no proposal)", async () => {
-    const fixture = await createRegressionFixture();
-    fixture.verificationProfile = "production-black-box";
-    created.push(fixture);
-    const runId = await fixingRun(fixture);
-    const attestor = new MockAttestor({ verdict: "fail" });
-    const outcome = await driveRepair(runId, "worker-a", fixture, fixtureRepairerFor(fixture), {
-      attestation: { attestor, knownKeys: attestor.knownKeys() },
-    });
-    expect(outcome).toBe("NEEDS_HUMAN");
-    expect(await prisma.externalActionVersion.count()).toBe(0);
-  });
-
-  it("rejects an attestation signed by a key outside the trust anchor → NEEDS_HUMAN", async () => {
-    const fixture = await createRegressionFixture();
-    fixture.verificationProfile = "production-black-box";
-    created.push(fixture);
-    const runId = await fixingRun(fixture);
-    const attestor = new MockAttestor(); // verdict pass, but its key is NOT in the anchor
-    const outcome = await driveRepair(runId, "worker-a", fixture, fixtureRepairerFor(fixture), {
-      attestation: { attestor, knownKeys: new Map() },
-    });
-    expect(outcome).toBe("NEEDS_HUMAN");
-    expect(await prisma.externalActionVersion.count()).toBe(0);
-  });
-
-  it("a production-black-box run with NO attestor fails closed to NEEDS_HUMAN at VERIFYING", async () => {
-    const fixture = await createRegressionFixture();
-    fixture.verificationProfile = "production-black-box";
-    created.push(fixture);
-    const runId = await fixingRun(fixture);
-    const outcome = await driveRepair(runId, "worker-a", fixture, fixtureRepairerFor(fixture)); // no attestation config
+    const outcome = await driveRepair(runId, "worker-a", fixture, fixtureRepairerFor(fixture));
     expect(outcome).toBe("NEEDS_HUMAN");
     const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
     expect(stored.phase).toBe("NEEDS_HUMAN");
     expect(await prisma.externalActionVersion.count()).toBe(0);
-  });
-
-  it("resumes from ATTESTING after a verifier outage without re-running repair", async () => {
-    const fixture = await createRegressionFixture();
-    fixture.verificationProfile = "production-black-box";
-    created.push(fixture);
-    const runId = await fixingRun(fixture);
-    // Verifier down → throws out of ATTESTING; phase stays ATTESTING (resumable).
-    const down: Attestor = { async requestAttestation() { throw new Error("verifier down"); } };
-    await expect(
-      driveRepair(runId, "worker-a", fixture, fixtureRepairerFor(fixture), { attestation: { attestor: down, knownKeys: new Map() } }),
-    ).rejects.toThrow("verifier down");
-    const mid = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
-    expect(mid.phase).toBe("ATTESTING");
-    expect(mid.evidence).not.toBeNull(); // repair evidence persisted at FIXING; not redone on resume
-
-    // Resume with a working attestor → PROPOSED, reusing the frozen request (same nonce).
-    const attestor = new MockAttestor();
-    const outcome = await driveRepair(runId, "worker-a", fixture, fixtureRepairerFor(fixture), {
-      attestation: { attestor, knownKeys: attestor.knownKeys() },
-    });
-    expect(outcome).toBe("PROPOSED");
   });
 
   it("refuses an invalid starting phase without writing any policy", async () => {

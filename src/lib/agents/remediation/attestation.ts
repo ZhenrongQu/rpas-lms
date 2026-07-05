@@ -1,5 +1,5 @@
-import { createHash, generateKeyPairSync, randomUUID, sign, verify, type KeyObject } from "node:crypto";
-import type { Attestor, BlackBoxAttestation, BlackBoxRequest } from "./types";
+import { createHash, verify, type KeyObject } from "node:crypto";
+import type { BlackBoxAttestation, BlackBoxRequest } from "./types";
 
 /**
  * Black-box attestation: the kernel sends a BlackBoxRequest bound to exactly this run /
@@ -28,8 +28,10 @@ export function requestDigest(r: BlackBoxRequest): string {
   return createHash("sha256").update(canonicalRequest(r)).digest("hex");
 }
 
-/** Everything the signature covers — the whole attestation EXCEPT the signature itself. */
-function attestationSigningBytes(a: Omit<BlackBoxAttestation, "signature">): Buffer {
+/** Everything the signature covers — the whole attestation EXCEPT the signature itself.
+ *  Exported so an attestor adapter (the real Firecracker verifier, or the test MockAttestor)
+ *  signs over exactly the bytes the kernel verifies — no drift-prone duplicate serializer. */
+export function attestationSigningBytes(a: Omit<BlackBoxAttestation, "signature">): Buffer {
   return Buffer.from(
     JSON.stringify([a.version, a.requestDigest, a.verdict, a.observationsDigest, a.verifierKeyId, a.issuedAt, a.expiresAt]),
   );
@@ -66,10 +68,11 @@ export function verifyAttestation(
 }
 
 /**
- * Build the request the kernel freezes at VERIFYING→ATTESTING. The `nonce` is generated
- * ONCE by the caller and frozen, so a resume re-requests the identical request. The
- * verifier-bundle / VM-image digests are placeholders derived from the frozen substrate
- * identity until a real Firecracker verifier exists — deterministic and still binding.
+ * Build the request the kernel will send to a real black-box verifier. The `nonce` is
+ * generated ONCE by the caller and frozen, so a resume re-requests the identical request.
+ * The verifier-bundle / VM-image digests are placeholders derived from the frozen substrate
+ * identity until a real Firecracker verifier exists — deterministic and still binding. Part
+ * of the frozen contract; not yet wired into the driver (production-black-box → NEEDS_HUMAN).
  */
 export function buildAttestationRequest(input: {
   runId: string;
@@ -90,51 +93,4 @@ export function buildAttestationRequest(input: {
     verifierBundleSha256: h(`verifier-bundle:${input.substrateIdentity}`),
     vmImageSha256: h(`vm-image:${input.substrateIdentity}`),
   };
-}
-
-export function newNonce(): string {
-  return randomUUID();
-}
-
-/**
- * Hermetic / dev attestor: holds an Ed25519 keypair and signs a verdict bound to the
- * request. It exercises the contract, binding, and signature path deterministically. A
- * real Firecracker attestor (a verdict computed OUTSIDE the guest) is a frozen future
- * adapter. Its public key is exposed via `knownKeys()` for the kernel's trust anchor —
- * in production the anchor is configured out-of-band, never taken from the attestor inline.
- */
-export class MockAttestor implements Attestor {
-  readonly keyId: string;
-  private readonly priv: KeyObject;
-  private readonly pub: KeyObject;
-  private readonly verdict: "pass" | "fail";
-  private readonly ttlMs: number;
-
-  constructor(opts: { keyId?: string; verdict?: "pass" | "fail"; ttlMs?: number } = {}) {
-    const { publicKey, privateKey } = generateKeyPairSync("ed25519");
-    this.priv = privateKey;
-    this.pub = publicKey;
-    this.keyId = opts.keyId ?? `mock-${randomUUID().slice(0, 8)}`;
-    this.verdict = opts.verdict ?? "pass";
-    this.ttlMs = opts.ttlMs ?? 5 * 60_000;
-  }
-
-  /** The trust anchor a test/kernel uses to verify this attestor's signatures. */
-  knownKeys(): Map<string, KeyObject> {
-    return new Map([[this.keyId, this.pub]]);
-  }
-
-  async requestAttestation(request: BlackBoxRequest): Promise<BlackBoxAttestation> {
-    const now = Date.now();
-    const core: Omit<BlackBoxAttestation, "signature"> = {
-      version: 1,
-      requestDigest: requestDigest(request),
-      verdict: this.verdict,
-      observationsDigest: createHash("sha256").update(`mock-observations:${request.nonce}`).digest("hex"),
-      verifierKeyId: this.keyId,
-      issuedAt: new Date(now).toISOString(),
-      expiresAt: new Date(now + this.ttlMs).toISOString(),
-    };
-    return { ...core, signature: sign(null, attestationSigningBytes(core), this.priv).toString("base64") };
-  }
 }

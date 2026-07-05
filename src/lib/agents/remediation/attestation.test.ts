@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildAttestationRequest, MockAttestor, verifyAttestation } from "./attestation";
+import { buildAttestationRequest, verifyAttestation } from "./attestation";
+import { MockAttestor } from "./attestation.testutil";
 import type { BlackBoxRequest } from "./types";
 
 function sampleRequest(overrides: Partial<BlackBoxRequest> = {}): BlackBoxRequest {

@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "../../db";
 import { claimRun, createRemediationRun, ingestIncident } from "./store";
 import { publishProposal } from "./publish";
-import { buildAttestationRequest, MockAttestor } from "./attestation";
 import type { RepairEvidence } from "./fixAttempt";
 
 afterEach(async () => {
@@ -126,64 +125,6 @@ describe("publishProposal", () => {
   it("refuses to publish a run with an unknown profile value (allowlist, not denylist)", async () => {
     const run = await proposingRun("pub-unknown", "PATCH-A", "totally-made-up");
     await expect(publishProposal(run.id, "worker-a")).rejects.toThrow(/black-box attestation/);
-    expect(await prisma.externalActionVersion.count()).toBe(0);
-  });
-
-  // A production run at PROPOSING with a genuinely valid, persisted attestation. Parks it
-  // there DIRECTLY (bypassing the driver) to prove publish re-verifies independently.
-  async function attestedProductionRun(fingerprint: string, patch: string, attestor: MockAttestor) {
-    const inc = await incident(fingerprint);
-    const run = await createRemediationRun(inc.id);
-    await claimRun(run.id, "worker-a", 60_000);
-    const request = buildAttestationRequest({
-      runId: run.id, nonce: "n1", incidentFingerprint: "fp", baseCommit: "c0", patch, substrateIdentity: "sub",
-    });
-    const attestation = await attestor.requestAttestation(request);
-    await prisma.remediationRun.update({
-      where: { id: run.id },
-      data: {
-        phase: "PROPOSING",
-        evidence: JSON.stringify({ ...EVIDENCE, patch }),
-        target: { verificationProfile: "production-black-box" },
-        attestation: { request, attestation },
-      },
-    });
-    return run;
-  }
-
-  it("re-verifies a production attestation at publish: refuses without the trust anchor, publishes with it", async () => {
-    const attestor = new MockAttestor();
-    const run = await attestedProductionRun("pub-prod-verified", "PATCH-PROD", attestor);
-    // Defense-in-depth: publish re-verifies rather than trusting the phase, so an anchor-less
-    // caller (or a run parked at PROPOSING out-of-band) cannot publish a production run.
-    await expect(publishProposal(run.id, "worker-a")).rejects.toThrow(/re-verification/);
-    expect(await prisma.externalActionVersion.count()).toBe(0);
-    // With the correct trust anchor the same attestation re-verifies and publishes.
-    const res = await publishProposal(run.id, "worker-a", { knownKeys: attestor.knownKeys() });
-    expect(res.version).toBeGreaterThan(0);
-    expect(await prisma.externalActionVersion.count()).toBe(1);
-  });
-
-  it("refuses to publish when the attestation is not bound to the patch being published", async () => {
-    const attestor = new MockAttestor();
-    // Attestation issued for "PATCH-ORIG" but the run's evidence patch is swapped to "PATCH-SWAP".
-    const inc = await incident("pub-prod-patch-swap");
-    const run = await createRemediationRun(inc.id);
-    await claimRun(run.id, "worker-a", 60_000);
-    const request = buildAttestationRequest({
-      runId: run.id, nonce: "n1", incidentFingerprint: "fp", baseCommit: "c0", patch: "PATCH-ORIG", substrateIdentity: "sub",
-    });
-    const attestation = await attestor.requestAttestation(request);
-    await prisma.remediationRun.update({
-      where: { id: run.id },
-      data: {
-        phase: "PROPOSING",
-        evidence: JSON.stringify({ ...EVIDENCE, patch: "PATCH-SWAP" }),
-        target: { verificationProfile: "production-black-box" },
-        attestation: { request, attestation },
-      },
-    });
-    await expect(publishProposal(run.id, "worker-a", { knownKeys: attestor.knownKeys() })).rejects.toThrow(/not bound to the patch/);
     expect(await prisma.externalActionVersion.count()).toBe(0);
   });
 });

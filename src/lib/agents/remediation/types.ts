@@ -5,7 +5,6 @@ export const ACTIVE_PHASES = [
   "REPRODUCING",
   "FIXING",
   "VERIFYING",
-  "ATTESTING",
   "PROPOSING",
 ] as const;
 
@@ -48,8 +47,8 @@ export function verificationProfileFromTarget(target: unknown): VerificationProf
  * A request the kernel sends to an external black-box verifier. Every field binds the
  * attestation to exactly this run / patch / verifier bundle / VM image, so a signed
  * verdict can never be replayed for a different run, patch, test bundle, or image. The
- * `nonce` is generated ONCE when the run enters ATTESTING and frozen on the run, so a
- * resume re-requests the identical request and a stale attestation cannot be reused.
+ * `nonce` is generated ONCE per verification request and frozen on the run, so a resume
+ * re-requests the identical request and a stale attestation cannot be reused.
  */
 export type BlackBoxRequest = {
   version: 1;
@@ -80,8 +79,10 @@ export type BlackBoxAttestation = {
 
 /**
  * The seam an external black-box verifier plugs into. The kernel sends a request and
- * trusts only the returned signature + its bound fields. `MockAttestor` is the hermetic /
- * dev implementation; a real Firecracker attestor is a frozen future adapter.
+ * trusts only the returned signature + its bound fields. `MockAttestor` (test-only, in
+ * `attestation.testutil.ts`) exercises the contract; a real Firecracker attestor is a
+ * frozen future adapter. Not yet wired into the driver — until a real attestor exists a
+ * production-black-box run fails closed to NEEDS_HUMAN.
  */
 export interface Attestor {
   requestAttestation(request: BlackBoxRequest): Promise<BlackBoxAttestation>;

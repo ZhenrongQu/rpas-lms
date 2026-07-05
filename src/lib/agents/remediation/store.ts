@@ -159,23 +159,3 @@ export async function transitionRunWithTarget(
   if (updated.count !== 1) throw new Error(`run ${runId} lost lease or CAS race`);
 }
 
-/** Like transitionRun but writes the `attestation` JSON in the SAME lease/CAS
- *  updateMany. Used at VERIFYING→ATTESTING to freeze the sent BlackBoxRequest (nonce +
- *  digests) so a resume re-requests the identical request, and at ATTESTING→PROPOSING to
- *  persist the verified attestation for audit. */
-export async function transitionRunWithAttestation(
-  runId: string,
-  workerId: string,
-  expected: RemediationPhase,
-  next: RemediationPhase,
-  attestation: unknown,
-): Promise<void> {
-  assertTransition(expected, next);
-  const clearLease = TERMINAL.includes(next);
-  const data = { phase: next, attestation: attestation as Prisma.InputJsonValue };
-  const updated = await prisma.remediationRun.updateMany({
-    where: { id: runId, phase: expected, leaseOwner: workerId, leaseExpiresAt: { gt: new Date() } },
-    data: clearLease ? { ...data, leaseOwner: null, leaseExpiresAt: null } : data,
-  });
-  if (updated.count !== 1) throw new Error(`run ${runId} lost lease or CAS race`);
-}
