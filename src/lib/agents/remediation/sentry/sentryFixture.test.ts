@@ -26,4 +26,10 @@ describe("buildSentryFixture", () => {
     expect(fx.substrate.pinnedPaths).toEqual([]); // re-injection protects, no pinning
     await expect(fx.cleanup()).resolves.toBeUndefined(); // no-op on the real checkout
   });
+
+  it("chooses the placeholder holdout when no sibling test exists (distinct substrate identity)", async () => {
+    const withSibling = await buildSentryFixture(spec, repo(true));
+    const withoutSibling = await buildSentryFixture(spec, repo(false));
+    expect(withoutSibling.substrate.identity).not.toBe(withSibling.substrate.identity);
+  });
 });

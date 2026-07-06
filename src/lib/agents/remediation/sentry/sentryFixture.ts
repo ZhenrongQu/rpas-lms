@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { basename, dirname, join } from "node:path";
 import type { RegressionFixture } from "../fixtures";
 import { createSubstrateIdentity, type Substrate } from "../substrate";
