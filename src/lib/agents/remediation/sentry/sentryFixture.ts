@@ -2,7 +2,7 @@ import { rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import type { RegressionFixture } from "../fixtures";
 import { createSubstrateIdentity, type CheckResult, type CheckRunner, type Substrate } from "../substrate";
-import { dockerVitestCheckRunner, dockerVitestHoldoutRunner, type DockerExec } from "../isolated/dockerCheckRunner";
+import { dockerVitestCheckRunner, dockerVitestHoldoutRunner, wrapIsolated, type DockerExec } from "../isolated/dockerCheckRunner";
 import { vitestJsonStrategy } from "../real/vitestSubstrate";
 import type { SentryRepo } from "./sentryRepo";
 import type { SynthesizedTest } from "./synthesizer";
@@ -31,7 +31,7 @@ const PLACEHOLDER_HOLDOUT = `import { it, expect } from "vitest";\nit("sentry ho
  */
 export function injectingCheckRunner(image: string, relPath: string, source: string, exec?: DockerExec): CheckRunner {
   const inner = dockerVitestCheckRunner({ image, tests: [relPath] }, exec);
-  return async (worktreeRoot, signal): Promise<CheckResult> => {
+  const wrapper: CheckRunner = async (worktreeRoot, signal): Promise<CheckResult> => {
     const abs = join(worktreeRoot, relPath);
     await writeFile(abs, source);
     try {
@@ -40,6 +40,9 @@ export function injectingCheckRunner(image: string, relPath: string, source: str
       await rm(abs, { force: true }).catch(() => {});
     }
   };
+  // The wrapper delegates to an isolated runner but is a new closure — register it as isolated
+  // (only possible because `inner` is), so the untrusted-repairer guard still accepts runCheck.
+  return wrapIsolated(inner, wrapper);
 }
 
 /**

@@ -33,6 +33,18 @@ function markIsolated(run: CheckRunner): CheckRunner {
   return run;
 }
 
+/**
+ * Register a `wrapper` runner as isolated, but ONLY when `inner` is already isolated — so a
+ * fixture may add pre/post behavior around an isolated runner (e.g. inject + clean up a
+ * synthesized test file) without losing the guarantee. Refuses a non-isolated `inner`, so a
+ * host runner can never be laundered into the registry. This is the ONLY way to add a wrapper;
+ * there is still no way to mark an arbitrary runner isolated from outside.
+ */
+export function wrapIsolated(inner: CheckRunner, wrapper: CheckRunner): CheckRunner {
+  if (!isolatedRunners.has(inner)) throw new Error("wrapIsolated: inner runner is not isolated");
+  return markIsolated(wrapper);
+}
+
 export type DockerRunnerOptions = {
   image: string;
   /** Test file(s) to run — the ONLY model-influenced input, and it comes from the
