@@ -45,6 +45,13 @@ describe("classifySentryIssue", () => {
   it("escalates source-not-in-repo when the frame file is absent / out of src", async () => {
     expect(await classifySentryIssue(issue(), repo({ fileExistsAt: async () => false }))).toEqual({ kind: "escalate", reason: "source-not-in-repo" });
   });
+  it("escalates a traversal / absolute / out-of-src frame filename (path safety), even if it 'exists'", async () => {
+    const inApp = (filename: string) => [{ function: "isAnswerCorrect", filename, lineno: 1, inApp: true }];
+    // repo() reports fileExistsAt=true — safeSourceRelPath must reject these BEFORE the existence check.
+    expect(await classifySentryIssue(issue({ frames: inApp("src/../etc/passwd") }), repo())).toEqual({ kind: "escalate", reason: "source-not-in-repo" });
+    expect(await classifySentryIssue(issue({ frames: inApp("/etc/passwd") }), repo())).toEqual({ kind: "escalate", reason: "source-not-in-repo" });
+    expect(await classifySentryIssue(issue({ frames: inApp("lib/exam/grade.ts") }), repo())).toEqual({ kind: "escalate", reason: "source-not-in-repo" });
+  });
   it("escalates unsupported-multi-file-regression", async () => {
     expect(await classifySentryIssue(issue(), repo({ changedSourceFiles: async () => ["src/lib/exam/grade.ts", "src/other.ts"] }))).toEqual({ kind: "escalate", reason: "unsupported-multi-file-regression" });
   });
