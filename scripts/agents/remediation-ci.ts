@@ -82,11 +82,30 @@ const gh: GitHubClient = {
   },
 };
 
-/** Build the CiEvent from env vars the workflow sets from the triggering workflow_run. */
+/** A no-op GitHub client for local validation: logs the intended push/PR, writes nothing.
+ *  Enabled with REMEDIATION_CI_DRYRUN=1 so the full pipeline can run without touching GitHub. */
+function dryRunGitHubClient(): GitHubClient {
+  return {
+    findOpenPr: async () => null,
+    pushFixBranch: async (a) => {
+      console.log(`[dry-run] would push ${a.headBranch} from ${a.baseCommit} (patch ${a.patch.length} bytes)`);
+    },
+    openDraftPr: async (a) => {
+      console.log(`[dry-run] would open DRAFT PR → base ${a.target.baseRef}, head ${a.target.headBranch}, labels [${a.labels.join(", ")}]`);
+      return { number: 0, url: "(dry-run)" };
+    },
+    commentOnPr: async () => {},
+  };
+}
+
+/** Build the CiEvent from env vars the workflow sets from the triggering workflow_run.
+ *  CI_BASE_REF_FULL overrides the base ref verbatim (used by the local smoke, where the
+ *  `origin/<ref>` form is not available). */
 function readEvent(): CiEvent {
   const headSha = process.env.CI_HEAD_SHA ?? "";
   if (process.env.CI_EVENT_KIND === "pull_request") {
-    return { kind: "pull_request", headSha, baseRef: `origin/${process.env.CI_BASE_REF || "main"}` };
+    const baseRef = process.env.CI_BASE_REF_FULL || `origin/${process.env.CI_BASE_REF || "main"}`;
+    return { kind: "pull_request", headSha, baseRef };
   }
   return { kind: "push", branch: process.env.CI_HEAD_BRANCH || "main", headSha };
 }
@@ -110,7 +129,8 @@ async function main(): Promise<void> {
   const baseRef = event.kind === "pull_request" ? event.baseRef : "origin/main";
   const target: PrTarget = { baseRef, headBranch: `remediation/${event.headSha.slice(0, 12)}` };
   const repairer = new LlmRepairer(process.env.REAL_REPAIR_MODEL ? { model: process.env.REAL_REPAIR_MODEL } : {});
-  const result = await runRemediation(source, repairer, new DraftPublisher(gh), { target });
+  const client = process.env.REMEDIATION_CI_DRYRUN === "1" ? dryRunGitHubClient() : gh;
+  const result = await runRemediation(source, repairer, new DraftPublisher(client), { target });
   console.log(JSON.stringify(result, null, 2));
   if (result.status === "PROPOSED") process.exitCode = 1; // production must never auto-PROPOSED
 }
