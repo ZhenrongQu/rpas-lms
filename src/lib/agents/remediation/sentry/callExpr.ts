@@ -13,7 +13,9 @@ function isLiteralArg(n: ts.Node): boolean {
   if (ts.isPrefixUnaryExpression(n) && n.operator === ts.SyntaxKind.MinusToken && ts.isNumericLiteral(n.operand)) return true;
   if (ts.isArrayLiteralExpression(n)) return n.elements.every(isLiteralArg);
   if (ts.isObjectLiteralExpression(n)) {
-    return n.properties.every((p) => ts.isPropertyAssignment(p) && isLiteralArg(p.initializer));
+    return n.properties.every(
+      (p) => ts.isPropertyAssignment(p) && !ts.isComputedPropertyName(p.name) && isLiteralArg(p.initializer),
+    );
   }
   return false;
 }

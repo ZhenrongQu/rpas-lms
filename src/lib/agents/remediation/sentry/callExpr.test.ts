@@ -22,4 +22,9 @@ describe("validateCallExpression", () => {
     expect(validateCallExpression("const x = f(1)", "f")).toBeNull();
     expect(validateCallExpression("not code {{", "f")).toBeNull();
   });
+  it("rejects object properties that are not plain literal key:value pairs", () => {
+    expect(validateCallExpression("f({ [x]: 1 })", "f")).toBeNull();   // computed key (identifier ref)
+    expect(validateCallExpression("f({ x })", "f")).toBeNull();         // shorthand
+    expect(validateCallExpression("f({ ...o })", "f")).toBeNull();      // spread
+  });
 });
