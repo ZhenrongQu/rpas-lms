@@ -20,6 +20,7 @@
     "remediation:isolation-smoke": "tsx scripts/agents/remediation-isolation-smoke.ts",
     "real-repair-eval": "tsx scripts/agents/real-repair-eval.ts",
     "remediation:ci": "tsx scripts/agents/remediation-ci.ts",
+    "sentry-repair-eval": "tsx scripts/agents/sentry-repair-eval.ts",
     "postinstall": "prisma generate"
   },
   "devDependencies": {

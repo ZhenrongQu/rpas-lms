@@ -1,0 +1,15 @@
+[
+  {
+    "id": "grade-dedup-typeerror",
+    "title": "TypeError: Cannot read properties of undefined (reading 'length')",
+    "culprit": "isAnswerCorrect(src/lib/exam/grade.ts)",
+    "count": 5,
+    "firstSeen": "2026-07-06T00:00:00Z",
+    "lastSeen": "2026-07-06T00:00:00Z",
+    "error": { "type": "TypeError", "value": "Cannot read properties of undefined (reading 'length')" },
+    "frames": [
+      { "function": "isAnswerCorrect", "filename": "src/lib/exam/grade.ts", "lineno": 17, "inApp": true }
+    ],
+    "release": { "current": "RELEASE_CURRENT", "previous": "RELEASE_PREVIOUS" }
+  }
+]
