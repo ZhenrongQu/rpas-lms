@@ -6,7 +6,7 @@ import { prisma } from "../../../db";
 // vector is set per-test to steer the pgvector cosine branch deterministically.
 vi.mock("./embed", () => ({ embedQuery: vi.fn() }));
 import { embedQuery } from "./embed";
-import { retrieve } from "./retrieve";
+import { maxCosineDistance, retrieve } from "./retrieve";
 
 const mockedEmbed = vi.mocked(embedQuery);
 
@@ -38,7 +38,8 @@ describe("rag hybrid retrieval", () => {
     await insertChunk({ sourceId: "rag-a", locale: "EN", title: "Alpha", content: "topic about airspace classes", vecIdx: 0 });
     await insertChunk({ sourceId: "rag-b", locale: "EN", title: "Beta", content: "topic about weather and clouds", vecIdx: 1 });
     await insertChunk({ sourceId: "rag-c", locale: "EN", title: "Gamma", content: "topic about navigation charts", vecIdx: 2 });
-    await insertChunk({ sourceId: "rag-z", locale: "ZH", title: "空域", content: "关于 空域 的中文文档", vecIdx: 3 });
+    await insertChunk({ sourceId: "rag-z", locale: "ZH", title: "空域", content: "关于 管制空域 的中文文档", vecIdx: 3 });
+    await insertChunk({ sourceId: "rag-mixed", locale: "ZH", title: "RPAS", content: "RPAS classification", vecIdx: 4 });
   });
 
   afterAll(async () => {
@@ -67,6 +68,38 @@ describe("rag hybrid retrieval", () => {
     const hits = await retrieve("weather", { locale: "EN" });
     expect(hits.length).toBeGreaterThan(0);
     expect(hits.some((h) => h.sourceId === "rag-b")).toBe(true); // "weather" is in rag-b
+  });
+
+  it("keyword fallback extracts Chinese phrases from a natural-language question", async () => {
+    mockedEmbed.mockResolvedValue(null);
+    const hits = await retrieve("什么是管制空域", { locale: "ZH" });
+    expect(hits.some((h) => h.sourceId === "rag-z")).toBe(true);
+  });
+
+  it("keyword fallback keeps a core Chinese term at the end of a long question", async () => {
+    mockedEmbed.mockResolvedValue(null);
+    const hits = await retrieve("请详细解释无人机飞行过程中什么情况下属于管制空域", { locale: "ZH" });
+    expect(hits.some((h) => h.sourceId === "rag-z")).toBe(true);
+  });
+
+  it("keyword fallback samples a core Chinese term from the middle of a long question", async () => {
+    mockedEmbed.mockResolvedValue(null);
+    const hits = await retrieve("请详细说明无人机飞行准备流程管制空域以及天气评估和应急程序", { locale: "ZH" });
+    expect(hits.some((h) => h.sourceId === "rag-z")).toBe(true);
+  });
+
+  it("keyword fallback preserves Latin terms in text without spaces around Chinese", async () => {
+    mockedEmbed.mockResolvedValue(null);
+    const hits = await retrieve("RPAS的定义", { locale: "ZH" });
+    expect(hits.some((h) => h.sourceId === "rag-mixed")).toBe(true);
+  });
+
+  it("parses a configurable cosine-distance threshold with safe fallback", () => {
+    expect(maxCosineDistance(undefined)).toBe(0.65);
+    expect(maxCosineDistance("0.8")).toBe(0.8);
+    expect(maxCosineDistance("nope")).toBe(0.65);
+    expect(maxCosineDistance("-1")).toBe(0.65);
+    expect(maxCosineDistance("2.1")).toBe(0.65);
   });
 
   it("returns nothing when neither branch matches", async () => {

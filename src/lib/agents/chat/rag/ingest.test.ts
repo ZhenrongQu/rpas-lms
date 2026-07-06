@@ -215,4 +215,94 @@ describe("rag ingest", () => {
       await prisma.basicLesson.delete({ where: { lessonId } });
     }
   });
+
+  it("reindexLesson strict mode preserves existing chunks when embedding fails", async () => {
+    mockedConfigured.mockReturnValue(true);
+    const row = await prisma.basicLesson.create({
+      data: {
+        lessonId: `${PREFIX}strict`,
+        course: "basic",
+        moduleId: "air-law",
+        slug: `${PREFIX}strict-slug`,
+        order: 100,
+        estMinutes: 5,
+        certLevel: "BASIC",
+        access: "FREE",
+        titleEN: "T",
+        titleZH: "标",
+        bodyEN: "Existing indexed content",
+        bodyZH: "已有索引内容",
+      },
+    });
+    try {
+      await reindexLesson(row);
+      mockedEmbed.mockRejectedValueOnce(new Error("voyage 429"));
+
+      await expect(
+        reindexLesson(
+          { ...row, bodyEN: "Replacement content" },
+          { requireEmbeddings: true },
+        ),
+      ).rejects.toThrow(/429/);
+      expect(await contents(row.lessonId)).toContain("Existing indexed content");
+      expect(await withEmbedding(row.lessonId)).toBe(2);
+    } finally {
+      await prisma.basicLesson.delete({ where: { lessonId: row.lessonId } });
+      await deleteSourceChunks("LESSON", row.lessonId);
+    }
+  });
+
+  it("reindexLesson locks the lesson row so an update after the version check cannot be overwritten", async () => {
+    mockedConfigured.mockReturnValue(false);
+    const row = await prisma.basicLesson.create({
+      data: {
+        lessonId: `${PREFIX}locked-race`,
+        course: "basic",
+        moduleId: "air-law",
+        slug: `${PREFIX}locked-race-slug`,
+        order: 101,
+        estMinutes: 5,
+        certLevel: "BASIC",
+        access: "FREE",
+        titleEN: "T",
+        titleZH: "标",
+        bodyEN: "OLD snapshot",
+        bodyZH: "旧快照",
+      },
+    });
+    try {
+      // Seed the index with the newer content we must not overwrite.
+      await reindexLesson({ ...row, bodyEN: "NEW indexed content" });
+
+      let releaseUpdate!: () => void;
+      const holdUpdate = new Promise<void>((resolve) => {
+        releaseUpdate = resolve;
+      });
+      let updateStarted!: () => void;
+      const started = new Promise<void>((resolve) => {
+        updateStarted = resolve;
+      });
+      const update = prisma.$transaction(async (tx) => {
+        await tx.basicLesson.update({
+          where: { lessonId: row.lessonId },
+          data: { bodyEN: "NEW database content" },
+        });
+        updateStarted();
+        await holdUpdate;
+      });
+
+      await started;
+      const staleReindex = reindexLesson({ ...row, bodyEN: "OLD snapshot" });
+      await new Promise((resolve) => setTimeout(resolve, 75));
+      releaseUpdate();
+      await Promise.all([update, staleReindex]);
+
+      const indexed = await contents(row.lessonId);
+      expect(indexed).toContain("NEW indexed content");
+      expect(indexed).not.toContain("OLD snapshot");
+    } finally {
+      await prisma.basicLesson.delete({ where: { lessonId: row.lessonId } });
+      await deleteSourceChunks("LESSON", row.lessonId);
+    }
+  });
 });

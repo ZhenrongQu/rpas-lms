@@ -43,7 +43,15 @@ const KEYWORD_CANDIDATE_N = 100;
 // vector hits beyond this so an off-topic query returns nothing instead of the
 // "nearest" but irrelevant chunks. Starting default — tune against real Voyage
 // distances once the corpus is embedded.
-const MAX_COSINE_DISTANCE = 0.65;
+const DEFAULT_MAX_COSINE_DISTANCE = 0.65;
+
+export function maxCosineDistance(raw = process.env.RAG_MAX_COSINE_DISTANCE): number {
+  if (raw === undefined || raw.trim() === "") return DEFAULT_MAX_COSINE_DISTANCE;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 2
+    ? parsed
+    : DEFAULT_MAX_COSINE_DISTANCE;
+}
 
 function certFilter(certLevel?: "BASIC" | "ADVANCED" | null): Prisma.Sql {
   // A requested cert level still includes cert-agnostic documents (certLevel null).
@@ -57,23 +65,50 @@ async function vectorSearch(query: string, opts: RetrieveOptions): Promise<Retri
   if (!vec) return [];
   // Numbers only — safe to bind as a text literal and cast to pgvector.
   const literal = `[${vec.join(",")}]`;
+  const maxDistance = maxCosineDistance();
   return prisma.$queryRaw<RetrievedChunk[]>`
     SELECT id, source, "sourceId", "moduleId", title, content
     FROM "KnowledgeChunk"
     WHERE locale = ${opts.locale} AND embedding IS NOT NULL
-      AND embedding <=> ${literal}::vector < ${MAX_COSINE_DISTANCE}
+      AND embedding <=> ${literal}::vector < ${maxDistance}
       ${certFilter(opts.certLevel)}
     ORDER BY embedding <=> ${literal}::vector
     LIMIT ${CANDIDATE_N}`;
 }
 
 function terms(query: string): string[] {
-  return query
-    .toLowerCase()
-    .split(/\s+/)
-    .map((t) => t.trim())
-    .filter((t) => t.length >= 2)
-    .slice(0, 12);
+  const normalized = query.toLowerCase();
+  const cjkRuns = normalized.match(/[\u3400-\u9fff]+/gu) ?? [];
+  const latin = (normalized.match(/[a-z0-9]+(?:[._/-][a-z0-9]+)*/g) ?? []).filter(
+    (t) => t.length >= 2,
+  );
+  // Reserve room for CJK terms in mixed-language queries; English-only queries
+  // retain the full candidate budget.
+  const maxTerms = 24;
+  const out = new Set(latin.slice(0, cjkRuns.length > 0 ? 6 : maxTerms));
+  const bySize = new Map<number, string[]>([[2, []], [3, []], [4, []]]);
+  for (const size of [2, 3, 4]) {
+    const candidates = bySize.get(size)!;
+    for (const run of cjkRuns) {
+      for (let i = 0; i <= run.length - size; i++) candidates.push(run.slice(i, i + size));
+    }
+  }
+
+  const remaining = maxTerms - out.size;
+  const quotas = new Map<number, number>([
+    [2, Math.ceil(remaining / 2)],
+    [3, Math.ceil(remaining / 4)],
+    [4, Math.floor(remaining / 4)],
+  ]);
+  for (const size of [2, 3, 4]) {
+    const candidates = [...new Set(bySize.get(size)!)];
+    const count = Math.min(quotas.get(size)!, candidates.length);
+    for (let i = 0; i < count && out.size < maxTerms; i++) {
+      const index = count === 1 ? 0 : Math.round((i * (candidates.length - 1)) / (count - 1));
+      out.add(candidates[index]!);
+    }
+  }
+  return [...out];
 }
 
 async function keywordSearch(query: string, opts: RetrieveOptions): Promise<RetrievedChunk[]> {
