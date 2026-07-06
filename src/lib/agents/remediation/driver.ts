@@ -1,7 +1,7 @@
 import { prisma } from "../../db";
 import type { RegressionFixture } from "./fixtures";
 import { runFixAttempt, type RepairEvidence } from "./fixAttempt";
-import { publishProposal } from "./publish";
+import { publishProposal, publishReviewDraft } from "./publish";
 import { classifyOnLatestMain, reproduce } from "./reproduce";
 import { isTrustedRepairer, type Repairer, type RepairPolicy } from "./repair";
 import { freezeRunPolicy, heartbeatRun, transitionRun, transitionRunWithEvidence, transitionRunWithTarget } from "./store";
@@ -255,11 +255,12 @@ export async function driveRepair(
           return "NEEDS_HUMAN";
         }
         // Local gates passing is sufficient ONLY for a sandbox self-test. A production run
-        // needs an external black-box attestation the code under test cannot forge; no real
-        // attestor exists yet (deferred to Firecracker), so it fails closed to NEEDS_HUMAN.
-        // (Decision reason is not persisted this round — schema has no reason field; only the
-        // terminal state is guaranteed.)
+        // comes from an UNTRUSTED author and needs an external black-box attestation the
+        // code under test cannot forge; no real attestor exists yet (deferred to Firecracker),
+        // so it can never be auto-approved. Surface the candidate patch as a needs-review
+        // DRAFT for a human, then fail closed to NEEDS_HUMAN — it proposes, a human approves.
         if (profile === "production-black-box") {
+          await publishReviewDraft(runId, workerId);
           await transitionRun(runId, workerId, "VERIFYING", "NEEDS_HUMAN");
           return "NEEDS_HUMAN";
         }

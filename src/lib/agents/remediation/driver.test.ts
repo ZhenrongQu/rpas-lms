@@ -285,20 +285,22 @@ describe("driveRepair", () => {
     expect(stored.evidence).toBeNull();
   });
 
-  it("a production-black-box run fails closed to NEEDS_HUMAN even with a trusted oracle (profile decides, not trust)", async () => {
+  it("a production-black-box run is surfaced as a needs_review draft, never PROPOSED (profile decides, not trust)", async () => {
     const fixture = await createRegressionFixture();
     fixture.verificationProfile = "production-black-box";
     created.push(fixture);
     const runId = await fixingRun(fixture);
     // The trusted oracle produces a genuine green + holdout-passing fix, yet no attestor
-    // exists, so a production-black-box run must never PROPOSED.
+    // exists — so it is filed as a needs_review draft for a human, never auto-approved.
     expect(await driveRepair(runId, "worker-a", fixture, fixtureRepairerFor(fixture))).toBe("NEEDS_HUMAN");
     const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
     expect(stored.phase).toBe("NEEDS_HUMAN");
-    expect(await prisma.externalActionVersion.count()).toBe(0);
+    const action = await prisma.externalAction.findFirstOrThrow({ where: { incidentId: stored.incidentId } });
+    expect(action.status).toBe("needs_review");
+    expect(await prisma.externalActionVersion.count()).toBe(1);
   });
 
-  it("a production-black-box run with an untrusted author also NEEDS_HUMAN (never PROPOSED)", async () => {
+  it("a production-black-box run with an untrusted author is surfaced as a needs_review draft, never PROPOSED", async () => {
     const fixture = await createRegressionFixture();
     fixture.verificationProfile = "production-black-box";
     created.push(fixture);
@@ -307,7 +309,13 @@ describe("driveRepair", () => {
     expect(await driveRepair(runId, "worker-a", fixture, untrusted)).toBe("NEEDS_HUMAN");
     const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
     expect(stored.phase).toBe("NEEDS_HUMAN");
-    expect(await prisma.externalActionVersion.count()).toBe(0);
+    // The candidate patch IS surfaced for a human — but as a needs_review draft, never an
+    // approved ("open") proposal: an untrusted author proposes, a human approves.
+    const action = await prisma.externalAction.findFirstOrThrow({ where: { incidentId: stored.incidentId } });
+    expect(action.status).toBe("needs_review");
+    const versions = await prisma.externalActionVersion.findMany({ where: { actionId: action.id } });
+    expect(versions).toHaveLength(1);
+    expect(versions[0]!.patch).toContain("diff --git");
   });
 
   it("escalates a resume whose target verification profile drifted", async () => {
@@ -331,22 +339,6 @@ describe("driveRepair", () => {
     expect(await driveRepair(run.id, "worker-a", fixture, fixtureRepairerFor(fixture))).toBe("NEEDS_HUMAN");
     const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: run.id } });
     expect(stored.phase).toBe("NEEDS_HUMAN");
-  });
-
-  // A production-black-box run passes local gates (trusted repairer, so FIXING lets it
-  // through) but still fails closed to NEEDS_HUMAN at VERIFYING: it needs an external
-  // black-box attestation the code under test cannot forge, and no real attestor exists yet
-  // (deferred to Firecracker). It never reaches PROPOSING.
-  it("a production-black-box run fails closed to NEEDS_HUMAN at VERIFYING (no attestor yet)", async () => {
-    const fixture = await createRegressionFixture();
-    fixture.verificationProfile = "production-black-box";
-    created.push(fixture);
-    const runId = await fixingRun(fixture);
-    const outcome = await driveRepair(runId, "worker-a", fixture, fixtureRepairerFor(fixture));
-    expect(outcome).toBe("NEEDS_HUMAN");
-    const stored = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId } });
-    expect(stored.phase).toBe("NEEDS_HUMAN");
-    expect(await prisma.externalActionVersion.count()).toBe(0);
   });
 
   it("refuses an invalid starting phase without writing any policy", async () => {
