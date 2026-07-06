@@ -83,7 +83,11 @@ All repo reads (existence, diff scope, named-export check) are against **`releas
 
 **A BARE call, no `.not.toThrow()`.** The test body is just the call expression. At the defective commit the function throws its original error, so vitest reports the test failing with `<error.type>: …` — matching the signature (`errorName = error.type`). At known-good the call returns normally → the test passes (green). Wrapping in `expect(...).not.toThrow()` would instead surface an `AssertionError`, which would never match the Sentry error type — so it is forbidden.
 
-The LLM reads the target function's source **at `release.current`** + the Sentry error (type/value/frames) to infer the call. The model is injected via the runtime `createMessage` seam (hermetic tests script it; the smoke uses the real model). Returns null on model failure or an unusable call → the issue does not become a fixture (recorded as a synthesis escalation by the orchestration layer).
+The LLM reads the target function's source **at `release.current`** + the Sentry error (type/value/frames) to infer the call. The model is injected via the runtime `createMessage` seam (hermetic tests script it; the smoke uses the real model).
+
+**Call-expression acceptance rule (host-enforced, static — defines "unusable call").** The host parses the LLM's output with a TypeScript/ESTree parser and accepts it ONLY if it is exactly ONE `CallExpression` whose `callee` is an identifier equal to `fnName`, and whose arguments are each a literal, array literal, or object literal — recursively (string/number/boolean/null literals, `[...]`, `{...}` only). No other identifiers, member/property access chains, nested calls, `new`, template expressions with substitutions, spreads, or arrow/function expressions. Anything else → **null → `synthesis-failed`**. This bounds what the synthesized body can do to a pure, side-effect-free call of the target with literal data — no path/import/execution surface for the LLM to widen. (Slice-1 consequence: inputs the target needs that are not expressible as literals — class instances, imported constructors — escalate rather than synthesize.)
+
+On any of {model failure, output not parseable, rejected by the rule} the issue does not become a fixture (recorded as a `synthesis-failed` escalation by the orchestration layer).
 
 ### 3.5 Release-baseline resolver
 `ReleaseResolver.commitFor(release) → commit`. Slice 1 fixture: `release.current`/`release.previous` ARE commit SHAs (identity). Real Sentry (deferred): map a release name → commit via the releases API.
@@ -130,7 +134,13 @@ The kernel's reproduction gate maps outcomes as: `control-failed` (known-good no
 
 ## 6. Testing strategy
 
-- **Hermetic unit tests** (`pnpm test`; no network/Docker/API): triage classifier (fixture issue → reproducible/escalate); `FixtureSentrySource` (reads fixture JSON); repro-synthesizer with an INJECTED mock model (scripted `createMessage` → canned test) → builds a `SynthesizedTest`; `SentryDefectSource` assembly with injected mock synthesizer + mock source + fixture issue → `DefectReport` / null-with-reason; release-baseline resolver.
+- **Hermetic unit tests** (`pnpm test`; no network/Docker/API):
+  - triage classifier — each escalation reason + the reproducible case (fixture issue → `reproducible`/`escalate`).
+  - `FixtureSentrySource` (reads fixture JSON).
+  - repro-synthesizer with an INJECTED mock model (scripted `createMessage` → a canned call expression) → builds a `SynthesizedTest`; plus the call-expression validator (see §3.4) — a valid call, and each rejection (wrong callee / non-literal arg / not a single CallExpression) → null.
+  - `SentryDefectSource` — constructed from an already-triaged + already-synthesized issue, `detect()` returns a single ready `DefectReport` (NO null-with-reason; escalation is not this unit's concern).
+  - `runSentryRemediation` orchestration — with a fake `SentrySource` + injected triage/synthesize seams: an escalated issue emits `{ issueId, NEEDS_HUMAN, reason }` and never touches the kernel; a synthesis failure emits `{ …, reason: "synthesis-failed" }`; a reproducible+synthesized issue calls `runRemediation` (stub) and records its result.
+  - release-baseline resolver.
 - **End-to-end smoke** (`pnpm sentry-repair-eval`, local): a fixture SentryIssue for a planted throw-regression in a pure rpas-lms function → real model synthesizes the test + real model repairs + real Docker + dry-run GitHub → needs_review draft. Mirrors the CI smoke; the real workflow is out of scope for slice 1.
 - **Kernel/substrate/LlmRepairer/spine unchanged** — already covered.
 - `pnpm test` stays hermetic: real model/Docker/GitHub only in the smoke.
