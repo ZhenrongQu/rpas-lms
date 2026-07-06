@@ -9,4 +9,9 @@ export {
   ensureVectorIndex,
   deleteSourceChunks,
 } from "../../src/lib/agents/chat/rag/ingest";
-export type { SourceInput, LocaleBody, LessonRow } from "../../src/lib/agents/chat/rag/ingest";
+export type {
+  SourceInput,
+  LocaleBody,
+  LessonRow,
+  ReindexLessonOptions,
+} from "../../src/lib/agents/chat/rag/ingest";

@@ -53,7 +53,7 @@ async function main(): Promise<void> {
       continue;
     }
     // Guarded write: skips if this lesson was edited (and reindexed) after we read it.
-    const n = await reindexLesson(l);
+    const n = await reindexLesson(l, { requireEmbeddings: true });
     totalChunks += n;
     console.log(`  ${l.lessonId} → ${n} chunks`);
   }
