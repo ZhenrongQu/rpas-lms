@@ -1,7 +1,8 @@
+import { rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import type { RegressionFixture } from "../fixtures";
-import { createSubstrateIdentity, type Substrate } from "../substrate";
-import { dockerVitestCheckRunner, dockerVitestHoldoutRunner } from "../isolated/dockerCheckRunner";
+import { createSubstrateIdentity, type CheckResult, type CheckRunner, type Substrate } from "../substrate";
+import { dockerVitestCheckRunner, dockerVitestHoldoutRunner, type DockerExec } from "../isolated/dockerCheckRunner";
 import { vitestJsonStrategy } from "../real/vitestSubstrate";
 import type { SentryRepo } from "./sentryRepo";
 import type { SynthesizedTest } from "./synthesizer";
@@ -21,11 +22,32 @@ export type SentryFixtureSpec = {
 const PLACEHOLDER_HOLDOUT = `import { it, expect } from "vitest";\nit("sentry holdout placeholder — no sibling test (v1)", () => { expect(true).toBe(true); });\n`;
 
 /**
+ * A CheckRunner that INJECTS the synthesized test into the worktree, runs it (Docker-isolated),
+ * and REMOVES it afterward. The removal is essential: this is the PRIMARY check (it runs BEFORE
+ * the kernel captures the fix patch), so if the transient repro test were left in the worktree
+ * it would be swept into the patch by `git add -A` and trip the verify path-policy gate (which
+ * allows only `sourceRelPath`) → no draft. The file is written on the host (the container mounts
+ * the worktree read-only) and deleted in `finally` so it is gone before patch capture.
+ */
+export function injectingCheckRunner(image: string, relPath: string, source: string, exec?: DockerExec): CheckRunner {
+  const inner = dockerVitestCheckRunner({ image, tests: [relPath] }, exec);
+  return async (worktreeRoot, signal): Promise<CheckResult> => {
+    const abs = join(worktreeRoot, relPath);
+    await writeFile(abs, source);
+    try {
+      return await inner(worktreeRoot, signal);
+    } finally {
+      await rm(abs, { force: true }).catch(() => {});
+    }
+  };
+}
+
+/**
  * Assemble a RegressionFixture whose reproduction is the SYNTHESIZED test, injected into the
- * worktree at each check (holdout-runner mechanism). Re-injection is the tamper guard, so
- * pinnedPaths = []. The holdout is the deterministic sibling `<basename>.test.ts` at the
- * defective commit if it exists (run in-repo), else a passing placeholder. cleanup is a no-op
- * (this operates on the real checkout, not a temp clone).
+ * worktree at each check and removed afterward (see injectingCheckRunner — it must not land in
+ * the fix patch). Re-injection is the tamper guard, so pinnedPaths = []. The holdout is the
+ * deterministic sibling `<basename>.test.ts` at the defective commit if it exists (run in-repo),
+ * else a passing placeholder. cleanup is a no-op (this operates on the real checkout).
  */
 export async function buildSentryFixture(spec: SentryFixtureSpec, repo: SentryRepo): Promise<RegressionFixture> {
   const { synthesized } = spec;
@@ -49,8 +71,9 @@ export async function buildSentryFixture(spec: SentryFixtureSpec, repo: SentryRe
 
   const substrate: Substrate = {
     identity,
-    // The synthesized test is not in any commit → inject it before each run.
-    runCheck: dockerVitestHoldoutRunner(spec.image, synthesized.relPath, synthesized.source),
+    // The synthesized test is not in any commit → inject it before each run AND remove it after,
+    // so it never reaches the fix patch / the verify path-policy gate.
+    runCheck: injectingCheckRunner(spec.image, synthesized.relPath, synthesized.source),
     runHoldout,
     signature,
     pinnedPaths: [], // re-injection protects the reproduction; nothing persistent to pin
