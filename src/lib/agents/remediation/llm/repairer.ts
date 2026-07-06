@@ -44,6 +44,32 @@ function clip(s: string): string {
   return byteTruncate(s, MAX_TOOL_OUTPUT_BYTES - Buffer.byteLength(TRUNC_MARK)) + TRUNC_MARK; // total ≤ MAX_TOOL_OUTPUT_BYTES
 }
 
+/** A readable failure summary for the model. vitest `--reporter=json` writes ALL detail into
+ *  stdout (JSON) and leaves stderr near-empty (just "JSON report written …"), so a bare
+ *  "FAIL (exit 1)" tells the model nothing about which test failed or why. Extract the failing
+ *  tests + their first (de-ANSI'd) assertion message. Returns "" for non-JSON output (script
+ *  fixtures), whose readable detail is on stderr — so the caller falls back to stderr there. */
+function vitestFailureSummary(stdout: string): string {
+  let json: {
+    testResults?: Array<{ assertionResults?: Array<{ fullName?: string; title?: string; status?: string; failureMessages?: string[] }> }>;
+  };
+  try {
+    json = JSON.parse(stdout);
+  } catch {
+    return "";
+  }
+  const blocks: string[] = [];
+  for (const file of json.testResults ?? []) {
+    for (const a of file.assertionResults ?? []) {
+      if (a.status !== "failed") continue;
+      const name = a.fullName || a.title || "(unnamed test)";
+      const msg = (a.failureMessages?.[0] ?? "").replace(/\[[0-9;]*m/g, "").split("\n").slice(0, 6).join("\n");
+      blocks.push(`✗ ${name}\n${msg}`);
+    }
+  }
+  return blocks.join("\n\n");
+}
+
 /** Redact one tool call into a persist-safe, byte-bounded trace entry stamped with
  *  its ACTUAL disposition — no raw file content or full model text: only a
  *  byte-count + short hash of written content, and byte-truncated name/path. */
@@ -182,7 +208,11 @@ export class LlmRepairer implements Repairer {
       }
       case "run_check": {
         const r = await ctx.runCheck();
-        return r.exitCode === 0 ? "PASS" : clip(`FAIL (exit ${r.exitCode})\n${r.stderr}`.trim());
+        if (r.exitCode === 0) return "PASS";
+        // Prefer the structured vitest failure summary (stdout JSON); fall back to stderr for
+        // script fixtures, whose readable node error is on stderr, not in a JSON report.
+        const detail = vitestFailureSummary(r.stdout) || r.stderr.trim();
+        return clip(`FAIL (exit ${r.exitCode})\n${detail}`.trim());
       }
       default:
         throw new Error(`unknown tool "${name}"`);
