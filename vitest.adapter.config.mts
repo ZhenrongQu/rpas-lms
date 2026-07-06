@@ -1,4 +1,4 @@
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { defineConfig } from "vitest/config";
 
 // A MINIMAL vitest config for the remediation real-repo adapter. The remediation
@@ -9,7 +9,10 @@ import { defineConfig } from "vitest/config";
 // isolated per-defect reproduction.) The runner passes explicit test files as args.
 export default defineConfig({
   resolve: {
-    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+    // Resolve @ against the project root (cwd), NOT the config file's own location — so the
+    // config works whether it sits in the worktree (host runner, cwd = worktree) or is
+    // copied into a writable dir for the isolated runner (cwd = /workspace/repo via --root).
+    alias: { "@": resolve(process.cwd(), "src") },
   },
   // node_modules is symlinked into the worktree's parent (outside the vite root),
   // so relax the fs allow-list — this is a throwaway per-defect reproduction sandbox.

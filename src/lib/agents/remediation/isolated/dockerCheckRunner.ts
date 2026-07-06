@@ -99,6 +99,11 @@ export function isolatedDockerArgs(o: {
     "--network", "none",
     "--read-only",
     "--tmpfs", "/tmp",
+    // Writable scratch so vite can write its bundled-config temp + cache WITHOUT the
+    // worktree (source) being writable. Both live UNDER /workspace so node still resolves
+    // the image's /workspace/node_modules. See the runner's config-copy below.
+    "--tmpfs", "/workspace/adapter",
+    "--tmpfs", "/workspace/node_modules/.vite-temp",
     "--cap-drop", "ALL",
     "--security-opt", "no-new-privileges",
     "--user", "1000:1000",
@@ -131,10 +136,21 @@ export function dockerVitestCheckRunner(opts: DockerRunnerOptions, exec: DockerE
     // UID needs write access only to this disposable report mount.
     await chmod(outDir, 0o733);
     const name = `remediation-${randomUUID()}`;
+    // The vitest `.bin` shim is a `#!/bin/sh` wrapper — run it DIRECTLY (running it through
+    // `node` parses the shell script as JS and dies). vite loads the `.mts` config by
+    // bundling it, writing temp files (a config sibling + `node_modules/.vite-temp`) that
+    // land on the read-only image layer — so copy the config into the writable
+    // `/workspace/adapter` tmpfs and load it from there with `--root` pointing back at the
+    // ro worktree (tests + deps still resolve to it). Tests are passed as positional args
+    // ("$@"), never string-interpolated, so a fixture path cannot inject shell.
+    const cfg = `/workspace/adapter/${ADAPTER_CONFIG}`;
+    const script =
+      `cp /workspace/repo/${ADAPTER_CONFIG} ${cfg} && ` +
+      `exec /workspace/node_modules/.bin/vitest run "$@" ` +
+      `--config ${cfg} --root /workspace/repo --reporter=json --outputFile=/out/result.json`;
     const args = [
       ...isolatedDockerArgs({ name, worktreeRoot, outDir, image, cpus, memoryMb, pids }),
-      "node", "/workspace/node_modules/.bin/vitest", "run", ...tests,
-      "--config", ADAPTER_CONFIG, "--reporter=json", "--outputFile=/out/result.json",
+      "sh", "-c", script, "sh", ...tests,
     ];
 
     // Host-enforced timeout: abort the run and kill the container, mapped to infra.
