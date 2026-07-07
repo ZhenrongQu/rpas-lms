@@ -1,9 +1,11 @@
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { prisma } from "../../../../src/lib/db";
 import { requireAdminApi } from "../../../../src/lib/auth/adminGuard";
 import { adminLessonCreateSchema } from "../../../../src/lib/admin/contentSchemas";
 import { validateLessonMdxBodies } from "../../../../src/lib/admin/mdxValidation";
 import { createLesson } from "../../../../src/lib/admin/lessons";
+import { reindexLesson } from "../../../../src/lib/agents/chat/rag/ingest";
 import { MODULE_IDS } from "../../../../src/lib/content/types";
 
 /** GET /api/<admin>/lessons?course=&moduleId=&access= */
@@ -75,6 +77,16 @@ export async function POST(req: Request): Promise<Response> {
       { status: 409 },
     );
   }
+
+  // Index the new lesson into the RAG corpus after the response (see PUT route):
+  // best-effort, and off the request's critical path so it can't block the create.
+  after(() =>
+    reindexLesson(created.row).catch((err) =>
+      console.error(
+        `[rag] post-create reindex failed for ${created.row.lessonId}: ${err instanceof Error ? err.message : String(err)}`,
+      ),
+    ),
+  );
 
   // Surface the new lesson on its module listing immediately, in both locales.
   revalidatePath(`/en/learn/${input.course}/${input.moduleId}`);

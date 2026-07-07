@@ -1,9 +1,11 @@
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { prisma } from "../../../../../src/lib/db";
 import { requireAdminApi } from "../../../../../src/lib/auth/adminGuard";
 import { adminLessonSchema } from "../../../../../src/lib/admin/contentSchemas";
 import { validateLessonMdxBodies } from "../../../../../src/lib/admin/mdxValidation";
 import { findLessonById } from "../../../../../src/lib/admin/lessons";
+import { reindexLesson } from "../../../../../src/lib/agents/chat/rag/ingest";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -64,6 +66,26 @@ export async function PUT(req: Request, ctx: Ctx): Promise<Response> {
     course === "basic"
       ? await prisma.basicLesson.update({ where: { id }, data })
       : await prisma.advancedLesson.update({ where: { id }, data });
+
+  // Keep the RAG index consistent with the edit so the assistant never cites the
+  // old version. Only when a chunk-affecting field changed (title/body/cert). Runs
+  // AFTER the response (next/server `after`) so the save doesn't block on a Voyage
+  // round-trip — otherwise a slow embed could exceed the client timeout and trigger
+  // a retry against an already-saved lesson. Best-effort; never fails the save.
+  const indexedFieldsChanged =
+    bodiesChanged ||
+    input.titleEN !== existing.titleEN ||
+    input.titleZH !== existing.titleZH ||
+    input.certLevel !== existing.certLevel;
+  if (indexedFieldsChanged) {
+    after(() =>
+      reindexLesson(row).catch((err) =>
+        console.error(
+          `[rag] post-update reindex failed for ${row.lessonId}: ${err instanceof Error ? err.message : String(err)}`,
+        ),
+      ),
+    );
+  }
 
   // Invalidate the lesson page in all locales so edits are visible immediately.
   revalidatePath(`/en/learn/${existing.course}/${existing.moduleId}/${existing.slug}`);

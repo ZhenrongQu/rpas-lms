@@ -2,8 +2,10 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 // Tests run against a local Postgres (matches the prod provider). Override via
-// TEST_DATABASE_URL in CI. Default points at a disposable docker container:
-//   docker run -d --name rpas-test-pg -e POSTGRES_PASSWORD=postgres -p 5433:5432 postgres:16
+// TEST_DATABASE_URL in CI. Default points at a disposable docker container. Use
+// the pgvector image — the RAG KnowledgeChunk table has a `vector` column, so a
+// stock postgres:16 fails `prisma db push`:
+//   docker run -d --name rpas-test-pg -e POSTGRES_PASSWORD=postgres -p 5433:5432 pgvector/pgvector:pg16
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5433/postgres";
 
