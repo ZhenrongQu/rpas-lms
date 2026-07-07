@@ -5,7 +5,7 @@ import { buildSystemPrompt } from "./systemPrompt";
 // Chat answers are short; keep latency low and cap per-turn output. MAX_STEPS is
 // the harness safety valve — it bounds how many think→act→feed-back loops one
 // user message can trigger, so a confused model can't spin forever or run up cost.
-const MODEL = "claude-opus-4-8";
+const MODEL = "claude-sonnet-4-6";
 const MAX_TOKENS = 2048;
 const MAX_STEPS = 8;
 

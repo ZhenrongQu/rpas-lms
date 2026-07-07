@@ -91,7 +91,7 @@ The codebase tags hardening decisions with `SEC-NN` markers — grep for them an
 
 ### Paid AI study assistant (`/api/chat`)
 
-`POST /api/chat` (Node runtime, streams plain UTF-8 text deltas). Gating order matters and happens before any tokens are spent: session `userId` required (401) → `hasPaidAccess` paywall (402) → per-user rate limit (429, with `Retry-After`). Returns 503 if `ANTHROPIC_API_KEY` is unset (the rest of the app is unaffected). `src/lib/chat/loop.ts` (`runAssistant`) is a server-side agent loop: model `claude-opus-4-8`, adaptive thinking, `MAX_STEPS` cap; the model calls tools (`src/lib/chat/tools.ts`, executed server-side), only text deltas are forwarded to the client. System prompt in `systemPrompt.ts`. Offline eval harness: `scripts/eval/` via `pnpm eval:assistant` (LLM-judge in `judge.ts`).
+`POST /api/chat` (Node runtime, streams plain UTF-8 text deltas). Gating order matters and happens before any tokens are spent: session `userId` required (401) → `hasPaidAccess` paywall (402) → per-user rate limit (429, with `Retry-After`). Returns 503 if `ANTHROPIC_API_KEY` is unset (the rest of the app is unaffected). `src/lib/chat/loop.ts` (`runAssistant`) is a server-side agent loop: model `claude-sonnet-4-6`, adaptive thinking, `MAX_STEPS` cap; the model calls tools (`src/lib/chat/tools.ts`, executed server-side), only text deltas are forwarded to the client. System prompt in `systemPrompt.ts`. Offline eval harness: `scripts/eval/` via `pnpm eval:assistant` (LLM-judge in `judge.ts`).
 
 ### Mobile (native iOS API)
 

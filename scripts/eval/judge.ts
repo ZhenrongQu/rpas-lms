@@ -32,7 +32,7 @@ function getClient(): Anthropic {
 
 export async function judge(question: string, answer: string, rubric: string): Promise<Judgement> {
   const res = await getClient().messages.create({
-    model: "claude-opus-4-8",
+    model: "claude-sonnet-4-6",
     max_tokens: 512,
     system:
       "You grade an AI study assistant's answer against a rubric for an RPAS (drone) pilot training " +
