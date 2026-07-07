@@ -49,25 +49,35 @@ describe("flight review eligibility", () => {
     await prisma.customer.deleteMany();
   });
 
-  it("is eligible with the flight_review entitlement, regardless of tier", async () => {
+  it("unlocks via the flight_review entitlement OR paid access", async () => {
     await prisma.customer.create({ data: { id: "free", email: "free@test.local", accessTier: "FREE" } });
     await prisma.customer.create({ data: { id: "paid", email: "paid@test.local", accessTier: "PAID" } });
 
-    // No flight_review entitlement → not eligible, even for a PAID user.
+    // FREE user with no entitlement → not eligible.
     expect(await canBookFlightReview("free")).toBe(false);
-    expect(await canBookFlightReview("paid")).toBe(false);
+    // Paid access alone unlocks booking (the review is bundled in for paid students).
+    expect(await canBookFlightReview("paid")).toBe(true);
 
-    // The flight_review entitlement alone unlocks booking (it's its own product).
+    // The standalone flight_review entitlement unlocks it for a FREE user too.
     await grantFlightReviewEntitlement("free");
     expect(await canBookFlightReview("free")).toBe(true);
   });
 
-  it("revoking flight_review removes eligibility", async () => {
+  it("a FREE user loses eligibility when flight_review is revoked", async () => {
+    await prisma.customer.create({ data: { id: "free", email: "free@test.local", accessTier: "FREE" } });
+    await grantFlightReviewEntitlement("free");
+    expect(await canBookFlightReview("free")).toBe(true);
+
+    await revokeFlightReviewEntitlement("free");
+    expect(await canBookFlightReview("free")).toBe(false);
+  });
+
+  it("a PAID user stays eligible even without the standalone flight_review entitlement", async () => {
     await prisma.customer.create({ data: { id: "paid", email: "paid@test.local", accessTier: "PAID" } });
-    await grantFlightReviewEntitlement("paid");
     expect(await canBookFlightReview("paid")).toBe(true);
 
+    // Revoking the standalone entitlement (a no-op here) doesn't remove paid access.
     await revokeFlightReviewEntitlement("paid");
-    expect(await canBookFlightReview("paid")).toBe(false);
+    expect(await canBookFlightReview("paid")).toBe(true);
   });
 });

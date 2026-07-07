@@ -34,10 +34,10 @@ describe("POST/DELETE /api/flight-review/book", () => {
       data: [
         { id: ELIG, email: "fr-elig@test.dev", displayName: "Elig", accessTier: "PAID" },
         { id: ELIG2, email: "fr-elig2@test.dev", displayName: "Elig2", accessTier: "PAID" },
-        { id: INELIG, email: "fr-inelig@test.dev", displayName: "Inelig", accessTier: "PAID" },
+        { id: INELIG, email: "fr-inelig@test.dev", displayName: "Inelig", accessTier: "FREE" },
       ],
     });
-    // ELIG + ELIG2 get the flight_review entitlement; INELIG is PAID only.
+    // ELIG + ELIG2 get the flight_review entitlement; INELIG is FREE with none.
     await prisma.entitlement.createMany({
       data: [
         { userId: ELIG, product: "flight_review", source: "test" },
@@ -58,7 +58,7 @@ describe("POST/DELETE /api/flight-review/book", () => {
     expect((await POST(postReq(null, SLOT))).status).toBe(401);
   });
 
-  it("403 when the user is not eligible (PAID but no flight_review)", async () => {
+  it("403 when the user is not eligible (FREE with no flight_review)", async () => {
     expect((await POST(postReq(INELIG, SLOT))).status).toBe(403);
     expect(await prisma.flightReviewBooking.findUnique({ where: { customerId: INELIG } })).toBeNull();
   });

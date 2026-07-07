@@ -34,13 +34,14 @@ export async function hasFlightReviewEntitlement(userId: string): Promise<boolea
 }
 
 /**
- * Eligibility to book a Flight Review: the student must hold the flight_review
- * entitlement, which they get by purchasing the Flight Review product or via an
- * admin grant. Single source of truth for the dashboard, booking page, and every
- * booking API.
+ * Eligibility to book a Flight Review. Two independent unlocks:
+ * - the standalone flight_review entitlement (bought on its own or admin-granted), OR
+ * - paid course access (PAID tier / advanced_bundle entitlement) — the review is
+ *   bundled in for paid students.
+ * Single source of truth for the dashboard, booking page, and every booking API.
  */
 export async function canBookFlightReview(userId: string): Promise<boolean> {
-  return hasFlightReviewEntitlement(userId);
+  return (await hasFlightReviewEntitlement(userId)) || (await hasPaidAccess(userId));
 }
 
 /** Admin-grants the flight_review entitlement (idempotent; un-revokes if needed). */
