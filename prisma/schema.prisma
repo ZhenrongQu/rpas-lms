@@ -414,64 +414,8 @@ model AdvancedLessonProgress {
   @@index([userId])
 }
 
-// ─── Agent runs (SDLC pipeline engine) ───────────────────────────────────────
-// A pipeline run's *durable* state. The engine runs a stage, persists progress +
-// accumulated artifacts here, and EXITS at each approval gate. A later
-// `pnpm sdlc approve <id>` command is a fresh process: it reloads this row and
-// resumes from `currentStage`. That cold reload is the whole point — state lives
-// in the DB, not in process memory, so a human can approve hours/days later,
-// out of band, and the run survives a crash/restart.
-model AgentRun {
-  id           String      @id @default(cuid())
-  kind         String // "sdlc" | "sentry-triage"
-  externalId   String?     @unique // idempotency key for reactive runs, e.g. a Sentry issue id (null for pipeline runs)
-  input        String // the idea (sdlc) or the serialized issue (triage)
-  status       String      @default("running") // running | awaiting_approval | done | rejected | failed
-  currentStage String? // stage the run is paused at (when awaiting_approval)
-  artifacts    String      @default("{}") // JSON: Record<stageName, string> — accumulated stage outputs / triage decision
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  steps        AgentStep[]
-
-  @@index([status])
-}
-
-// Append-only trace: one row per stage draft and per gate decision. This is the
-// observability/audit log — query it to see every step, decision, and token cost.
-model AgentStep {
-  id        String   @id @default(cuid())
-  runId     String
-  run       AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
-  stage     String // stage name
-  kind      String // "stage" (a draft) | "gate" (an approval decision)
-  output    String? // JSON: the stage artifact, or the gate decision { action, note? }
-  tokens    Int?
-  costUsd   Float?
-  createdAt DateTime @default(now())
-
-  @@index([runId])
-}
-
-// Mock issue tracker — the sandbox stand-in for real Jira. The TICKETS stage's
-// create_ticket tool writes rows here and auto-assigns via the team roster; the
-// JiraIssueTracker stub (same interface) is where a real API call would go.
-model MockTicket {
-  id        String   @id @default(cuid())
-  key       String   @unique // human-friendly, e.g. "SDLC-1"
-  runId     String? // the AgentRun that produced it
-  title     String
-  body      String
-  area      String // affected path/area used to route the assignee
-  assignee  String
-  status    String   @default("open")
-  createdAt DateTime @default(now())
-
-  @@index([runId])
-}
-
-// Remediation kernel — durable state for the auto-fix remediation pipeline, kept
-// deliberately separate from the SDLC AgentRun pipeline. An Incident is the
-// deduplicated identity of a production signal; a RemediationRun is one
+// Remediation kernel — durable state for the auto-fix remediation pipeline.
+// An Incident is the deduplicated identity of a production signal; a RemediationRun is one
 // lease-guarded workflow cycle whose phase advances via CAS transitions.
 model Incident {
   id              String           @id @default(cuid())
