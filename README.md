@@ -6,6 +6,8 @@ RPAS LMS is a Next.js-based learning and mock-exam platform for the Canadian RPA
 
 Course content (question bank, lessons, checkpoints) now lives in PostgreSQL and is managed through the `/coriander` admin CMS; UI copy still lives in locale message files; users, exam sessions, payments and entitlements are persisted via Prisma + PostgreSQL (Supabase).
 
+The platform also ships two LLM-powered agents (see [`src/lib/agents/`](#srclibagents)): a paid AI study assistant with hybrid RAG retrieval over the course content, and an offline remediation (auto-fix) agent that turns reproducible test failures into human-reviewed patch proposals.
+
 ## Tech stack
 
 - **Next.js App Router** — page routing and API routes.
@@ -16,6 +18,7 @@ Course content (question bank, lessons, checkpoints) now lives in PostgreSQL and
 - **Stripe** — payments and entitlements for two products: paid_access (the Advanced bundle) and flight_review.
 - **Cloudflare Stream** — lesson video upload and playback.
 - **Resend** — email verification codes and flight-review booking notification emails.
+- **Anthropic SDK** — the LLM behind the AI study assistant and the remediation agent's repairer (the app runs without `ANTHROPIC_API_KEY`; only those features are disabled).
 - **Zod** — question-bank and API request-body validation.
 - **Vitest** — unit tests and route-handler tests.
 - **Tailwind CSS + custom CSS** — the drone HUD-style UI.
@@ -193,6 +196,32 @@ Authentication and account services.
 - `delivery.ts` abstracts the code-sending interface; in dev/test it logs to the console and can later be swapped for a real email or SMS service.
 - `account.ts` creates/reuses email, phone, username, and OAuth users, and maintains `UserIdentity`.
 
+### `src/lib/agents/`
+
+The two LLM-powered agents, plus the small shared runtime they run on.
+
+- `runtime.ts` is the shared agent loop: server-side tool execution, a step budget, per-call and cumulative token ceilings (a typed `BudgetExhausted` error), and a model-injection seam so unit tests run hermetically without an API key.
+
+#### `agents/chat/` — paid AI study assistant
+
+Backs `POST /api/chat` (paid users only; gating runs before any tokens are spent: 401 no session → 402 no paid access → 429 rate limit). The route streams plain text deltas; tools execute server-side and are never exposed to the client.
+
+- `loop.ts` (`runAssistant`) drives the conversation on the shared runtime.
+- `tools.ts` defines the tools the model may call (lesson lookup, progress, retrieval).
+- `rag/` is hybrid retrieval over the course content: pgvector cosine search + weighted keyword search, fused with Reciprocal Rank Fusion (`retrieve.ts`), Voyage embeddings (`embed.ts`), and chunking/ingest (`chunk.ts`, `ingest.ts`) into the `KnowledgeChunk` table, scoped by locale and cert level.
+- Offline eval: `scripts/eval/` (`pnpm eval:assistant`) scores fixed cases with deterministic checks plus an LLM judge — run it before/after any prompt or tool change.
+
+#### `agents/remediation/` — offline remediation (auto-fix) agent
+
+Turns a reproducible test failure into an auditable, human-reviewed patch proposal. The model authors the fix; every accept/reject decision is deterministic code.
+
+- `state.ts` / `store.ts` — an explicit phase state machine persisted in Postgres with lease-based concurrency: every transition is a compare-and-swap conditioned on holding an unexpired lease, evidence is written atomically with the transition (crash-safe resume), and terminal phases release the lease.
+- `reproduce.ts` / `worktree.ts` — reproduces the failure at a known commit in an isolated git worktree (twice, to reject flaky checks) and matches the failure signature against the incident before any repair starts.
+- `repair.ts` / `llm/repairer.ts` — the restricted-capability repairer: a read allowlist, a single writable path, byte-bounded file and tool I/O, and a bounded, redacted trace of what the model actually did.
+- `fixAttempt.ts` / `verify.ts` — gathers an evidence bundle (red-before, green-after, diff stats, patch) and verdicts it through ordered deterministic gates. A hidden holdout test is injected only after the patch is captured — the model can neither read nor modify it — and a hash of the visible check catches tampering.
+- `publish.ts` — publishes the verified patch as an idempotent, append-only draft-PR proposal.
+- Offline eval: `scripts/agents/repair-eval.ts` (`pnpm eval:repair`) runs the real model over a graded case catalog through this same pipeline; a case passes only by reaching its expected terminal state, with "no wrong proposal" reported as a hard safety line. It refuses to run against a non-local database.
+
 ### `src/lib/db.ts`
 
 The Prisma client singleton. In development it caches the client on `globalThis` to avoid recreating database connections on every hot reload.
@@ -302,8 +331,10 @@ pnpm test
 Tests run against a real local Postgres (matching prod), not an in-memory DB. The default is `postgresql://postgres:postgres@localhost:5433/postgres`, overridable via `TEST_DATABASE_URL`. Spin up a disposable container:
 
 ```bash
-docker run -d --name rpas-test-pg -e POSTGRES_PASSWORD=postgres -p 5433:5432 postgres:16
+docker run -d --name rpas-test-pg -e POSTGRES_PASSWORD=postgres -p 5433:5432 pgvector/pgvector:pg16
 ```
+
+The `pgvector/pgvector` image (not stock `postgres:16`) is required: the RAG `KnowledgeChunk` table has a pgvector `vector` column, so `prisma db push` needs the `vector` extension available.
 
 Config is in `vitest.config.mts`. `vitest.globalSetup.ts` resets and `db push`es the schema before the suite. All test files share one database, so they run sequentially (`fileParallelism: false`).
 

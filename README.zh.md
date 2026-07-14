@@ -6,6 +6,8 @@ RPAS LMS 是一个基于 Next.js 的加拿大 RPAS / 无人机飞行员执照学
 
 课程内容（题库、课程、checkpoint）现在存在 PostgreSQL 里，通过 `/coriander` 后台 CMS 维护；界面文案仍放在 locale message 文件里；用户、考试 session、支付与权限通过 Prisma + PostgreSQL（Supabase）持久化。
 
+平台还内置两个 LLM agent（见 [`src/lib/agents/`](#srclibagents)）：一个面向付费用户的 AI 学习助手（基于课程内容的混合 RAG 检索），以及一个离线的 remediation（自动修复）agent，把可复现的测试失败转化为人工审核的补丁提案。
+
 ## 技术栈
 
 - **Next.js App Router**：负责页面路由和 API route。
@@ -16,6 +18,7 @@ RPAS LMS 是一个基于 Next.js 的加拿大 RPAS / 无人机飞行员执照学
 - **Stripe**：负责 paid_access（Advanced 套餐）和 flight_review 两个产品的支付与权限。
 - **Cloudflare Stream**：负责课程视频上传与播放。
 - **Resend**：负责邮箱验证码与 flight-review 预约通知邮件。
+- **Anthropic SDK**：驱动 AI 学习助手和 remediation agent 的修复模型（不配置 `ANTHROPIC_API_KEY` 时应用照常运行，仅这两个功能不可用）。
 - **Zod**：负责题库和 API 请求体校验。
 - **Vitest**：负责单元测试和 route handler 测试。
 - **Tailwind CSS + 自定义 CSS**：负责无人机 HUD 风格界面。
@@ -193,6 +196,32 @@ Next.js App Router 页面目录。
 - `delivery.ts` 封装验证码发送接口；开发/测试环境会输出到控制台，后续可替换为真实邮件或短信服务。
 - `account.ts` 创建/复用邮箱、手机号、用户名和 OAuth 用户，并维护 `UserIdentity`。
 
+### `src/lib/agents/`
+
+两个 LLM agent，以及它们共用的小型运行时。
+
+- `runtime.ts` 是共享的 agent 循环：服务端工具执行、step 预算、单次与累计 token 硬上限（类型化的 `BudgetExhausted` 错误），并留有模型注入接缝，单元测试无需 API key 即可密闭运行。
+
+#### `agents/chat/` —— 付费 AI 学习助手
+
+支撑 `POST /api/chat`（仅付费用户；网关顺序在花费任何 token 之前完成：401 未登录 → 402 未付费 → 429 限流）。路由以纯文本增量流式返回；工具全部在服务端执行，永不暴露给客户端。
+
+- `loop.ts`（`runAssistant`）在共享运行时上驱动对话。
+- `tools.ts` 定义模型可调用的工具（课程查询、进度、检索）。
+- `rag/` 是基于课程内容的混合检索：pgvector 余弦检索 + 加权关键词检索，经 Reciprocal Rank Fusion 融合（`retrieve.ts`），Voyage embeddings（`embed.ts`），分块与入库（`chunk.ts`、`ingest.ts`）写入 `KnowledgeChunk` 表，按 locale 和证书等级隔离。
+- 离线 eval：`scripts/eval/`（`pnpm eval:assistant`）用确定性检查 + LLM judge 给固定用例打分——改动 prompt 或工具前后都应跑一遍。
+
+#### `agents/remediation/` —— 离线 remediation（自动修复）agent
+
+把一个可复现的测试失败转化为可审计、人工审核的补丁提案。模型负责写修复；每一个接受/拒绝的裁决都由确定性代码做出。
+
+- `state.ts` / `store.ts`——持久化在 Postgres 里的显式阶段状态机，租约并发控制：每次状态转移都是以"仍持有未过期租约"为条件的 compare-and-swap，证据与转移原子写入（崩溃后可安全恢复），终态自动释放租约。
+- `reproduce.ts` / `worktree.ts`——在隔离的 git worktree 里于已知 commit 复现失败（复现两次以排除 flaky），并在任何修复开始前将失败签名与事故匹配。
+- `repair.ts` / `llm/repairer.ts`——受限能力的修复器：读白名单、单一可写路径、字节上限的文件与工具 I/O，以及记录模型实际行为的有界脱敏 trace。
+- `fixAttempt.ts` / `verify.ts`——收集证据包（修复前红、修复后绿、diff 统计、patch），交给有序的确定性门禁裁决。隐藏的 holdout 测试仅在 patch 捕获之后注入——模型既读不到也改不了——可见测试另有哈希后盾防篡改。
+- `publish.ts`——把通过验证的 patch 发布为幂等、只追加的 draft-PR 提案。
+- 离线 eval：`scripts/agents/repair-eval.ts`（`pnpm eval:repair`）让真实模型跑分级用例目录、穿过同一条生产管道；用例只有到达预期终态才算通过，"零错误提案"作为硬安全线单独报告。它拒绝对非本地数据库运行。
+
 ### `src/lib/db.ts`
 
 Prisma client 单例。开发环境下它会把 client 缓存在 `globalThis` 上，避免热更新时反复创建数据库连接。
@@ -302,8 +331,10 @@ pnpm test
 测试跑在真实的本地 Postgres 上（与 prod 一致），不是内存库。默认连 `postgresql://postgres:postgres@localhost:5433/postgres`，可用 `TEST_DATABASE_URL` 覆盖。起一个一次性容器：
 
 ```bash
-docker run -d --name rpas-test-pg -e POSTGRES_PASSWORD=postgres -p 5433:5432 postgres:16
+docker run -d --name rpas-test-pg -e POSTGRES_PASSWORD=postgres -p 5433:5432 pgvector/pgvector:pg16
 ```
+
+必须用 `pgvector/pgvector` 镜像（而不是原生 `postgres:16`）：RAG 的 `KnowledgeChunk` 表带有 pgvector `vector` 列，`prisma db push` 需要 `vector` 扩展可用。
 
 配置见 `vitest.config.mts`。`vitest.globalSetup.ts` 会在测试前重置并 `db push` schema。所有测试文件共用一个库，因此串行执行（`fileParallelism: false`）。
 
