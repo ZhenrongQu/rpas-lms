@@ -3,6 +3,9 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { nodeStackStrategy } from "./signature";
+import { createSubstrateIdentity, scriptCheckRunner, scriptHoldoutRunner, type Substrate } from "./substrate";
+import type { VerificationProfile } from "./types";
 
 const execFileAsync = promisify(execFile);
 
@@ -18,15 +21,19 @@ export type RegressionFixture = {
   /** The known-correct source + its path, for the deterministic FixtureRepairer. */
   fixedSource: string;
   sourceRelPath: string;
-  /** A hidden correctness test the repairer never sees; run only at verification
-   *  to catch false-fixes that game the visible check (e.g. hardcoding). */
-  holdoutSource: string;
   incident: {
     fingerprint: string;
     errorType: string;
     sourceFile: string;
     symbol: string;
   };
+  /** How this fixture runs its check + hidden holdout, fingerprints failures, and
+   *  bounds the repairer — script (`node`) here, real vitest for real-repo fixtures. */
+  substrate: Substrate;
+  /** Which proof this fixture's PROPOSED rests on. Declared explicitly (never inferred
+   *  from repairer trust); frozen into the target at reproduction. Script fixtures are
+   *  `sandbox-fixture` (deterministic oracle self-test). */
+  verificationProfile: VerificationProfile;
   cleanup: () => Promise<void>;
 };
 
@@ -113,6 +120,12 @@ export async function createRegressionFixture(
       mainCommit = await head();
     }
 
+    const incident = {
+      fingerprint: "TypeError:score:score.mjs",
+      errorType: "TypeError",
+      sourceFile: "src/score.mjs",
+      symbol: "score",
+    };
     return {
       repoRoot,
       knownGoodCommit,
@@ -120,13 +133,25 @@ export async function createRegressionFixture(
       mainCommit,
       fixedSource: GOOD_SOURCE,
       sourceRelPath: "src/score.mjs",
-      holdoutSource: HOLDOUT_SOURCE,
-      incident: {
-        fingerprint: "TypeError:score:score.mjs",
-        errorType: "TypeError",
-        sourceFile: "src/score.mjs",
-        symbol: "score",
+      incident,
+      substrate: {
+        identity: createSubstrateIdentity({
+          kind: "script-v1",
+          checkPath: "src/check.mjs",
+          checkSource: CHECK_SOURCE,
+          holdoutPath: "src/__holdout__.mjs",
+          holdoutSource: HOLDOUT_SOURCE,
+          signature: incident,
+          pinnedPaths: ["src/check.mjs"],
+          readAllowlist: ["src/"],
+        }),
+        runCheck: scriptCheckRunner("src/check.mjs"),
+        runHoldout: scriptHoldoutRunner(HOLDOUT_SOURCE),
+        signature: nodeStackStrategy(incident),
+        pinnedPaths: ["src/check.mjs"],
+        readAllowlist: ["src/"],
       },
+      verificationProfile: "sandbox-fixture",
       cleanup: () => rm(repoRoot, { recursive: true, force: true }),
     };
   } catch (error) {

@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import type { RegressionFixture } from "../fixtures";
+import { nodeStackStrategy } from "../signature";
+import { createSubstrateIdentity, scriptCheckRunner, scriptHoldoutRunner } from "../substrate";
 
 const execFileAsync = promisify(execFile);
 
@@ -69,8 +71,29 @@ async function buildRepairCase(spec: CaseSpec): Promise<RepairCase> {
       mainCommit: defectiveCommit,
       fixedSource: spec.files.find((f) => f.path === spec.sourceRelPath)!.good,
       sourceRelPath: spec.sourceRelPath,
-      holdoutSource: spec.holdout,
       incident: spec.incident,
+      substrate: {
+        identity: createSubstrateIdentity({
+          kind: "script-v1",
+          checkPath: "src/check.mjs",
+          checkSource: spec.check,
+          holdoutPath: "src/__holdout__.mjs",
+          holdoutSource: spec.holdout,
+          signature: spec.incident,
+          pinnedPaths: ["src/check.mjs"],
+          readAllowlist: ["src/"],
+        }),
+        runCheck: scriptCheckRunner("src/check.mjs"),
+        runHoldout: scriptHoldoutRunner(spec.holdout),
+        signature: nodeStackStrategy(spec.incident),
+        pinnedPaths: ["src/check.mjs"],
+        readAllowlist: ["src/"],
+      },
+      // The graded catalog's expectedOutcome is validated by the deterministic ORACLE
+      // ("can this defect be fixed at all"), so these are sandbox-fixture. (The disabled
+      // repair-eval that would drive them with an untrusted LLM is a separate concern;
+      // an untrusted author under sandbox is rejected at the FIXING gate anyway.)
+      verificationProfile: "sandbox-fixture",
       cleanup: () => rm(repoRoot, { recursive: true, force: true }),
       id: spec.id,
       category: spec.category,

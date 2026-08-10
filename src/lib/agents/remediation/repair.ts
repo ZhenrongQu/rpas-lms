@@ -1,9 +1,7 @@
 import { readFile as fsReadFile, writeFile as fsWriteFile, lstat, readdir, realpath, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { expectCompleted, scriptCheckRunner, type CheckRunner, type CompletedCheck } from "./substrate";
 
-const execFileAsync = promisify(execFile);
 const DEFAULT_MAX_READ_BYTES = 64 * 1024;
 const DEFAULT_CHECK = "src/check.mjs";
 
@@ -27,7 +25,7 @@ export type RepairContext = {
   readFile(rel: string): Promise<string>;
   writeFile(rel: string, content: string): Promise<void>;
   listFiles(): Promise<string[]>;
-  runCheck(): Promise<{ exitCode: number; stderr: string }>;
+  runCheck(): Promise<CompletedCheck>;
   signal: AbortSignal;
 };
 
@@ -44,6 +42,21 @@ export type RepairTraceStep = {
 };
 
 export type RepairReport = { trace: RepairTraceStep[]; tokens: number };
+
+/**
+ * Unforgeable trust registry. Trust is membership in a module-private WeakSet with NO
+ * production mutator: importing `isTrustedRepairer` only READS trust. Only an EXACT
+ * `FixtureRepairer` instance registers itself (a `new.target` guard blocks subclasses,
+ * and the instance is frozen so `repair` cannot be swapped afterward) — so subclassing
+ * the oracle and overriding `repair` no longer grants trust. LlmRepairer and every
+ * external Repairer are untrusted; the isolation guard requires them to run in Docker.
+ */
+const trustedRepairers = new WeakSet<Repairer>();
+
+/** Whether a repairer carries kernel-internal trust. Untrusted ↔ not registered. */
+export function isTrustedRepairer(r: Repairer): boolean {
+  return trustedRepairers.has(r);
+}
 
 export interface Repairer {
   /** Returns a redacted report (LLM author) or void (deterministic oracle). */
@@ -97,7 +110,7 @@ export function makeRepairContext(
   worktreeRoot: string,
   policy: RepairPolicy,
   signal: AbortSignal,
-  checkRelPath: string = DEFAULT_CHECK,
+  checkRunner: CheckRunner = scriptCheckRunner(DEFAULT_CHECK),
 ): RepairContext {
   const maxReadBytes = policy.maxReadBytes ?? DEFAULT_MAX_READ_BYTES;
   return {
@@ -127,16 +140,10 @@ export function makeRepairContext(
       await walk(worktreeRoot);
       return out.sort();
     },
-    async runCheck() {
-      try {
-        await execFileAsync("node", [checkRelPath], { cwd: worktreeRoot, signal });
-        return { exitCode: 0, stderr: "" };
-      } catch (e) {
-        const err = e as { code?: number | string; stderr?: string; name?: string };
-        if (signal.aborted || err.name === "AbortError" || err.code === "ABORT_ERR") throw e; // abort propagates
-        return { exitCode: typeof err.code === "number" ? err.code : 1, stderr: err.stderr ?? String(e) };
-      }
-    },
+    // The runner returns a red/green CheckResult and throws only on abort (→
+    // propagates as lease loss). An infrastructure failure becomes a thrown
+    // InfrastructureFailure so the LLM never sees it as a red/green test.
+    runCheck: async () => expectCompleted(await checkRunner(worktreeRoot, signal)),
   };
 }
 
@@ -145,8 +152,14 @@ export class FixtureRepairer implements Repairer {
   constructor(
     private readonly sourceRelPath: string,
     private readonly fixedSource: string,
-  ) {}
-  async repair(ctx: RepairContext): Promise<void> {
+  ) {
+    // Trust ONLY an exact FixtureRepairer — a subclass (new.target !== FixtureRepairer)
+    // gets no trust, so overriding repair() cannot smuggle untrusted code onto a host
+    // runner. Freeze so repair can't be swapped on the instance after construction.
+    if (new.target === FixtureRepairer) trustedRepairers.add(this);
+    Object.freeze(this);
+  }
+  async repair(ctx: RepairContext): Promise<RepairReport | void> {
     await ctx.writeFile(this.sourceRelPath, this.fixedSource);
   }
 }

@@ -1,12 +1,12 @@
 import { prisma } from "../../db";
 import type { RegressionFixture } from "./fixtures";
 import { runFixAttempt, type RepairEvidence } from "./fixAttempt";
-import { publishProposal } from "./publish";
+import { publishProposal, publishReviewDraft } from "./publish";
 import { classifyOnLatestMain, reproduce } from "./reproduce";
-import type { Repairer, RepairPolicy } from "./repair";
+import { isTrustedRepairer, type Repairer, type RepairPolicy } from "./repair";
 import { freezeRunPolicy, heartbeatRun, transitionRun, transitionRunWithEvidence, transitionRunWithTarget } from "./store";
 import { verify, type VerifyPolicy } from "./verify";
-import type { RemediationPhase } from "./types";
+import { verificationProfileFromTarget, type RemediationPhase, type VerificationProfile } from "./types";
 
 /** The immutable identity of the code state that was reproduced. Frozen on the run
  *  at REPRODUCING→FIXING (NOT at first repair), so a repair/resume can only ever
@@ -19,6 +19,8 @@ type RepairTarget = {
   defectiveCommit: string;
   knownGoodCommit: string;
   sourceRelPath: string;
+  substrateIdentity: string;
+  verificationProfile: VerificationProfile;
 };
 
 /** The repair/verify rules frozen per run at first repair so a resume can never
@@ -36,6 +38,8 @@ function buildTarget(fixture: RegressionFixture, incident: { repository: string;
     defectiveCommit: fixture.defectiveCommit,
     knownGoodCommit: fixture.knownGoodCommit,
     sourceRelPath: fixture.sourceRelPath,
+    substrateIdentity: fixture.substrate.identity,
+    verificationProfile: fixture.verificationProfile,
   };
 }
 
@@ -47,11 +51,30 @@ function sameTarget(a: RepairTarget, b: RepairTarget): boolean {
     a.mainCommit === b.mainCommit &&
     a.defectiveCommit === b.defectiveCommit &&
     a.knownGoodCommit === b.knownGoodCommit &&
-    a.sourceRelPath === b.sourceRelPath
+    a.sourceRelPath === b.sourceRelPath &&
+    a.substrateIdentity === b.substrateIdentity &&
+    a.verificationProfile === b.verificationProfile
   );
 }
 
 export type ReproductionOutcome = "FIXING" | "ALREADY_FIXED" | "NOT_REPRODUCIBLE" | "NEEDS_HUMAN";
+
+export type DriveReproductionOptions = {
+  repeats?: number;
+  leaseMs?: number;
+  heartbeatMs?: number;
+  /** test-only heartbeat seam. */
+  _beat?: () => Promise<boolean>;
+};
+
+function delay(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) return resolve();
+    const onAbort = () => { clearTimeout(timer); resolve(); };
+    const timer = setTimeout(() => { signal.removeEventListener("abort", onAbort); resolve(); }, ms);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
 
 /**
  * Advance a CLASSIFIED run through reproduction to exactly one outcome, moving the
@@ -63,35 +86,65 @@ export async function driveReproduction(
   runId: string,
   workerId: string,
   fixture: RegressionFixture,
-  opts: { repeats?: number } = {},
+  opts: DriveReproductionOptions = {},
 ): Promise<ReproductionOutcome> {
+  const leaseMs = opts.leaseMs ?? 60_000;
+  if (!(await heartbeatRun(runId, workerId, leaseMs))) {
+    throw new Error(`run ${runId} lost lease or CAS race`);
+  }
   // Correlate the fixture with THIS run's incident BEFORE reproducing — a fixture
   // for a different defect must never be reproduced/fixed under this incident (its
   // proposal would end up filed against the wrong one). Same fingerprint format on
   // both sides here; if triage ever normalizes signatures, persist and compare that.
   const run = await prisma.remediationRun.findUniqueOrThrow({ where: { id: runId }, include: { incident: true } });
+  if (run.phase !== "CLASSIFIED" && run.phase !== "REPRODUCING") {
+    throw new Error(`driveReproduction cannot run from phase ${run.phase}`);
+  }
   if (fixture.incident.fingerprint !== run.incident.fingerprint) {
-    await transitionRun(runId, workerId, "CLASSIFIED", "NEEDS_HUMAN");
+    await transitionRun(runId, workerId, run.phase, "NEEDS_HUMAN");
     return "NEEDS_HUMAN";
   }
 
-  await transitionRun(runId, workerId, "CLASSIFIED", "REPRODUCING");
-
-  const rep = await reproduce(fixture, opts);
-  const outcome: ReproductionOutcome = !rep.accepted
-    ? rep.reason === "signature-mismatch"
-      ? "NEEDS_HUMAN"
-      : "NOT_REPRODUCIBLE"
-    : await classifyOnLatestMain(fixture);
-
-  if (outcome === "FIXING") {
-    // Anchor the immutable target to the code state we just reproduced, in the
-    // same CAS that advances the phase. Repair can only read/compare it.
-    await transitionRunWithTarget(runId, workerId, "REPRODUCING", "FIXING", buildTarget(fixture, run.incident));
-  } else {
-    await transitionRun(runId, workerId, "REPRODUCING", outcome);
+  if (run.phase === "CLASSIFIED") {
+    await transitionRun(runId, workerId, "CLASSIFIED", "REPRODUCING");
   }
-  return outcome;
+
+  const work = new AbortController();
+  const stop = new AbortController();
+  const beat = opts._beat ?? (() => heartbeatRun(runId, workerId, leaseMs));
+  const heartbeatLoop = (async () => {
+    while (!stop.signal.aborted) {
+      await delay(opts.heartbeatMs ?? 5_000, stop.signal);
+      if (stop.signal.aborted) break;
+      if (!(await beat().catch(() => false))) { work.abort(); break; }
+    }
+  })();
+
+  try {
+    const rep = await reproduce(fixture, { repeats: opts.repeats, signal: work.signal });
+    if (work.signal.aborted) throw new Error(`run ${runId} lost lease or CAS race`);
+    const outcome: ReproductionOutcome = !rep.accepted
+      ? rep.reason === "signature-mismatch"
+        ? "NEEDS_HUMAN"
+        : "NOT_REPRODUCIBLE"
+      : await classifyOnLatestMain(fixture, { signal: work.signal });
+    if (work.signal.aborted) throw new Error(`run ${runId} lost lease or CAS race`);
+
+    if (outcome === "FIXING") {
+      // Anchor the immutable target to the code state + substrate we reproduced,
+      // in the same CAS that advances the phase.
+      await transitionRunWithTarget(runId, workerId, "REPRODUCING", "FIXING", buildTarget(fixture, run.incident));
+    } else {
+      await transitionRun(runId, workerId, "REPRODUCING", outcome);
+    }
+    return outcome;
+  } catch (error) {
+    if (work.signal.aborted) throw new Error(`run ${runId} lost lease or CAS race`);
+    throw error;
+  } finally {
+    stop.abort();
+    await heartbeatLoop.catch(() => {});
+  }
 }
 
 export type RepairOutcome = "PROPOSED" | "NEEDS_HUMAN";
@@ -109,7 +162,7 @@ export type DriveRepairOptions = {
  * Resumable repair driver: dispatches on the run's CURRENT phase, so a crash at
  * any point resumes without redoing prior work.
  *   FIXING     → run the attempt, persist evidence atomically with → VERIFYING
- *   VERIFYING  → verify persisted evidence → PROPOSING (ok) or NEEDS_HUMAN
+ *   VERIFYING  → verify persisted evidence → PROPOSING (sandbox) / NEEDS_HUMAN (production)
  *   PROPOSING  → idempotently publish → PROPOSED
  * A LeaseLost/exception leaves the phase un-advanced (re-invoke resumes).
  */
@@ -131,7 +184,11 @@ export async function driveRepair(
       maxDiffLines: 200,
       maxPatchBytes: opts.maxPatchBytes ?? 1_000_000,
     },
-    repair: { allowedPaths: [fixture.sourceRelPath], pinnedPaths: ["src/check.mjs"], readAllowlist: ["src/"] },
+    repair: {
+      allowedPaths: [fixture.sourceRelPath],
+      pinnedPaths: fixture.substrate.pinnedPaths,
+      readAllowlist: fixture.substrate.readAllowlist,
+    },
   };
 
   for (;;) {
@@ -150,6 +207,13 @@ export async function driveRepair(
     // The target was frozen at reproduction; repair only reads and compares it.
     const frozenTarget = run.target as RepairTarget | null;
     if (!frozenTarget) throw new Error(`run ${runId} reached ${run.phase} without a reproduced target`);
+    // Fail closed on a missing / legacy / unknown profile — never default to sandbox,
+    // or heuristic evidence could silently gain publish rights on a legacy target.
+    const profile = verificationProfileFromTarget(frozenTarget);
+    if (!profile) {
+      await transitionRun(runId, workerId, run.phase as RemediationPhase, "NEEDS_HUMAN");
+      return "NEEDS_HUMAN";
+    }
     if (!sameTarget(buildTarget(fixture, run.incident), frozenTarget)) {
       // This resume is pointed at a different fixture/commit than was reproduced —
       // escalate rather than verify a self-consistent but wrong repair.
@@ -160,6 +224,14 @@ export async function driveRepair(
 
     switch (run.phase) {
       case "FIXING": {
+        // An untrusted author may NEVER self-attest under a sandbox profile — reject
+        // BEFORE the repairer runs, so it produces no evidence and can never reach
+        // VERIFYING. (A production run DOES run the heuristic repair, but its evidence
+        // can never reach PROPOSED — VERIFYING and publish both fail closed below.)
+        if (profile === "sandbox-fixture" && !isTrustedRepairer(repairer)) {
+          await transitionRun(runId, workerId, "FIXING", "NEEDS_HUMAN");
+          return "NEEDS_HUMAN";
+        }
         const evidence = await runFixAttempt(fixture, repairer, {
           policy: policy.repair,
           maxPatchBytes: policy.verify.maxPatchBytes,
@@ -175,8 +247,20 @@ export async function driveRepair(
       case "VERIFYING": {
         const evidence = JSON.parse(run.evidence ?? "null") as RepairEvidence | null;
         if (!evidence) throw new Error(`run ${runId} at VERIFYING has no evidence`);
+        // Local heuristic gates run FIRST, so a genuine repair failure keeps its own
+        // failure meaning rather than being masked as "black-box unavailable".
         const verdict = verify(evidence, policy.verify);
         if (!verdict.ok) {
+          await transitionRun(runId, workerId, "VERIFYING", "NEEDS_HUMAN");
+          return "NEEDS_HUMAN";
+        }
+        // Local gates passing is sufficient ONLY for a sandbox self-test. A production run
+        // comes from an UNTRUSTED author and needs an external black-box attestation the
+        // code under test cannot forge; no real attestor exists yet (deferred to Firecracker),
+        // so it can never be auto-approved. Surface the candidate patch as a needs-review
+        // DRAFT for a human, then fail closed to NEEDS_HUMAN — it proposes, a human approves.
+        if (profile === "production-black-box") {
+          await publishReviewDraft(runId, workerId);
           await transitionRun(runId, workerId, "VERIFYING", "NEEDS_HUMAN");
           return "NEEDS_HUMAN";
         }
@@ -184,8 +268,9 @@ export async function driveRepair(
         break;
       }
       case "PROPOSING": {
-        // publishProposal reads the run's own persisted evidence + enforces the
-        // lease; the driver injects no truthfulness material.
+        // publishProposal reads the run's own persisted evidence + enforces the lease; the
+        // driver injects no truthfulness material. Publish independently re-checks that the
+        // run's profile is publishable (sandbox-fixture only, until a real attestor exists).
         await publishProposal(runId, workerId);
         await transitionRun(runId, workerId, "PROPOSING", "PROPOSED");
         return "PROPOSED";

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { execFile } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -6,6 +6,13 @@ import { promisify } from "node:util";
 import { createRegressionFixture, type RegressionFixture } from "./fixtures";
 import { fixtureRepairerFor, type Repairer } from "./repair";
 import { LeaseLost, runFixAttempt } from "./fixAttempt";
+import { InfrastructureFailure, type CheckRunner } from "./substrate";
+
+const infraRunner: CheckRunner = async () => ({ kind: "infrastructure-failure", reason: "docker unavailable" });
+
+// Guard enforcement has focused tests; these flow tests use benign test repairers.
+vi.mock("./isolated/guard", () => ({ assertIsolatedForUntrusted: vi.fn() }));
+const testRepairer = (fn: Repairer["repair"]): Repairer => ({ repair: fn });
 
 const execFileAsync = promisify(execFile);
 const POLICY = { allowedPaths: ["src/score.mjs"], pinnedPaths: ["src/check.mjs"], readAllowlist: ["src/"] };
@@ -60,12 +67,10 @@ describe("runFixAttempt", () => {
   it("persists a repairer's redacted trace in the evidence", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
-    const reporting: Repairer = {
-      async repair(ctx) {
-        await ctx.writeFile("src/score.mjs", fixture.fixedSource);
-        return { trace: [{ step: 0, tokens: 12, reasoning: "guarded", tools: [{ name: "write_file", status: "executed", path: "src/score.mjs", contentBytes: 42, contentSha256: "abcd" }] }], tokens: 12 };
-      },
-    };
+    const reporting = testRepairer(async (ctx) => {
+      await ctx.writeFile("src/score.mjs", fixture.fixedSource);
+      return { trace: [{ step: 0, tokens: 12, reasoning: "guarded", tools: [{ name: "write_file", status: "executed", path: "src/score.mjs", contentBytes: 42, contentSha256: "abcd" }] }], tokens: 12 };
+    });
     const evidence = await runFixAttempt(fixture, reporting, { policy: POLICY, maxPatchBytes: 1_000_000 });
     expect(evidence.greenAfter).toBe(true);
     expect(evidence.trace).toHaveLength(1);
@@ -75,11 +80,9 @@ describe("runFixAttempt", () => {
   it("runs the hidden holdout: a hardcode games the visible check but fails the holdout", async () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
-    const hardcode: Repairer = {
-      async repair(ctx) {
-        await ctx.writeFile("src/score.mjs", "export function score() {\n  return 0;\n}\n");
-      },
-    };
+    const hardcode = testRepairer(async (ctx) => {
+      await ctx.writeFile("src/score.mjs", "export function score() {\n  return 0;\n}\n");
+    });
     const evidence = await runFixAttempt(fixture, hardcode, { policy: POLICY, maxPatchBytes: 1_000_000 });
     expect(evidence.greenAfter).toBe(true); // score([], 0) === 0 → visible check passes
     expect(evidence.holdoutPassed).toBe(false); // but score([{score:5}], 0) !== 5 → holdout catches it
@@ -90,12 +93,10 @@ describe("runFixAttempt", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const hb = countingBeat(() => true);
-    const slow: Repairer = {
-      async repair(ctx) {
-        await delay(50, ctx.signal); // ~2.5 intervals
-        await ctx.writeFile(fixture.sourceRelPath, fixture.fixedSource);
-      },
-    };
+    const slow = testRepairer(async (ctx) => {
+      await delay(50, ctx.signal); // ~2.5 intervals
+      await ctx.writeFile(fixture.sourceRelPath, fixture.fixedSource);
+    });
     await runFixAttempt(fixture, slow, { policy: POLICY, maxPatchBytes: 1_000_000, heartbeat: { intervalMs: 20, beat: hb.beat } });
     expect(hb.state.calls).toBeGreaterThanOrEqual(2);
   });
@@ -104,7 +105,7 @@ describe("runFixAttempt", () => {
     const fixture = await createRegressionFixture();
     created.push(fixture);
     const hb = countingBeat((n) => n < 2); // true once, then false
-    const sleeper: Repairer = { async repair(ctx) { await delay(10_000, ctx.signal, true); } };
+    const sleeper = testRepairer(async (ctx) => { await delay(10_000, ctx.signal, true); });
     await expect(
       runFixAttempt(fixture, sleeper, { policy: POLICY, maxPatchBytes: 1_000_000, heartbeat: { intervalMs: 20, beat: hb.beat } }),
     ).rejects.toBeInstanceOf(LeaseLost);
@@ -129,5 +130,15 @@ describe("runFixAttempt", () => {
       _tamperCheckAfterRepair: async (wt) => writeFile(join(wt, "src/check.mjs"), "process.exit(0)\n"),
     });
     expect(evidence.reproductionIntact).toBe(false);
+  });
+
+  it("propagates an InfrastructureFailure instead of producing a false red/green", async () => {
+    const fixture = await createRegressionFixture();
+    created.push(fixture);
+    const down = { ...fixture, substrate: { ...fixture.substrate, runCheck: infraRunner } };
+    await expect(
+      runFixAttempt(down, fixtureRepairerFor(fixture), { policy: POLICY, maxPatchBytes: 1_000_000 }),
+    ).rejects.toBeInstanceOf(InfrastructureFailure);
+    expect(await worktreeCount(fixture.repoRoot)).toBe(1); // worktree still cleaned up
   });
 });

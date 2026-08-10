@@ -2,9 +2,10 @@ import { createHash } from "node:crypto";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BudgetExhausted, runAgent, type AgentConfig, type AgentStepInfo, type MessageCreator } from "../../runtime";
 import type { RepairContext, Repairer, RepairReport, RepairToolStatus, RepairTraceStep } from "../repair";
+import { InfrastructureFailure } from "../substrate";
+import { REPAIR_SYSTEM_PROMPT, REPAIR_TASK, REPAIR_TOOLS } from "./prompt";
 
 type RedactedTool = RepairTraceStep["tools"][number];
-import { REPAIR_SYSTEM_PROMPT, REPAIR_TASK, REPAIR_TOOLS } from "./prompt";
 
 // DEFAULT author model: Haiku is a deliberately modest author (cheap, and MORE
 // likely to err/over-reach — which stress-tests the deterministic verify +
@@ -41,6 +42,32 @@ function byteTruncate(s: string, maxBytes: number): string {
 function clip(s: string): string {
   if (Buffer.byteLength(s) <= MAX_TOOL_OUTPUT_BYTES) return s;
   return byteTruncate(s, MAX_TOOL_OUTPUT_BYTES - Buffer.byteLength(TRUNC_MARK)) + TRUNC_MARK; // total ≤ MAX_TOOL_OUTPUT_BYTES
+}
+
+/** A readable failure summary for the model. vitest `--reporter=json` writes ALL detail into
+ *  stdout (JSON) and leaves stderr near-empty (just "JSON report written …"), so a bare
+ *  "FAIL (exit 1)" tells the model nothing about which test failed or why. Extract the failing
+ *  tests + their first (de-ANSI'd) assertion message. Returns "" for non-JSON output (script
+ *  fixtures), whose readable detail is on stderr — so the caller falls back to stderr there. */
+function vitestFailureSummary(stdout: string): string {
+  let json: {
+    testResults?: Array<{ assertionResults?: Array<{ fullName?: string; title?: string; status?: string; failureMessages?: string[] }> }>;
+  };
+  try {
+    json = JSON.parse(stdout);
+  } catch {
+    return "";
+  }
+  const blocks: string[] = [];
+  for (const file of json.testResults ?? []) {
+    for (const a of file.assertionResults ?? []) {
+      if (a.status !== "failed") continue;
+      const name = a.fullName || a.title || "(unnamed test)";
+      const msg = (a.failureMessages?.[0] ?? "").replace(/\[[0-9;]*m/g, "").split("\n").slice(0, 6).join("\n");
+      blocks.push(`✗ ${name}\n${msg}`);
+    }
+  }
+  return blocks.join("\n\n");
 }
 
 /** Redact one tool call into a persist-safe, byte-bounded trace entry stamped with
@@ -153,7 +180,9 @@ export class LlmRepairer implements Repairer {
       this.pending.push(redactTool(name, args, "executed"));
       return out;
     } catch (e) {
-      if (ctx.signal.aborted) throw e; // abort is not a tool error — propagate (no trace entry)
+      // Abort (lease) and infrastructure failures are NOT tool errors — propagate
+      // them (no trace entry) rather than feeding them back to the model as "denied".
+      if (ctx.signal.aborted || e instanceof InfrastructureFailure) throw e;
       this.pending.push(redactTool(name, args, "denied"));
       return `Error: ${e instanceof Error ? e.message : String(e)}`;
     }
@@ -179,7 +208,11 @@ export class LlmRepairer implements Repairer {
       }
       case "run_check": {
         const r = await ctx.runCheck();
-        return r.exitCode === 0 ? "PASS" : clip(`FAIL (exit ${r.exitCode})\n${r.stderr}`.trim());
+        if (r.exitCode === 0) return "PASS";
+        // Prefer the structured vitest failure summary (stdout JSON); fall back to stderr for
+        // script fixtures, whose readable node error is on stderr, not in a JSON report.
+        const detail = vitestFailureSummary(r.stdout) || r.stderr.trim();
+        return clip(`FAIL (exit ${r.exitCode})\n${detail}`.trim());
       }
       default:
         throw new Error(`unknown tool "${name}"`);
