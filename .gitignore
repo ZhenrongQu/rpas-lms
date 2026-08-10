@@ -48,4 +48,3 @@ scripts/eval/results.json
 /scripts/create-customer.ts
 /scripts/migrate-checkpoints.ts
 /scripts/seed-content.ts
-/scripts/seed-test-fixtures.ts
