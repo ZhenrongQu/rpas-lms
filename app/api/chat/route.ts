@@ -4,6 +4,11 @@ import { currentAccount } from "../exam/sessionAuth";
 import { hasPaidAccess } from "../../../src/lib/payments/entitlements";
 import { enforceRateLimit } from "../../../src/lib/security/rateLimit";
 import { runAssistant } from "../../../src/lib/agents/chat/loop";
+import {
+  buildScopeProbe,
+  checkScope,
+  scopeRefusal,
+} from "../../../src/lib/agents/chat/rag/scopeGate";
 import type { ToolContext } from "../../../src/lib/agents/chat/tools";
 
 // Prisma + the Anthropic SDK need the Node runtime; the stream must not be cached.
@@ -59,7 +64,26 @@ export async function POST(req: Request): Promise<Response> {
   const ctx: ToolContext = { userId, locale: locale === "zh" ? "ZH" : "EN" };
   const history: Anthropic.MessageParam[] = messages.map((m) => ({ role: m.role, content: m.content }));
 
-  // 6. Stream the agent loop's text deltas back as plain UTF-8 chunks.
+  // 6. Scope gate — this assistant answers RPAS study questions only, and the
+  // system prompt can't enforce that (the model can answer off-topic from its own
+  // knowledge without ever calling a tool). This is the only gate that costs money
+  // — one embedding call — so it sits after every free check above; it is still
+  // orders of magnitude cheaper than the agent loop, so it sits before it. Off
+  // unless SCOPE_MAX_COSINE_DISTANCE is set, and it fails open (see scopeGate.ts).
+  // A refusal is a normal product response, not an error: same 200 text/plain
+  // stream contract the client already reads.
+  const verdict = await checkScope(buildScopeProbe(messages));
+  if (!verdict.inScope) {
+    console.info(`[chat] user=${userId} out_of_scope distance=${verdict.distance.toFixed(4)}`);
+    return new Response(scopeRefusal(ctx.locale), {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+      },
+    });
+  }
+
+  // 7. Stream the agent loop's text deltas back as plain UTF-8 chunks.
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
