@@ -55,6 +55,13 @@ export async function runAssistant(
     }
 
     const final = await stream.finalMessage();
+    // Cache accounting: the system block carries a cache_control breakpoint, but a
+    // prefix under the model's minimum silently doesn't cache. A cache_read of 0
+    // across repeated turns means the breakpoint isn't earning anything.
+    const u = final.usage;
+    console.log(
+      `[chat] step=${step} in=${u.input_tokens} cache_write=${u.cache_creation_input_tokens ?? 0} cache_read=${u.cache_read_input_tokens ?? 0} out=${u.output_tokens}`,
+    );
     messages.push({ role: "assistant", content: final.content }); // keep thinking + tool_use blocks
 
     if (final.stop_reason !== "tool_use") return;
