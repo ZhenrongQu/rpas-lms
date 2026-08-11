@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { FixtureSentrySource, SentryApiSource, type SentryIssue } from "./sentryIssue";
+import { FixtureSentrySource, type SentryIssue } from "./sentryIssue";
 
 const created: string[] = [];
 afterEach(async () => { await Promise.all(created.splice(0).map((d) => rm(d, { recursive: true, force: true }))); });
@@ -20,9 +20,5 @@ describe("FixtureSentrySource", () => {
     const p = join(dir, "issues.json");
     await writeFile(p, JSON.stringify([issue]));
     expect(await new FixtureSentrySource(p).unresolvedIssues()).toEqual([issue]);
-  });
-
-  it("SentryApiSource is a stub that refuses (deferred to a later slice)", async () => {
-    await expect(new SentryApiSource().unresolvedIssues()).rejects.toThrow(/event:read/);
   });
 });

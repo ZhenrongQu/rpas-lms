@@ -28,9 +28,5 @@ export class FixtureSentrySource implements SentrySource {
   }
 }
 
-/** Same-interface stub for the real API — deferred until an event:read-scoped token exists. */
-export class SentryApiSource implements SentrySource {
-  async unresolvedIssues(): Promise<SentryIssue[]> {
-    throw new Error("SentryApiSource not implemented — needs a Sentry token with event:read scope. Use FixtureSentrySource in the sandbox.");
-  }
-}
+// The real API-backed source lives in ./sentryApi.ts (SentryApiSource) — kept separate so
+// this module stays free of transport concerns.
