@@ -30,18 +30,18 @@ export type CommitPairSpec = {
   image: string;
 };
 
-/** A self-contained, always-passing placeholder holdout. v1 does NOT assemble an independent
- *  holdout from existing related tests: their relative imports (`./grade`, `../content/…`) do
- *  not survive relocation to a synthetic holdout path, and an empty file exits vitest with 0
- *  tests (an infra failure that blocks the run). So the kernel's holdout gate runs this valid
- *  green test; the CI false-fix guard instead leans on pinned test files + an isolated
- *  green-after re-run + human review of the needs_review draft (spec §3.3, best-effort). */
-const PLACEHOLDER_HOLDOUT = `import { it, expect } from "vitest";\nit("ci holdout placeholder — no independent holdout (v1)", () => { expect(true).toBe(true); });\n`;
+/** Fallback holdout, used ONLY when no related green test exists. It always passes, so the
+ *  kernel's holdout gate is vacuous on this path — the false-fix guard then rests on pinned
+ *  test files + the isolated green-after re-run + human review of the needs_review draft
+ *  (spec §3.3, best-effort). An empty file cannot be used instead: vitest exits with 0 tests,
+ *  which the runner reports as an infra failure and which blocks the run. */
+const PLACEHOLDER_HOLDOUT = `import { it, expect } from "vitest";\nit("ci holdout placeholder — no related green test", () => { expect(true).toBe(true); });\n`;
 
 /**
  * Build a `RegressionFixture` from two REAL commits (no synthesized mutate — the defect IS
  * the diff). v1 scope: exactly one non-test source file changed, else null (out of scope).
- * The write-allowlist is that one file; the holdout is best-effort related existing tests.
+ * The write-allowlist is that one file; the holdout is the existing green tests that cover
+ * it, run in place, falling back to a passing placeholder when there are none.
  * Always `production-black-box` (an untrusted LLM author verified in Docker isolation).
  */
 export async function buildCommitPairFixture(spec: CommitPairSpec, repo: RepoInspector): Promise<RegressionFixture | null> {
@@ -50,34 +50,47 @@ export async function buildCommitPairFixture(spec: CommitPairSpec, repo: RepoIns
   if (changed.sourceFiles.length !== 1) return null; // v1: single-source-file regressions only
   const sourceRelPath = changed.sourceFiles[0]!;
 
+  // Existing tests that exercise the defective source but are NOT among the failing ones —
+  // i.e. tests that are GREEN at the defective commit and must stay green after the repair.
+  // That is exactly a holdout: the repairer never wrote them and cannot edit them (they are
+  // pinned, and the write-allowlist is the single source file anyway).
   const relatedTests = await repo.relatedTestFiles(sourceRelPath, failure.relatedTests);
   const holdoutRelPath = "src/__ci_holdout__.test.ts";
-  const holdoutSource = PLACEHOLDER_HOLDOUT;
 
   const signature = vitestJsonStrategy(failure.signature);
   const adapterConfigContent = await readFile(join(originRepo, ADAPTER_CONFIG), "utf8");
   const adapterConfigSha = createHash("sha256").update(adapterConfigContent).digest("hex");
   const tests = failure.relatedTests;
+  // Run the related tests IN PLACE rather than copying them to a synthetic holdout path:
+  // relocation breaks their relative imports (`./grade`, `../content/…`), which is why the
+  // earlier version fell back to a placeholder. In place they need no rewriting at all, and
+  // nothing is injected into the worktree, so no holdout file can leak into the fix patch.
+  const holdout: { kind: "related"; paths: string[] } | { kind: "placeholder" } =
+    relatedTests.length > 0 ? { kind: "related", paths: [...relatedTests].sort() } : { kind: "placeholder" };
+  // Pin both the reproducing tests and the holdout tests — a repairer that could rewrite
+  // either one could manufacture a green run.
+  const pinnedPaths = [...new Set([...tests, ...relatedTests])];
   const identity = createSubstrateIdentity({
     kind: "vitest-v1",
     isolation: "docker",
     image,
     tests: [...tests].sort(),
     adapterConfig: `${ADAPTER_CONFIG}:${adapterConfigSha}`,
-    holdoutPath: holdoutRelPath,
-    holdoutSource,
-    relatedTestCount: relatedTests.length, // holdout confidence: 0 ⇒ placeholder only (v1)
+    holdout, // "placeholder" ⇒ the holdout gate is vacuous on this run
     signature: failure.signature,
-    pinnedPaths: [...tests].sort(),
+    pinnedPaths: [...pinnedPaths].sort(),
     readAllowlist: ["src/"],
   });
 
   const substrate: Substrate = {
     identity,
     runCheck: dockerVitestCheckRunner({ image, tests }),
-    runHoldout: dockerVitestHoldoutRunner(image, holdoutRelPath, holdoutSource),
+    runHoldout:
+      holdout.kind === "related"
+        ? dockerVitestCheckRunner({ image, tests: holdout.paths })
+        : dockerVitestHoldoutRunner(image, holdoutRelPath, PLACEHOLDER_HOLDOUT),
     signature,
-    pinnedPaths: tests,
+    pinnedPaths,
     readAllowlist: ["src/"],
   };
 

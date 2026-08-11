@@ -49,6 +49,48 @@ describe("buildCommitPairFixture", () => {
     expect(fx!.incident.fingerprint).toContain("AssertionError");
   });
 
+  it("pins the related green tests, so a repairer cannot rewrite its own holdout", async () => {
+    const { dir, good, bad } = await repoWithTwoCommits();
+    const inspector: RepoInspector = {
+      changedFiles: async () => ({ sourceFiles: ["score.mjs"], testFiles: [] }),
+      relatedTestFiles: async () => ["score.extra.test.mjs"],
+    };
+    const fx = await buildCommitPairFixture(
+      { originRepo: dir, repository: "o/r", baseline: { knownGoodCommit: good, defectiveCommit: bad }, failure, image: "img:tag" },
+      inspector,
+    );
+    // Both the reproducing test and the holdout test are pinned.
+    expect(fx!.substrate.pinnedPaths).toContain("score.test.mjs");
+    expect(fx!.substrate.pinnedPaths).toContain("score.extra.test.mjs");
+  });
+
+  it("gives a real holdout a different substrate identity than the vacuous placeholder", async () => {
+    const { dir, good, bad } = await repoWithTwoCommits();
+    const spec = { originRepo: dir, repository: "o/r", baseline: { knownGoodCommit: good, defectiveCommit: bad }, failure, image: "img:tag" };
+    const withHoldout = await buildCommitPairFixture(spec, {
+      changedFiles: async () => ({ sourceFiles: ["score.mjs"], testFiles: [] }),
+      relatedTestFiles: async () => ["score.extra.test.mjs"],
+    });
+    const withPlaceholder = await buildCommitPairFixture(spec, {
+      changedFiles: async () => ({ sourceFiles: ["score.mjs"], testFiles: [] }),
+      relatedTestFiles: async () => [],
+    });
+    // A run verified against a real holdout must never be mistaken for one that was not.
+    expect(withHoldout!.substrate.identity).not.toBe(withPlaceholder!.substrate.identity);
+  });
+
+  it("falls back to the placeholder when no related green test covers the source", async () => {
+    const { dir, good, bad } = await repoWithTwoCommits();
+    const fx = await buildCommitPairFixture(
+      { originRepo: dir, repository: "o/r", baseline: { knownGoodCommit: good, defectiveCommit: bad }, failure, image: "img:tag" },
+      {
+        changedFiles: async () => ({ sourceFiles: ["score.mjs"], testFiles: [] }),
+        relatedTestFiles: async () => [],
+      },
+    );
+    expect(fx!.substrate.pinnedPaths).toEqual(["score.test.mjs"]);
+  });
+
   it("returns null when the diff touches multiple source files (out of v1 scope)", async () => {
     const { dir, good, bad } = await repoWithTwoCommits();
     const inspector: RepoInspector = {
