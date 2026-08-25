@@ -19,7 +19,7 @@ describe("exam API route handlers", () => {
     });
   });
 
-  it("lets a guest create a 10-question Basic taster", async () => {
+  it("lets a guest create a 15-question Basic taster", async () => {
     const res = await createExam(
       new Request("http://test/api/exam", {
         method: "POST",
@@ -28,7 +28,7 @@ describe("exam API route handlers", () => {
     );
     const { status, body } = await json(res);
     expect(status).toBe(201);
-    expect(body.total).toBe(10);
+    expect(body.total).toBe(15);
     expect(typeof body.sessionId).toBe("string");
   });
 

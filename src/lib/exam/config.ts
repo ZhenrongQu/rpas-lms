@@ -1,8 +1,15 @@
 import type { ExamCertLevel, ModuleId } from "../content/types";
 import type { AccessTier } from "./access";
 
-/** Number of questions in a mock for a given access tier. */
-export const GUEST_BASIC_QUESTION_COUNT = 10;
+/**
+ * Number of questions in the anonymous Basic taster (PRD U4).
+ *
+ * Drawn at random from the difficulty-0 pool, which content ops keeps at ~20
+ * (see GUEST_POOL_TARGET) — so a guest who retakes the taster sees a different
+ * paper each time, while total exposure stays capped at those 20 questions
+ * rather than spilling into the full bank.
+ */
+export const GUEST_BASIC_QUESTION_COUNT = 15;
 
 export function examQuestionCount(tier: AccessTier, certLevel: ExamCertLevel): number {
   if (tier === "GUEST" && certLevel === "BASIC") return GUEST_BASIC_QUESTION_COUNT;

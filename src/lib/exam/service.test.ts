@@ -77,15 +77,15 @@ describe("ExamService", () => {
     })).toBe(true);
   });
 
-  it("guests receive a 10-question Basic taster of difficulty 0 questions", async () => {
+  it("guests receive a 15-question Basic taster of difficulty 0 questions", async () => {
     const store = new InMemorySessionStore();
     const svc = new ExamService(store, () => 1_000, bank);
     const created = await svc.createMock("BASIC", "EN", 42, null, "GUEST");
     const session = await store.get(created.sessionId);
 
-    expect(created.total).toBe(10);
+    expect(created.total).toBe(15);
     expect(session?.userId).toBeNull();
-    expect(session?.questionIds.length).toBe(10);
+    expect(session?.questionIds.length).toBe(15);
     expect(session?.questionIds.every((id) => {
       const q = bank.questions.find((item) => item.id === id);
       return q?.difficulty === 0;
@@ -212,11 +212,11 @@ describe("ExamService", () => {
   });
 
   it("createMock defaults to the GUEST taster (least privilege) when tier omitted", async () => {
-    // SEC-02: an omitted accessTier must fail to the smallest pool (10-question
+    // SEC-02: an omitted accessTier must fail to the smallest pool (15-question
     // difficulty-0 Basic taster), never the full paid bank.
     const svc = newService();
     const created = await svc.createMock("BASIC", "EN", 42);
-    expect(created.total).toBe(10);
+    expect(created.total).toBe(15);
   });
 
   it("getReview() is null before submit", async () => {
