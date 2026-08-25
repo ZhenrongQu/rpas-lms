@@ -79,6 +79,52 @@ describe("PrismaSessionStore", () => {
     expect(got).toEqual(s);
   });
 
+  it("settleIfUnsubmitted writes submitted and result together, once (DEF-002)", async () => {
+    const store = new PrismaSessionStore();
+    await store.create(sampleSession("sess-settle"));
+
+    const settled = {
+      ...sampleSession("sess-settle"),
+      submitted: true,
+      result: {
+        total: 1,
+        correct: 0,
+        scorePct: 0,
+        passed: false,
+        bySubject: [],
+        timedOut: true,
+      },
+    };
+
+    expect(await store.settleIfUnsubmitted(settled)).toBe(true);
+    const got = await store.get("sess-settle");
+    expect(got!.submitted).toBe(true);
+    expect(got!.result!.timedOut).toBe(true);
+
+    // A second settler loses and must not overwrite the stored result.
+    const rival = { ...settled, result: { ...settled.result, correct: 99 } };
+    expect(await store.settleIfUnsubmitted(rival)).toBe(false);
+    expect((await store.get("sess-settle"))!.result!.correct).toBe(0);
+  });
+
+  it("settleIfUnsubmitted is atomic under concurrency — exactly one writer wins", async () => {
+    const store = new PrismaSessionStore();
+    await store.create(sampleSession("sess-race"));
+    const settled = {
+      ...sampleSession("sess-race"),
+      submitted: true,
+      result: { total: 1, correct: 0, scorePct: 0, passed: false, bySubject: [], timedOut: true },
+    };
+
+    const outcomes = await Promise.all([
+      store.settleIfUnsubmitted(settled),
+      store.settleIfUnsubmitted(settled),
+      store.settleIfUnsubmitted(settled),
+    ]);
+
+    expect(outcomes.filter(Boolean).length).toBe(1);
+  });
+
   it("is durable across store instances (real persistence)", async () => {
     await new PrismaSessionStore().create(sampleSession("sess-3"));
     const got = await new PrismaSessionStore().get("sess-3");

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { ExamService } from "./service";
 import { InsufficientQuestionPoolError } from "./errors";
-import { InMemorySessionStore } from "./store";
+import { InMemorySessionStore, type ExamSession } from "./store";
 import { makeTestBank } from "../content/__fixtures__/bank";
 import { correctOptionIds } from "./grade";
 import type { QuestionBank } from "../content/types";
@@ -327,5 +327,120 @@ describe("question pool sufficiency", () => {
     await expect(svc.createMock("BASIC", "EN", 1, "u1", "PAID")).rejects.toBeInstanceOf(
       InsufficientQuestionPoolError,
     );
+  });
+});
+
+// DEF-002 / PRD U2: the server used to trust the client timer. Close the tab
+// mid-exam and the session hung unsubmitted forever — the answers already saved
+// were, in effect, thrown away. Reading an expired session now grades it.
+describe("expired session lazy settlement", () => {
+  const NINETY_ONE_MINUTES = 91 * 60_000;
+
+  function clockedService(store = new InMemorySessionStore()) {
+    let now = 1_000;
+    const svc = new ExamService(store, () => now, bank);
+    return { svc, store, expire: () => { now = 1_000 + NINETY_ONE_MINUTES; } };
+  }
+
+  async function answerFirstCorrectly(svc: ExamService, store: InMemorySessionStore, sessionId: string) {
+    const session = await store.get(sessionId);
+    const q = session!.questionSnapshot[0];
+    await svc.answer(sessionId, q.id, correctOptionIds(q));
+  }
+
+  it("grades an abandoned exam from the answers saved before the timeout", async () => {
+    const { svc, store, expire } = clockedService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, "u1", "PAID");
+    await answerFirstCorrectly(svc, store, sessionId);
+
+    expire();
+    const result = await svc.getResult(sessionId);
+
+    expect(result).not.toBeNull();
+    expect(result!.timedOut).toBe(true);
+    expect(result!.total).toBe(35);
+    expect(result!.correct).toBe(1);
+    // …and it is persisted, not recomputed per read.
+    expect((await store.get(sessionId))!.submitted).toBe(true);
+  });
+
+  it("makes the settled exam reviewable, like a submitted one", async () => {
+    const { svc, expire } = clockedService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, "u1", "PAID");
+
+    expire();
+    const review = await svc.getReview(sessionId);
+
+    expect(review).not.toBeNull();
+    expect(review!.length).toBe(35);
+  });
+
+  it("settles exactly once under concurrent reads, and losers see the finished result", async () => {
+    class CountingStore extends InMemorySessionStore {
+      settles = 0;
+      async settleIfUnsubmitted(session: ExamSession): Promise<boolean> {
+        const won = await super.settleIfUnsubmitted(session);
+        if (won) this.settles++;
+        return won;
+      }
+    }
+    const store = new CountingStore();
+    const { svc, expire } = clockedService(store);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, "u1", "PAID");
+
+    expire();
+    const [result, review, meta] = await Promise.all([
+      svc.getResult(sessionId),
+      svc.getReview(sessionId),
+      svc.getSessionMeta(sessionId),
+    ]);
+
+    expect(store.settles).toBe(1);
+    // The readers that lost the race must still see a fully written row — a
+    // "submitted but no result yet" read is the hang this fix removes.
+    expect(result!.timedOut).toBe(true);
+    expect(review).not.toBeNull();
+    expect(meta).not.toBeNull();
+  });
+
+  it("submitting after the deadline returns the settled result rather than regrading", async () => {
+    const { svc, store, expire } = clockedService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, "u1", "PAID");
+    await answerFirstCorrectly(svc, store, sessionId);
+
+    expire();
+    const settled = await svc.getResult(sessionId);
+    const submitted = await svc.submit(sessionId);
+
+    expect(submitted).toEqual(settled);
+    expect(submitted!.timedOut).toBe(true);
+  });
+
+  it("leaves a normally submitted exam untouched", async () => {
+    const { svc, store, expire } = clockedService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, "u1", "PAID");
+    await answerFirstCorrectly(svc, store, sessionId);
+    const onTime = await svc.submit(sessionId);
+    expect(onTime!.timedOut).toBeUndefined();
+
+    expire();
+    expect(await svc.getResult(sessionId)).toEqual(onTime);
+  });
+
+  it("does not settle a session that is still running", async () => {
+    const { svc, store } = clockedService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, "u1", "PAID");
+
+    expect(await svc.getResult(sessionId)).toBeNull();
+    expect((await store.get(sessionId))!.submitted).toBe(false);
+  });
+
+  it("rejects new answers on an expired session", async () => {
+    const { svc, store, expire } = clockedService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, "u1", "PAID");
+    const q = (await store.get(sessionId))!.questionSnapshot[0];
+
+    expire();
+    expect(await svc.answer(sessionId, q.id, correctOptionIds(q))).toBe(false);
   });
 });

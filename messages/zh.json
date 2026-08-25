@@ -368,7 +368,8 @@
     "newMission": "新考试",
     "notFound": "未找到成绩。该 session 可能已过期或尚未提交。",
     "incorrectReview": "错题解析",
-    "noIncorrect": "没有错题。"
+    "noIncorrect": "没有错题。",
+    "timedOutNotice": "考试已超时，按超时前的作答判分。"
   },
   "review": {
     "title": "答案解析",

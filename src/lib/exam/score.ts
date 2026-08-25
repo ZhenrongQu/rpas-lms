@@ -13,6 +13,10 @@ export interface ExamResult {
   scorePct: number; // 0..1
   passed: boolean;
   bySubject: SubjectScore[];
+  /** Set when the server settled the exam on expiry rather than the learner
+   *  submitting it (PRD U2). Drives the "graded as of the timeout" notice and
+   *  lets analytics separate abandoned attempts from real ones. */
+  timedOut?: boolean;
 }
 
 /**

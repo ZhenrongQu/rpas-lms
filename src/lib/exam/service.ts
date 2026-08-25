@@ -80,19 +80,60 @@ export class ExamService {
     return session.questionSnapshot.find((q) => q.id === id);
   }
 
-  async getPublicQuestions(sessionId: string): Promise<PublicQuestion[] | null> {
-    const session = await this.store.get(sessionId);
-    if (!session) return null;
+  /** The session's questions, in order, from its own snapshot. */
+  private snapshotQuestions(session: ExamSession): Question[] {
     return session.questionIds
       .map((id) => this.questionById(session, id))
-      .filter((q): q is Question => Boolean(q))
+      .filter((q): q is Question => Boolean(q));
+  }
+
+  /** The single grading path. Both learner submission and expiry settlement go
+   *  through here, so a timed-out exam is never scored by different rules. */
+  private score(session: ExamSession): ExamResult {
+    return scoreExam(
+      this.snapshotQuestions(session),
+      session.answers,
+      EXAM_SPECS[session.certLevel].passThreshold,
+    );
+  }
+
+  /**
+   * The only way this service reads a session (DEF-002 / PRD U2).
+   *
+   * The server used to trust the client's timer to submit: close the tab mid-exam
+   * and the session hung unsubmitted forever, with the answers effectively lost.
+   * Now any read of an expired, unsubmitted session grades it from the answers
+   * already saved and persists the result — no cron, no new session concept.
+   *
+   * Settlement is idempotent under concurrency: the score is computed first and
+   * handed to `settleIfUnsubmitted`, which writes it atomically. Whoever loses
+   * that race re-reads the winner's finished row instead of scoring again.
+   */
+  private async loadSession(sessionId: string): Promise<ExamSession | null> {
+    const session = await this.store.get(sessionId);
+    if (!session) return null;
+    if (session.submitted || session.expiresAt > this.now()) return session;
+
+    const settled: ExamSession = {
+      ...session,
+      submitted: true,
+      result: { ...this.score(session), timedOut: true },
+    };
+    if (await this.store.settleIfUnsubmitted(settled)) return settled;
+    return this.store.get(sessionId);
+  }
+
+  async getPublicQuestions(sessionId: string): Promise<PublicQuestion[] | null> {
+    const session = await this.loadSession(sessionId);
+    if (!session) return null;
+    return this.snapshotQuestions(session)
       .map((q) => ({ ...q, options: orderedOptions(q.options, sessionId, q.id) }))
       .map((q) => toPublicQuestion(q, session.locale));
   }
 
   /** Returns false if session missing, already submitted, expired, or question not in session. */
   async answer(sessionId: string, questionId: string, selected: string[]): Promise<boolean> {
-    const session = await this.store.get(sessionId);
+    const session = await this.loadSession(sessionId);
     if (!session || session.submitted) return false;
     if (session.expiresAt <= this.now()) return false;
     if (!session.questionIds.includes(questionId)) return false;
@@ -103,17 +144,15 @@ export class ExamService {
 
   /** Scores the exam server-side, stores the result on the session, returns it. Always submittable (timer expiry auto-submits client-side). */
   async submit(sessionId: string): Promise<ExamResult | null> {
-    const session = await this.store.get(sessionId);
+    const session = await this.loadSession(sessionId);
     if (!session) return null;
+    // Already submitted — by the learner, or by expiry settlement inside
+    // loadSession, in which case the stored result carries timedOut.
     if (session.submitted) return session.result ?? null;
     session.submitted = true;
-    const questions = session.questionIds
-      .map((id) => this.questionById(session, id))
-      .filter((q): q is Question => Boolean(q));
-    const result = scoreExam(questions, session.answers, EXAM_SPECS[session.certLevel].passThreshold);
-    session.result = result;
+    session.result = this.score(session);
     await this.store.update(session);
-    return result;
+    return session.result;
   }
 
   async submitWithIncorrectReview(
@@ -127,36 +166,36 @@ export class ExamService {
 
   /** Minimal session metadata for the exam page (timer sizing). */
   async getSessionMeta(sessionId: string): Promise<{ certLevel: ExamCertLevel; expiresAt: number } | null> {
-    const session = await this.store.get(sessionId);
+    const session = await this.loadSession(sessionId);
     if (!session) return null;
     return { certLevel: session.certLevel, expiresAt: session.expiresAt };
   }
 
   async getSessionUserId(sessionId: string): Promise<string | null | undefined> {
-    const session = await this.store.get(sessionId);
+    const session = await this.loadSession(sessionId);
     return session ? session.userId ?? null : undefined;
   }
 
   /** For server components: expiresAt to initialize the client timer. */
   async getExpiresAt(sessionId: string): Promise<number | null> {
-    const session = await this.store.get(sessionId);
+    const session = await this.loadSession(sessionId);
     return session?.expiresAt ?? null;
   }
 
   /** For the results page: stored result (null if not submitted yet). */
   async getResult(sessionId: string): Promise<ExamResult | null> {
-    const session = await this.store.get(sessionId);
+    const session = await this.loadSession(sessionId);
     return session?.result ?? null;
   }
 
   /** Post-submission review (null if missing or not yet submitted). Server-only. */
   async getReview(sessionId: string): Promise<ReviewItem[] | null> {
-    const session = await this.store.get(sessionId);
+    const session = await this.loadSession(sessionId);
     if (!session || !session.submitted) return null;
-    const questions = session.questionIds
-      .map((id) => this.questionById(session, id))
-      .filter((q): q is Question => Boolean(q))
-      .map((q) => ({ ...q, options: orderedOptions(q.options, sessionId, q.id) }));
+    const questions = this.snapshotQuestions(session).map((q) => ({
+      ...q,
+      options: orderedOptions(q.options, sessionId, q.id),
+    }));
     return buildReview(questions, session.answers, session.locale);
   }
 }

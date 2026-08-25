@@ -39,6 +39,10 @@ export default async function ResultsPage({ params }: Props) {
 
   return (
     <div className="results-view">
+      {/* PRD U2: a server-settled exam must say so, or the learner reads a low
+          score as their real performance rather than an abandoned attempt. */}
+      {result.timedOut && <div className="result-timed-out">{t('results.timedOutNotice')}</div>}
+
       <div className="result-header">
         <div className={`result-status${passed ? ' pass' : ' fail'}`}>
           {passed ? t('results.missionComplete') : t('results.missionFailed')}
