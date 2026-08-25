@@ -41,6 +41,11 @@ scripts/eval/results.json
 !/README.md
 !/README.zh.md
 !/CLAUDE.md
+# Product & QA documentation IS tracked: the PRD is the source of truth for
+# business rules, and the QA assets (test plan, cases, checklists) must stay in
+# sync with the code they verify — local-only docs drift (see PRD §11).
+!/docs/product/**/*.md
+!/docs/qa/**/*.md
 
 # Operational/seed scripts — kept local only (read secrets from env at runtime).
 # Not a blanket scripts/ ignore: scripts/eval/* is tracked feature code.
