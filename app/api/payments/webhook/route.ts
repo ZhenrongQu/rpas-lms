@@ -11,6 +11,7 @@ import {
 } from "../../../../src/lib/payments/entitlements";
 import { getStripeClient } from "../../../../src/lib/payments/stripeClient";
 import { recordDispute, settleRefundFromStripe } from "../../../../src/lib/payments/refunds";
+import { capture } from "../../../../src/lib/analytics/posthog";
 
 type CheckoutSessionLike = {
   id: string;
@@ -79,6 +80,15 @@ export async function POST(req: Request): Promise<Response> {
       } else if (product === FLIGHT_REVIEW_PRODUCT) {
         await grantFlightReviewFromCheckout(grant);
       }
+
+      // U7 conversion funnel, final step. Captured here rather than on the
+      // success page because only the webhook knows the money actually landed —
+      // a browser that never reaches the redirect still paid.
+      await capture("payment_succeeded", userId, {
+        product: product ?? "unknown",
+        amountTotal: grant.amountTotal,
+        currency: grant.currency,
+      });
     }
   }
 

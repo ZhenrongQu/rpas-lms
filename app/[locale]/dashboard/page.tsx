@@ -25,6 +25,7 @@ import ProgressRing from '@/components/dashboard/ProgressRing';
 import ChangePasswordForm from '@/components/dashboard/ChangePasswordForm';
 import DeleteAccountForm from '@/components/dashboard/DeleteAccountForm';
 import RefundRequestForm from '@/components/dashboard/RefundRequestForm';
+import IdentifyUser from '@/components/analytics/IdentifyUser';
 import StudyAssistant from '@/components/dashboard/StudyAssistant';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -217,6 +218,10 @@ export default async function DashboardPage({ params }: Props) {
             <MockExamCard items={examItems} locale={locale} />
           </div>
         )}
+
+        {/* U7: links anonymous pre-signup activity to the account, and gives
+            Sentry the same id so errors can be joined to customers. */}
+        {userId && <IdentifyUser userId={userId} />}
 
         {/* ── Study assistant (paid feature; free users see an upsell) ── */}
         {userId && <StudyAssistant locale={locale} isPaid={isPaid} />}

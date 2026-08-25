@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import TrackView from '@/components/analytics/TrackView';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getCourseModules, getModuleLessonCount } from '@/lib/lessons/catalog';
@@ -17,6 +18,8 @@ export default async function CourseIndex({ params }: Props) {
 
   return (
     <div className="module-landing">
+      {/* U7 learning funnel, step 1: opening a course. */}
+      <TrackView event="course_started" />
       <Link href={`/${locale}/learn`} className="btn-review">↩ {t('learn.title')}</Link>
       <div className="dash-title">{t(`learn.${course}Course`)}</div>
       <ul className="lesson-index">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { track } from '@/lib/analytics/client';
 import { useTranslations } from 'next-intl';
 import { useLessonProgress } from '@/components/learn/lessonProgressContext';
 
@@ -50,6 +51,9 @@ export default function Checkpoint({ questionId, locale }: { questionId: string;
     if (!res.ok) return;
     const data = await res.json();
     setResult({ correct: data.correct, explanation: data.explanation });
+    // U7 learning funnel. `correct` rides along so the funnel can separate
+    // "engaged with the material" from "understood it".
+    track('checkpoint_answered', { questionId, correct: Boolean(data.correct) });
     if (data.correct) pass(questionId);
   }
 

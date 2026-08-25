@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { track } from '@/lib/analytics/client';
 
 /**
  * Marks the lesson complete once the reader reaches the end of its content
@@ -43,7 +44,10 @@ export default function AutoComplete({
       })
         // Refresh so the sidebar tick and dashboard progress reflect it without
         // making the reader navigate away and back.
-        .then(() => router.refresh())
+        .then(() => {
+          track('lesson_completed', { lessonId, trigger: 'scroll' });
+          router.refresh();
+        })
         .catch(() => { sent.current = false; });
     });
 

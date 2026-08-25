@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { track } from "@/lib/analytics/client";
 
 type Pending = { url: string; credits: number };
 
@@ -27,6 +28,9 @@ export default function PurchaseButton({
   async function startCheckout() {
     setLoading(true);
     setError(null);
+    // U7 conversion funnel: fired on intent, before the Stripe round-trip, so the
+    // drop-off between "clicked buy" and "paid" is measurable.
+    track("checkout_initiated", { product: product ?? "paid_access" });
     try {
       const res = await fetch("/api/payments/checkout", {
         method: "POST",

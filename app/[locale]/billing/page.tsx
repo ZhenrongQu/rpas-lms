@@ -6,6 +6,7 @@ import { countAvailableCredits } from '@/lib/flightReview/credits';
 import { ADVANCED_BUNDLE_PRODUCT, FLIGHT_REVIEW_PRODUCT } from '@/lib/payments/config';
 import { isNativeRequest } from '@/lib/platform.server';
 import PurchaseButton from '@/components/payments/PurchaseButton';
+import TrackView from '@/components/analytics/TrackView';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -64,6 +65,8 @@ export default async function BillingPage({ params }: Props) {
 
   return (
     <div className="auth-view">
+      {/* U7 conversion funnel: viewing pricing, before any checkout starts. */}
+      <TrackView event="pricing_viewed" userId={userId} />
       <div className="hud-panel" style={{ maxWidth: 560, width: '100%', display: 'flex', flexDirection: 'column', gap: 24, padding: 28 }}>
         <div>
           <h1 className="auth-title" style={{ marginBottom: 8 }}>{t('title')}</h1>
