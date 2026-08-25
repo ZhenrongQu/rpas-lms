@@ -105,6 +105,20 @@ export default async function TrackSplit({ locale }: { locale: string }) {
             </Link>
           </Reveal>
         </div>
+
+        {/* U6: a no-signup taster below the three tracks. The tracks grid is a
+            3-column subgrid whose cards share row tracks, so this sits under it
+            as its own full-width band rather than becoming a fourth column. */}
+        <Reveal className="taster-band" delay={0.24}>
+          <div className="taster-copy">
+            <span className="home-kicker">{t('taster.kicker')}</span>
+            <h3 className="taster-title">{t('taster.title')}</h3>
+            <p className="taster-body">{t('taster.body')}</p>
+          </div>
+          <Link href={`/${locale}/exam`} className="home-btn taster-cta">
+            {t('taster.cta')} →
+          </Link>
+        </Reveal>
       </div>
     </section>
   );

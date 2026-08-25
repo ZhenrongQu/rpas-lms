@@ -71,6 +71,12 @@
         ],
         "duration": "Approx. 1 hr · On-site",
         "cta": "Book a review"
+      },
+      "taster": {
+        "kicker": "No signup",
+        "title": "Try a mock exam right now",
+        "body": "Answer 15 real Basic-level questions in your browser — no account, no card. Sign up afterwards and the attempt follows you into your dashboard.",
+        "cta": "Start the free taster"
       }
     },
     "privileges": {
