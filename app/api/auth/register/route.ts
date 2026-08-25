@@ -4,6 +4,7 @@ import { registerLocalAccount } from "../../../../src/lib/auth/localAccount";
 import { requestVerificationCode } from "../../../../src/lib/auth/verificationCode";
 import { clientIp, enforceRateLimit } from "../../../../src/lib/security/rateLimit";
 import { claimGuestSession } from "../../../../src/lib/exam/guestClaim";
+import { enforceCodeSendLimit } from "../../../../src/lib/auth/codeSendLimit";
 
 // Each rule's message is a stable error code (not prose) so the client can map
 // it to a localized hint via the `auth.err.*` i18n keys.
@@ -53,12 +54,9 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "invalid body", fields }, { status: 400 });
   }
 
-  // SEC-11: per-target daily cap so a single inbox can't be used to rack up email cost.
-  const targetLimited = await enforceRateLimit(`register:email:${parsed.data.email.trim().toLowerCase()}`, {
-    limit: 8,
-    windowSec: 24 * 60 * 60,
-    blockSec: 24 * 60 * 60,
-  });
+  // SEC-11 / U8: 1 per minute and 10 per day for this address, so a single inbox
+  // can neither be flooded by repeated resends nor used to rack up email cost.
+  const targetLimited = await enforceCodeSendLimit("register", parsed.data.email);
   if (targetLimited) return targetLimited;
 
   try {
