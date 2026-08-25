@@ -178,6 +178,26 @@ describe("flight review eligibility runs on credits", () => {
     expect(await countAvailableCredits("u4")).toBe(2);
   });
 
+  it("an admin grant of course access mints the bundled review credit too", async () => {
+    await prisma.customer.create({ data: { id: "ag", email: "ag@test.local", accessTier: "FREE" } });
+
+    await grantPaidAccessEntitlement("ag");
+
+    // Without this the student holds the course but can never book the review it
+    // includes — canBookFlightReview no longer falls back to hasPaidAccess.
+    expect(await countAvailableCredits("ag")).toBe(1);
+    expect(await canBookFlightReview("ag")).toBe(true);
+  });
+
+  it("re-granting course access does not mint a second bundled credit", async () => {
+    await prisma.customer.create({ data: { id: "ag2", email: "ag2@test.local", accessTier: "FREE" } });
+
+    await grantPaidAccessEntitlement("ag2");
+    await grantPaidAccessEntitlement("ag2");
+
+    expect(await countAvailableCredits("ag2")).toBe(1);
+  });
+
   it("an admin can revoke a spendable credit, and says so when there is none", async () => {
     await prisma.customer.create({ data: { id: "u5", email: "u5@test.local", accessTier: "FREE" } });
     await grantFlightReviewCredit("u5");

@@ -29,16 +29,31 @@ export async function hasPaidAccess(userId: string): Promise<boolean> {
 /**
  * Admin-grants course access (idempotent; un-revokes if needed). Entitlement and
  * the denormalized `accessTier` cache move together — see revoke below for why.
+ *
+ * Also mints the bundled review credit, exactly as a paid checkout does (U13
+ * §13.4). `canBookFlightReview` no longer falls back to `hasPaidAccess`, so
+ * without this an admin-granted student would hold the course but could never
+ * book the review it includes.
+ *
+ * The credit is keyed on `source` rather than a payment id — there is no payment
+ * here. That is the same idempotency key the one-time migration uses, so the two
+ * agree on whether a customer has already been given their bundled credit.
  */
 export async function grantPaidAccessEntitlement(userId: string): Promise<void> {
-  await prisma.$transaction([
-    prisma.entitlement.upsert({
+  await prisma.$transaction(async (tx) => {
+    await tx.entitlement.upsert({
       where: { userId_product: { userId, product: ADVANCED_BUNDLE_PRODUCT } },
       create: { userId, product: ADVANCED_BUNDLE_PRODUCT, source: "admin_grant" },
       update: { source: "admin_grant", revokedAt: null },
-    }),
-    prisma.customer.updateMany({ where: { id: userId }, data: { accessTier: "PAID" } }),
-  ]);
+    });
+    await tx.customer.updateMany({ where: { id: userId }, data: { accessTier: "PAID" } });
+
+    const bundled = await tx.flightReviewCredit.findFirst({
+      where: { customerId: userId, source: "course_bundle" },
+      select: { id: true },
+    });
+    if (!bundled) await grantCredit(userId, "course_bundle", null, tx);
+  });
 }
 
 /**

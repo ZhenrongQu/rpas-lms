@@ -151,7 +151,14 @@ describe("verification code service", () => {
         verifyCode({ channel: "email", target: "race@example.com", code: "424242", now: at }),
       ),
     );
-    expect(results.filter((r) => r.ok).length).toBe(1);
+
+    // Reported with the losers' reasons, because the two failure directions mean
+    // completely different things and the count alone cannot tell them apart:
+    //   >1 succeeded → a single-use code was redeemed twice (security defect)
+    //    0 succeeded → nobody got through at all (transport/timeout, not a leak)
+    const succeeded = results.filter((r) => r.ok).length;
+    const reasons = results.filter((r) => !r.ok).map((r) => (r.ok ? "" : r.reason));
+    expect(succeeded, `succeeded=${succeeded}, loser reasons=[${reasons.join(",")}]`).toBe(1);
   });
 
   // P1-4: concurrent wrong guesses must each be counted — no undercount that

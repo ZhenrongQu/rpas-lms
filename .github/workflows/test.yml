@@ -21,7 +21,14 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      # Cheapest gate first, so a type error fails in seconds rather than minutes.
+      - run: pnpm typecheck
       - run: pnpm exec vitest run --reporter=json --outputFile=vitest-report.json
       - if: failure()
         uses: actions/upload-artifact@v4
         with: { name: vitest-report, path: vitest-report.json }
+      # Slowest gate last, and the only one that catches Server/Client boundary
+      # mistakes — a browser API in a Server Component compiles and passes vitest,
+      # then 500s in production. Needs no .env: every route is server-rendered on
+      # demand, so nothing reads runtime config at build time.
+      - run: pnpm build
