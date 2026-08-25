@@ -123,7 +123,24 @@ export function dbLessonToMeta(row: LessonRow, locale: RouteLocale): LessonMeta 
   };
 }
 
-/** Locale-specific raw MDX body for a Prisma Lesson row. */
-export function dbLessonBody(row: Pick<LessonRow, "bodyEN" | "bodyZH">, locale: RouteLocale): string {
-  return locale === "zh" ? row.bodyZH : row.bodyEN;
+/** A body counts as missing when it is null, empty, or only whitespace — an
+ *  untranslated lesson in the CMS is far more often a blank editor than a null. */
+export function hasBody(body: string | null | undefined): boolean {
+  return Boolean(body && body.trim().length > 0);
+}
+
+/**
+ * Locale-specific raw MDX body for a Prisma Lesson row, falling back to English
+ * when the requested language has none (PRD U10).
+ *
+ * `fellBack` drives the "no Chinese version yet" notice: serving English silently
+ * would leave a reader wondering whether they had hit a bug.
+ */
+export function dbLessonBody(
+  row: Pick<LessonRow, "bodyEN" | "bodyZH">,
+  locale: RouteLocale,
+): { body: string; fellBack: boolean } {
+  const preferred = locale === "zh" ? row.bodyZH : row.bodyEN;
+  if (hasBody(preferred)) return { body: preferred, fellBack: false };
+  return { body: row.bodyEN ?? "", fellBack: locale !== "en" && hasBody(row.bodyEN) };
 }

@@ -93,6 +93,11 @@ export default async function LessonPage({ params }: Props) {
         <h1 className="lesson-h1">{lesson.meta.title}</h1>
         <LessonShell lessonId={lesson.meta.lessonId} nextHref={nextHref} backHref={backHref}>
           {videoToken && <VideoPlayer token={videoToken} />}
+          {/* U10: serving English silently would read as a bug to a Chinese
+              reader. The notice is deliberately in the reader's own language. */}
+          {lesson.fellBackToEN && (
+            <p className="lesson-translation-notice">此课时暂无中文版本，以下为英文原文。</p>
+          )}
           <MDXContent source={lesson.body} />
           <LessonCheckpoints ids={checkpointIds} locale={locale} />
         </LessonShell>
