@@ -55,6 +55,7 @@ model Customer {
   advancedProgress AdvancedLessonProgress[]
   payments         Payment[]
   entitlements     Entitlement[]
+  refundRequests   RefundRequest[]
   flightReviewBookings FlightReviewBooking[]
   flightReviewCredits  FlightReviewCredit[]
 }
@@ -144,6 +145,7 @@ model Payment {
   status                  String
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
+  refundRequests          RefundRequest[]
 
   @@index([userId])
   @@index([product])
@@ -161,6 +163,31 @@ model Entitlement {
   @@index([userId])
   @@index([product])
   @@unique([userId, product])
+}
+
+// A customer-initiated refund request (PRD U5). Refunds are reviewed by a human
+// because only a person can weigh whether the thing being refunded was already
+// delivered — a review credit that has been consumed is a completed appointment,
+// not an unused purchase.
+model RefundRequest {
+  id        String    @id @default(cuid())
+  userId    String
+  user      Customer  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentId String
+  payment   Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  reason    String
+  // PENDING → APPROVED → REFUNDING → REFUNDED, or PENDING → REJECTED.
+  // REFUNDING exists because some payment methods refund asynchronously: the
+  // money is not back yet, so access must not be revoked until it is.
+  status    String    @default("PENDING")
+  adminNote String?
+  decidedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([status])
+  @@index([userId])
+  @@index([paymentId])
 }
 
 model WebhookEvent {

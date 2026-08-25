@@ -1312,6 +1312,10 @@ html, body {
 .admin-empty { margin-top: 16px; font-size: 14px; color: #6b7280; }
 
 /* Bank health (PRD U1): fail = exam creation is blocked for that tier. */
+.dash-refund-form { display: flex; flex-direction: column; gap: 10px; max-width: 460px; }
+.dash-refund-form select, .dash-refund-form textarea { width: 100%; }
+.dash-account-note { font-size: 13px; color: rgba(255, 255, 255, 0.7); }
+
 .admin-bank-health { margin-bottom: 24px; }
 .admin-bank-health h2 { font-size: 15px; margin-bottom: 8px; }
 .admin-table tr[data-health="warn"] { background: #fffbeb; }

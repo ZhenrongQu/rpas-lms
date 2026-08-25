@@ -7,6 +7,9 @@ type StripeLike = {
       create: (params: Stripe.Checkout.SessionCreateParams) => Promise<{ url: string | null }>;
     };
   };
+  refunds: {
+    create: (params: Stripe.RefundCreateParams) => Promise<{ id?: string; status?: string | null }>;
+  };
   webhooks: {
     constructEvent: (payload: string, signature: string, secret: string) => unknown;
   };
@@ -19,7 +22,9 @@ export function getStripeClient(): StripeLike {
   return new Stripe(getPaymentConfig().stripeSecretKey);
 }
 
-export function __setStripeClientForTests(client: StripeLike | null): void {
+/** Test doubles stub only the surface the case under test touches, so this takes
+ *  a Partial — a checkout test should not have to invent a refunds stub. */
+export function __setStripeClientForTests(client: Partial<StripeLike> | null): void {
   if (process.env.NODE_ENV !== "test") throw new Error("test override only");
-  testStripeClient = client;
+  testStripeClient = client as StripeLike | null;
 }

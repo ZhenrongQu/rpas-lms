@@ -10,6 +10,7 @@ import {
   grantFlightReviewFromCheckout,
 } from "../../../../src/lib/payments/entitlements";
 import { getStripeClient } from "../../../../src/lib/payments/stripeClient";
+import { recordDispute, settleRefundFromStripe } from "../../../../src/lib/payments/refunds";
 
 type CheckoutSessionLike = {
   id: string;
@@ -20,6 +21,9 @@ type CheckoutSessionLike = {
   amount_total?: number | null;
   currency?: string | null;
 };
+
+type ChargeLike = { payment_intent?: string | { id: string } | null };
+type DisputeLike = { payment_intent?: string | { id: string } | null };
 
 function idOf(value: string | { id: string } | null | undefined): string | null {
   if (!value) return null;
@@ -76,6 +80,22 @@ export async function POST(req: Request): Promise<Response> {
         await grantFlightReviewFromCheckout(grant);
       }
     }
+  }
+
+  // U5: money leaving has to withdraw what it bought, and this is the only path
+  // that covers a refund issued straight from the Stripe dashboard or an admin
+  // whose browser died mid-approval. Idempotent, so a retry is harmless.
+  if (event.type === "charge.refunded") {
+    const paymentIntentId = idOf((event.data.object as ChargeLike).payment_intent);
+    if (paymentIntentId) await settleRefundFromStripe(paymentIntentId);
+  }
+
+  // A disputing customer never files through the app, so without this the money
+  // leaves and access stays. Queued for review rather than revoked: a dispute can
+  // be won, and access should not vanish while it is still contested.
+  if (event.type === "charge.dispute.created") {
+    const paymentIntentId = idOf((event.data.object as DisputeLike).payment_intent);
+    if (paymentIntentId) await recordDispute(paymentIntentId);
   }
 
   // Grant (if any) succeeded — now mark the event processed so retries no-op.

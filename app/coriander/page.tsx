@@ -16,7 +16,11 @@ export default function AdminPage() {
         </Link>
         <Link href={`${ADMIN_BASE}/flight-review`} className="admin-card">
           <h2>Flight Reviews</h2>
-          <p>Manage bookable slots and student eligibility</p>
+          <p>Manage bookable slots and student review credits</p>
+        </Link>
+        <Link href={`${ADMIN_BASE}/refunds`} className="admin-card">
+          <h2>Refunds</h2>
+          <p>Review refund requests — approve, refund, and withdraw access</p>
         </Link>
       </div>
     </div>
