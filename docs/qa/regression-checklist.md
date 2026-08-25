@@ -129,15 +129,16 @@ entitlements.ts
 **必须回归**：
 - [ ] 权益判定表全部 5 种组合（见 [`payments.md`](./test-cases/payments.md) §4）
 - [ ] **AI 助手的 402 门禁**
-- [ ] 预约资格（PAID 与 FR-Only 两条路径）
-- [ ] Webhook 权益发放与幂等
-- [ ] 管理员授予/撤销
+- [ ] 预约资格 —— ⚠️ **2026-08-25 起只看券**（`canBookFlightReview` 已拆除 `hasPaidAccess` 分支）
+- [ ] Webhook 权益发放与幂等，**含发券去重**（同一 `paymentId` 重放不得多发券）
+- [ ] 管理员授予/撤销**券**
+- [ ] `revokePaidAccessEntitlement` 同时清掉权益与 `accessTier`
 - [ ] 移动端账户与仪表盘
 
 ### 2.4 `src/lib/exam/config.ts` — 考试规格
 
 **必须回归**：
-- [ ] 题量（Basic 35 / Advanced 50 / 游客 10）
+- [ ] 题量（Basic 35 / Advanced 50 / **游客 15**）
 - [ ] 及格线边界（65% / 80%）
 - [ ] 时限（90 / 60 分钟）
 - [ ] **各科目配额之和 = 总题量**
@@ -156,8 +157,10 @@ entitlements.ts
 - [ ] 完整支付链路（三张测试卡）
 - [ ] 重复事件幂等
 - [ ] 签名校验
-- [ ] 两个商品各自的权益发放
+- [ ] 两个商品各自的权益发放（**购课同时发 1 张审查券**）
 - [ ] `flight_review` **不改变** `accessTier`
+- [ ] `charge.refunded` 撤销对应权益 / 券，并把 `Payment.status` 置 `refunded`
+- [ ] `charge.dispute.created` 只建退款申请，**不撤销**权限
 
 ### 2.7 `prisma/schema.prisma` — 数据模型
 
@@ -165,8 +168,43 @@ entitlements.ts
 - [ ] `pnpm db:push` 在测试库成功
 - [ ] **全量测试通过**（schema 变更影响面无法静态分析）
 - [ ] 迁移在生产数据副本上演练
-- [ ] 唯一约束仍然生效（尤其 `FlightReviewBooking.slotId`）
+- [ ] ⚠️ **`pnpm db:indexes` 已执行** —— `prisma/sql/` 里的部分唯一索引 `db push` **不会**创建
+- [ ] 部分唯一索引生效：直接写库插入第二条 `BOOKED` 预约应报 P2002（同 slot / 同 customer 各一条）
 - [ ] 确认有回滚方案
+
+### 2.7b `src/lib/flightReview/credits.ts` — 审查券状态机（2026-08-25 新增）
+
+> 券是 Flight Review 的**唯一**资格来源，改这里等于改整个预约域的准入。
+
+```
+credits.ts
+├── src/lib/payments/entitlements.ts ──────► canBookFlightReview
+├── src/lib/flightReview/booking.ts ───────► 预约 / 改期 / 取消 / 完成
+├── src/lib/payments/refunds.ts ───────────► 退款撤销
+├── app/api/payments/checkout/route.ts ────► 可用券提示
+└── app/[locale]/billing/page.tsx ─────────► 券余额展示
+```
+
+**必须回归**：
+- [ ] 四态迁移全覆盖（可用 / 占用中 / 已消耗 / 已撤销）
+- [ ] 48 小时退券边界 —— **恰好 48h 退，47h59m 不退**
+- [ ] 改期不消耗第二张券
+- [ ] 预约失败（时段被占 / 无券）**不扣券**
+- [ ] 并发预约同一时段只成功一个
+- [ ] 迁移脚本幂等（`migrateFlightReviewCredits`）
+
+### 2.7c `src/lib/exam/service.ts` — 会话读取与惰性结算（2026-08-25 新增）
+
+> `loadSession` 是**所有**会话读路径的唯一入口。改它会同时影响做题、交卷、成绩、回顾、考试历史。
+
+**必须回归**：
+- [ ] 超时未交卷 → 读取即判分，且 `timedOut: true`
+- [ ] 并发读取只结算一次，**输的一方读到的是完整结果**（不是 `submitted` 为真但无 `result`）
+- [ ] 正常交卷的会话不被覆盖
+- [ ] 游客会话 24 小时后不可访问，已认领的会话不受此限
+- [ ] 考试历史里不再出现「永久进行中」的会话
+
+---
 
 ### 2.8 `auth.ts` / `middleware.ts` — 认证与路由
 

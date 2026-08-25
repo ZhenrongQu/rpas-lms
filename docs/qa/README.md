@@ -74,20 +74,23 @@
 
 ## 当前的关键结论
 
-### 已确认的缺陷（编写文档过程中通过代码审查发现，尚未执行任何测试）
+### 已确认的缺陷 —— 均已修复（2026-08-25）
 
-| ID | 问题 | Severity |
-|---|---|:---:|
-| **DEF-001** | `paid_access` 权益**无任何撤销路径** —— 退款后课程权限无法收回，只能手工改数据库 | **S1** |
-| **DEF-002** | 服务端不校验考试超时，**客户端未运行时超时会话永久悬挂**，作答事实上丢失 | S2 |
-| **DEF-003** | 题池不足时**静默生成题量不完整的试卷**，且及格线按实际题量计算 → 给出虚假的通过信号 | S2 |
+| ID | 问题 | Severity | 状态 |
+|---|---|:---:|:---:|
+| **DEF-001** | `paid_access` 权益**无任何撤销路径** —— 退款后课程权限无法收回，只能手工改数据库 | **S1** | ✅ 已修复 |
+| **DEF-002** | 服务端不校验考试超时，**客户端未运行时超时会话永久悬挂**，作答事实上丢失 | S2 | ✅ 已修复 |
+| **DEF-003** | 题池不足时**静默生成题量不完整的试卷**，且及格线按实际题量计算 → 给出虚假的通过信号 | S2 | ✅ 已修复 |
 
-> **修复方向已于 2026-08-24 由 PO 决策确定**（PRD 第 10 章 U5 / U2 / U1）：
-> - DEF-001 → 补齐 `revokePaidAccessEntitlement`（**必须与 `accessTier` 重置同事务**）+ 新增退款申请审核流程
-> - DEF-002 → 服务端惰性结算（读取会话时发现超时未交卷即自动判分落库）
-> - DEF-003 → 题池不足时**拒绝创建**，不再静默降级；CMS 增加题库健康度告警
->
-> 相关用例已同步更新为「验证决策后的目标行为」。**在修复实现之前，这些用例会失败——这是预期的**，它们此刻的作用是缺陷证据。
+**修复实现**（PRD 第 10 章 U5 / U2 / U1，2026-08-25 落地）：
+
+| ID | 实现 | 关键代码 |
+|---|---|---|
+| DEF-001 | `revokePaidAccessEntitlement` —— 权益撤销与 `accessTier` 重置**同一 `$transaction`**；管理端 `/coriander/entitlements`；用户端退款申请 + 管理端审核（U5） | `src/lib/payments/entitlements.ts`、`src/lib/payments/refunds.ts` |
+| DEF-002 | `ExamService.loadSession` 惰性结算，覆盖全部读路径（含考试历史）；结算幂等靠 `SessionStore.settleIfUnsubmitted` 的**条件写**，`submitted` 与 `result` 原子落库 | `src/lib/exam/service.ts`、`prismaStore.ts` |
+| DEF-003 | `createMock` 生成前校验**按等级过滤后**的题池；不足抛 `InsufficientQuestionPoolError` → 路由 409；CMS 题库健康度表 | `src/lib/exam/service.ts`、`src/lib/admin/bankHealth.ts` |
+
+> 相关用例已从「缺陷证据」转为**回归防线**：`service.test.ts` 的并发结算用例做过变异测试（退回「先抢占后写入」的两步实现即转红）。
 
 ### 最大的覆盖缺口
 
