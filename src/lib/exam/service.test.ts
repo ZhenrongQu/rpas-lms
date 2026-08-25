@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { ExamService } from "./service";
 import { InsufficientQuestionPoolError } from "./errors";
 import { InMemorySessionStore, type ExamSession } from "./store";
+import { GUEST_SESSION_TTL_MS } from "./config";
 import { makeTestBank } from "../content/__fixtures__/bank";
 import { correctOptionIds } from "./grade";
 import type { QuestionBank } from "../content/types";
@@ -442,5 +443,48 @@ describe("expired session lazy settlement", () => {
 
     expire();
     expect(await svc.answer(sessionId, q.id, correctOptionIds(q))).toBe(false);
+  });
+});
+
+// PRD U6: an anonymous session is reachable by its unguessable id alone, so it
+// should not stay addressable forever.
+describe("guest session lifetime", () => {
+  function serviceAt(startNow: number) {
+    let now = startNow;
+    return { svc: new ExamService(new InMemorySessionStore(), () => now, bank), set: (t: number) => { now = t; } };
+  }
+
+  it("stops serving an ownerless session after 24 hours", async () => {
+    const { svc, set } = serviceAt(1_000);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, null, "GUEST");
+
+    set(1_000 + GUEST_SESSION_TTL_MS + 1);
+
+    expect(await svc.getSessionMeta(sessionId)).toBeNull();
+    expect(await svc.getPublicQuestions(sessionId)).toBeNull();
+    expect(await svc.getResult(sessionId)).toBeNull();
+  });
+
+  it("keeps serving it right up to the boundary", async () => {
+    const { svc, set } = serviceAt(1_000);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, null, "GUEST");
+
+    set(1_000 + GUEST_SESSION_TTL_MS - 1);
+
+    expect(await svc.getSessionMeta(sessionId)).not.toBeNull();
+  });
+
+  it("does not expire a claimed session — ownership makes it permanent", async () => {
+    const store = new InMemorySessionStore();
+    let now = 1_000;
+    const svc = new ExamService(store, () => now, bank);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, null, "GUEST");
+
+    // Claiming is what registration does: it writes an owner onto the session.
+    const claimed = await store.get(sessionId);
+    await store.update({ ...claimed!, userId: "u1" });
+    now = 1_000 + GUEST_SESSION_TTL_MS * 10;
+
+    expect(await svc.getSessionMeta(sessionId)).not.toBeNull();
   });
 });

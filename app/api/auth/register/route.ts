@@ -3,6 +3,7 @@ import { sendVerificationCode } from "../../../../src/lib/auth/delivery";
 import { registerLocalAccount } from "../../../../src/lib/auth/localAccount";
 import { requestVerificationCode } from "../../../../src/lib/auth/verificationCode";
 import { clientIp, enforceRateLimit } from "../../../../src/lib/security/rateLimit";
+import { claimGuestSession } from "../../../../src/lib/exam/guestClaim";
 
 // Each rule's message is a stable error code (not prose) so the client can map
 // it to a localized hint via the `auth.err.*` i18n keys.
@@ -11,6 +12,9 @@ const RegisterBody = z.object({
   password: z.string({ required_error: "password_required" }).min(8, "password_length").max(72, "password_length"),
   username: z.string().min(6, "username_length").max(24, "username_length").regex(/^[a-zA-Z0-9]+$/, "username_charset").optional(),
   phone: z.string().min(7, "phone_length").optional(),
+  // U6: the taster the visitor just took, so it follows them into the account.
+  // Unverified input — claimGuestSession decides whether it may be claimed.
+  guestExamSessionId: z.string().min(1).max(64).optional(),
 }).strict();
 
 function statusForError(error: unknown): number {
@@ -58,7 +62,12 @@ export async function POST(req: Request): Promise<Response> {
   if (targetLimited) return targetLimited;
 
   try {
-    const user = await registerLocalAccount(parsed.data);
+    const { guestExamSessionId, ...credentials } = parsed.data;
+    const user = await registerLocalAccount(credentials);
+
+    // Best effort: a taster that cannot be claimed (already owned, or older than
+    // its 24-hour lifetime) must never fail the registration it rode along with.
+    if (guestExamSessionId) await claimGuestSession(guestExamSessionId, user.id);
     const requested = await requestVerificationCode({
       channel: "email",
       target: user.email ?? parsed.data.email,

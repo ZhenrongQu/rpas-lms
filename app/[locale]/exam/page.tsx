@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
+import { rememberGuestExamSession } from '@/lib/exam/guestSessionStorage';
 
 type CertLevel = 'BASIC' | 'ADVANCED';
 
@@ -29,6 +30,9 @@ export default function ExamLaunchPage() {
       if (!res.ok) throw new Error('Failed to create exam session');
       const { sessionId } = await res.json();
       if (!sessionId) throw new Error('Failed to create exam session');
+      // U6: if this turns out to be a guest taster, registering later claims it.
+      // Stored unconditionally — the server refuses to claim an owned session.
+      rememberGuestExamSession(sessionId);
       router.push(`/${locale}/exam/${sessionId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');

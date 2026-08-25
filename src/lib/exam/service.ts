@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { loadQuestionBankFromDB } from "../content/loadBank";
-import { EXAM_SPECS, examQuestionCount } from "./config";
+import { EXAM_SPECS, GUEST_SESSION_TTL_MS, examQuestionCount } from "./config";
 import { eligible, generateExam } from "./generate";
 import { InsufficientQuestionPoolError } from "./errors";
 import { mulberry32 } from "./rng";
@@ -112,6 +112,10 @@ export class ExamService {
   private async loadSession(sessionId: string): Promise<ExamSession | null> {
     const session = await this.store.get(sessionId);
     if (!session) return null;
+    // U6: an ownerless session is guarded only by its unguessable id, so it stops
+    // being addressable after 24 hours. Checked before settlement — there is no
+    // point grading a session nobody can reach, and no history for it to show up in.
+    if (!session.userId && session.startedAt + GUEST_SESSION_TTL_MS <= this.now()) return null;
     if (session.submitted || session.expiresAt > this.now()) return session;
 
     const settled: ExamSession = {

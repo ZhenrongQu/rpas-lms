@@ -16,6 +16,14 @@ export function examQuestionCount(tier: AccessTier, certLevel: ExamCertLevel): n
   return EXAM_SPECS[certLevel].totalQuestions;
 }
 
+/**
+ * How long an anonymous exam session stays reachable (PRD U6). An ownerless
+ * session is protected only by its unguessable id, so it should not stay
+ * addressable forever; 24 hours is long enough to finish or come back to a
+ * taster, and registering within that window claims it permanently.
+ */
+export const GUEST_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+
 export interface ExamSpec {
   totalQuestions: number;
   timeLimitMinutes: number;
