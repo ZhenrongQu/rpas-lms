@@ -1312,6 +1312,9 @@ html, body {
 .admin-empty { margin-top: 16px; font-size: 14px; color: #6b7280; }
 
 /* Bank health (PRD U1): fail = exam creation is blocked for that tier. */
+/* Zero-height marker the auto-complete observer watches (PRD U11). */
+.lesson-end-sentinel { height: 1px; }
+
 .lesson-translation-notice {
   font-size: 13px; color: var(--amber, #b45309);
   border-left: 3px solid currentColor; padding: 8px 12px; margin-bottom: 16px;

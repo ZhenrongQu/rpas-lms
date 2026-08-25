@@ -91,7 +91,12 @@ export default async function LessonPage({ params }: Props) {
       />
       <article className="lesson-main">
         <h1 className="lesson-h1">{lesson.meta.title}</h1>
-        <LessonShell lessonId={lesson.meta.lessonId} nextHref={nextHref} backHref={backHref}>
+        <LessonShell
+          lessonId={lesson.meta.lessonId}
+          nextHref={nextHref}
+          backHref={backHref}
+          autoComplete={Boolean(userId)}
+        >
           {videoToken && <VideoPlayer token={videoToken} />}
           {/* U10: serving English silently would read as a bug to a Chinese
               reader. The notice is deliberately in the reader's own language. */}

@@ -35,4 +35,30 @@ describe("lesson progress", () => {
     expect(await listCompletedLessonIds("u1")).toEqual([BASIC_LESSON]);
     expect(await listCompletedLessonIds("u2")).toEqual([ADVANCED_LESSON]);
   });
+
+  // PRD U11: a lesson can now be completed two ways — the button, and scrolling
+  // to the end. Both go through markLessonComplete, so they must land on the same
+  // row and revisiting must not undo anything.
+  describe("automatic and manual completion", () => {
+    it("auto and manual marking share one row rather than racing each other", async () => {
+      await Promise.all([
+        markLessonComplete("u1", BASIC_LESSON), // scrolled to the end
+        markLessonComplete("u1", BASIC_LESSON), // pressed the button
+      ]);
+
+      expect(await prisma.basicLessonProgress.count({ where: { userId: "u1" } })).toBe(1);
+    });
+
+    it("revisiting a finished lesson does not clear it or move its timestamp", async () => {
+      await markLessonComplete("u1", BASIC_LESSON);
+      const first = await prisma.basicLessonProgress.findFirstOrThrow({ where: { userId: "u1" } });
+
+      await markLessonComplete("u1", BASIC_LESSON); // reader comes back to review
+
+      const second = await prisma.basicLessonProgress.findFirstOrThrow({ where: { userId: "u1" } });
+      expect(second.id).toBe(first.id);
+      expect(second.completedAt).toEqual(first.completedAt);
+      expect(await listCompletedLessonIds("u1")).toEqual([BASIC_LESSON]);
+    });
+  });
 });
