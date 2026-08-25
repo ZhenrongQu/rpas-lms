@@ -16,8 +16,22 @@ pnpm test             # vitest run (see DB requirement below)
 pnpm test:watch
 pnpm db:generate      # prisma generate
 pnpm db:push          # prisma db push (sync schema to DATABASE_URL)
+pnpm db:indexes       # apply prisma/sql/*.sql — partial unique indexes db push CANNOT create
+pnpm db:verify        # deploy gate: exits non-zero if indexes or the credit migration are missing
 pnpm seed:content     # tsx scripts/seed-content.ts (loads lessons/questions into DB)
 ```
+
+**`db:push` is not sufficient on its own.** Partial (WHERE-clause) unique indexes
+are not expressible in the Prisma schema, so `db:indexes` must follow every push —
+in test setup (handled by `vitest.globalSetup.ts`) and in production. Skipping it
+fails silently: the Flight Review booking uniqueness guarantees quietly degrade to
+application-level checks. `db:verify` is what turns that silence into a failure;
+the full deploy sequence is in `docs/qa/release-checklist.md` §1.7.1.
+
+**pnpm is pinned** via `packageManager` in `package.json`. If `node_modules` was
+built by a different pnpm major, every `pnpm add` fails with a store-location
+error and the only fix is `rm -rf node_modules && pnpm install`. Check with
+`grep packageManager node_modules/.modules.yaml`.
 
 Run a single test file / test:
 
