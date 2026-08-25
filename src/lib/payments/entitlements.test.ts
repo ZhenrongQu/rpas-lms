@@ -3,9 +3,11 @@ import { prisma } from "../db";
 import {
   canBookFlightReview,
   grantFlightReviewEntitlement,
+  grantPaidAccessEntitlement,
   grantPaidAccessFromCheckout,
   hasPaidAccess,
   revokeFlightReviewEntitlement,
+  revokePaidAccessEntitlement,
 } from "./entitlements";
 
 describe("payment entitlements", () => {
@@ -40,6 +42,71 @@ describe("payment entitlements", () => {
     expect(user.stripeCustomerId).toBe("cus_1");
     expect(await prisma.payment.count()).toBe(1);
     expect(await prisma.entitlement.count()).toBe(1);
+  });
+});
+
+// DEF-001 / PRD U5: paid_access had no revocation path — a refunded customer kept
+// course access forever. Revocation must clear BOTH sides of `hasPaidAccess`
+// (the Entitlement row AND the denormalized accessTier cache) in one transaction.
+describe("paid access revocation", () => {
+  beforeEach(async () => {
+    await prisma.webhookEvent.deleteMany();
+    await prisma.payment.deleteMany();
+    await prisma.entitlement.deleteMany();
+    await prisma.customer.deleteMany();
+  });
+
+  it("revokes the entitlement and resets accessTier to FREE", async () => {
+    await prisma.customer.create({ data: { id: "u1", email: "u1@test.local", accessTier: "FREE" } });
+    await grantPaidAccessFromCheckout({ id: "cs_test_1", userId: "u1" });
+    expect(await hasPaidAccess("u1")).toBe(true);
+
+    await revokePaidAccessEntitlement("u1");
+
+    expect(await hasPaidAccess("u1")).toBe(false);
+    const user = await prisma.customer.findUniqueOrThrow({ where: { id: "u1" } });
+    expect(user.accessTier).toBe("FREE");
+    const ent = await prisma.entitlement.findFirstOrThrow({ where: { userId: "u1" } });
+    expect(ent.revokedAt).not.toBeNull();
+  });
+
+  it("resets a legacy PAID user that has no entitlement row", async () => {
+    await prisma.customer.create({ data: { id: "u2", email: "u2@test.local", accessTier: "PAID" } });
+    expect(await hasPaidAccess("u2")).toBe(true);
+
+    await revokePaidAccessEntitlement("u2");
+
+    expect(await hasPaidAccess("u2")).toBe(false);
+    const user = await prisma.customer.findUniqueOrThrow({ where: { id: "u2" } });
+    expect(user.accessTier).toBe("FREE");
+  });
+
+  it("is idempotent — a second revoke neither throws nor moves revokedAt", async () => {
+    await prisma.customer.create({ data: { id: "u3", email: "u3@test.local", accessTier: "FREE" } });
+    await grantPaidAccessFromCheckout({ id: "cs_test_3", userId: "u3" });
+
+    await revokePaidAccessEntitlement("u3");
+    const first = await prisma.entitlement.findFirstOrThrow({ where: { userId: "u3" } });
+
+    await revokePaidAccessEntitlement("u3");
+    const second = await prisma.entitlement.findFirstOrThrow({ where: { userId: "u3" } });
+
+    expect(second.revokedAt).toEqual(first.revokedAt);
+    expect(await hasPaidAccess("u3")).toBe(false);
+  });
+
+  it("an admin grant re-unlocks a previously revoked customer", async () => {
+    await prisma.customer.create({ data: { id: "u4", email: "u4@test.local", accessTier: "FREE" } });
+    await grantPaidAccessEntitlement("u4");
+    expect(await hasPaidAccess("u4")).toBe(true);
+
+    await revokePaidAccessEntitlement("u4");
+    expect(await hasPaidAccess("u4")).toBe(false);
+
+    await grantPaidAccessEntitlement("u4");
+    expect(await hasPaidAccess("u4")).toBe(true);
+    const user = await prisma.customer.findUniqueOrThrow({ where: { id: "u4" } });
+    expect(user.accessTier).toBe("PAID");
   });
 });
 

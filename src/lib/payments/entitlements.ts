@@ -24,6 +24,42 @@ export async function hasPaidAccess(userId: string): Promise<boolean> {
   return user?.accessTier === "PAID";
 }
 
+/**
+ * Admin-grants course access (idempotent; un-revokes if needed). Entitlement and
+ * the denormalized `accessTier` cache move together — see revoke below for why.
+ */
+export async function grantPaidAccessEntitlement(userId: string): Promise<void> {
+  await prisma.$transaction([
+    prisma.entitlement.upsert({
+      where: { userId_product: { userId, product: ADVANCED_BUNDLE_PRODUCT } },
+      create: { userId, product: ADVANCED_BUNDLE_PRODUCT, source: "admin_grant" },
+      update: { source: "admin_grant", revokedAt: null },
+    }),
+    prisma.customer.updateMany({ where: { id: userId }, data: { accessTier: "PAID" } }),
+  ]);
+}
+
+/**
+ * Revokes course access (refund, chargeback, admin action). DEF-001 / PRD U5.
+ *
+ * `hasPaidAccess` is an OR of two sources — the Entitlement row and the
+ * denormalized `Customer.accessTier` cache — so clearing only one leaves the
+ * user still paid. Both must move in ONE transaction: a partial failure would
+ * leave exactly the inconsistent state this decision exists to eliminate.
+ *
+ * Idempotent: the `revokedAt: null` filter means a second call is a no-op and
+ * does not push the original revocation timestamp forward.
+ */
+export async function revokePaidAccessEntitlement(userId: string): Promise<void> {
+  await prisma.$transaction([
+    prisma.entitlement.updateMany({
+      where: { userId, product: ADVANCED_BUNDLE_PRODUCT, revokedAt: null },
+      data: { revokedAt: new Date() },
+    }),
+    prisma.customer.updateMany({ where: { id: userId }, data: { accessTier: "FREE" } }),
+  ]);
+}
+
 /** True when the user holds an active (not revoked) flight_review entitlement. */
 export async function hasFlightReviewEntitlement(userId: string): Promise<boolean> {
   const entitlement = await prisma.entitlement.findUnique({
