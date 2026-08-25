@@ -17,7 +17,7 @@ import { listCompletedLessonIds } from '@/lib/lessons/progress';
 import { getResumeLesson } from '@/lib/lessons/resume';
 import type { Course, RouteLocale } from '@/lib/lessons/types';
 import { canBookFlightReview } from '@/lib/payments/entitlements';
-import { getUserBooking } from '@/lib/flightReview/booking';
+import { getActiveBooking } from '@/lib/flightReview/booking';
 import { listUserExamHistory, type ExamHistoryItem } from '@/lib/exam/history';
 import FlightReviewPanel from '@/components/dashboard/FlightReviewPanel';
 import MockExamCard from '@/components/dashboard/MockExamCard';
@@ -51,7 +51,7 @@ export default async function DashboardPage({ params }: Props) {
       getCourseLessonCount('basic'),
       getCourseLessonCount('advanced'),
       userId ? canBookFlightReview(userId) : Promise.resolve(false),
-      userId ? getUserBooking(userId) : Promise.resolve(null),
+      userId ? getActiveBooking(userId) : Promise.resolve(null),
       userId ? listUserExamHistory(userId, 20) : Promise.resolve<ExamHistoryItem[]>([]),
     ]);
 

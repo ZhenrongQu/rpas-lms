@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, POST, DELETE } from "./route";
 import { readMobileSession } from "../../../../src/lib/mobile/session";
-import { canBookFlightReview } from "../../../../src/lib/payments/entitlements";
+import {
+  canBookFlightReview,
+  canManageFlightReviewBooking,
+} from "../../../../src/lib/payments/entitlements";
 import {
   listOpenSlots,
-  getUserBooking,
+  getActiveBooking,
   bookSlot,
   cancelBooking,
 } from "../../../../src/lib/flightReview/booking";
@@ -25,10 +28,13 @@ vi.mock("../../../../src/lib/mobile/session", () => ({
     return token ? token : null;
   },
 }));
-vi.mock("../../../../src/lib/payments/entitlements", () => ({ canBookFlightReview: vi.fn() }));
+vi.mock("../../../../src/lib/payments/entitlements", () => ({
+  canBookFlightReview: vi.fn(),
+  canManageFlightReviewBooking: vi.fn(),
+}));
 vi.mock("../../../../src/lib/flightReview/booking", () => ({
   listOpenSlots: vi.fn(),
-  getUserBooking: vi.fn(),
+  getActiveBooking: vi.fn(),
   bookSlot: vi.fn(),
   cancelBooking: vi.fn(),
 }));
@@ -66,8 +72,8 @@ describe("mobile flight-review route", () => {
 
   it("GET returns eligibility, current booking, and open slots", async () => {
     vi.mocked(canBookFlightReview).mockResolvedValue(true);
-    vi.mocked(getUserBooking).mockResolvedValue(null as never);
-    vi.mocked(listOpenSlots).mockResolvedValue([{ ...slot, booking: null }] as never);
+    vi.mocked(getActiveBooking).mockResolvedValue(null as never);
+    vi.mocked(listOpenSlots).mockResolvedValue([{ ...slot, bookings: [] }] as never);
 
     const res = await GET(req("GET"));
     expect(res.status).toBe(200);
@@ -87,7 +93,7 @@ describe("mobile flight-review route", () => {
   });
 
   it("POST books a slot and emails confirmation", async () => {
-    vi.mocked(canBookFlightReview).mockResolvedValue(true);
+    vi.mocked(canManageFlightReviewBooking).mockResolvedValue(true);
     vi.mocked(bookSlot).mockResolvedValue({
       ok: true,
       booking: { id: "bk_1", slot },
@@ -115,7 +121,7 @@ describe("mobile flight-review route", () => {
   });
 
   it("POST is rejected when not eligible", async () => {
-    vi.mocked(canBookFlightReview).mockResolvedValue(false);
+    vi.mocked(canManageFlightReviewBooking).mockResolvedValue(false);
 
     const res = await POST(req("POST", { slotId: "slot_1" }));
     expect(res.status).toBe(403);
@@ -124,7 +130,7 @@ describe("mobile flight-review route", () => {
   });
 
   it("POST returns 409 when the slot is taken", async () => {
-    vi.mocked(canBookFlightReview).mockResolvedValue(true);
+    vi.mocked(canManageFlightReviewBooking).mockResolvedValue(true);
     vi.mocked(bookSlot).mockResolvedValue({ ok: false, error: "slot_taken" } as never);
 
     const res = await POST(req("POST", { slotId: "slot_1" }));
@@ -133,7 +139,10 @@ describe("mobile flight-review route", () => {
   });
 
   it("DELETE cancels the booking", async () => {
-    vi.mocked(cancelBooking).mockResolvedValue({ id: "bk_1", slot } as never);
+    vi.mocked(cancelBooking).mockResolvedValue({
+      booking: { id: "bk_1", slot },
+      creditRefunded: true,
+    } as never);
 
     const res = await DELETE(req("DELETE"));
     expect(res.status).toBe(200);

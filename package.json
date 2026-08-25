@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "db:indexes": "tsx scripts/apply-db-indexes.ts",
     "seed:content": "tsx scripts/seed-content.ts",
     "eval:assistant": "tsx scripts/eval/run.ts",
     "remediation:smoke": "tsx scripts/agents/remediation-smoke.ts",

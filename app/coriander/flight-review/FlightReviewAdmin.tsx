@@ -15,11 +15,12 @@ type Slot = {
   examinerPhone: string | null;
   notes: string | null;
   status: string;
-  booking: { name: string; email: string | null; phone: string | null } | null;
+  booking: { id: string; name: string; email: string | null; phone: string | null } | null;
 };
 
 const SLOTS_API = `${ADMIN_API_BASE}/flight-review/slots`;
 const GRANT_API = `${ADMIN_API_BASE}/flight-review/grant`;
+const BOOKINGS_API = `${ADMIN_API_BASE}/flight-review/bookings`;
 
 export default function FlightReviewAdmin({ initialSlots }: { initialSlots: Slot[] }) {
   const router = useRouter();
@@ -112,7 +113,22 @@ export default function FlightReviewAdmin({ initialSlots }: { initialSlots: Slot
       return;
     }
     const ok = await send(GRANT_API, method, { email: grantEmail });
-    if (ok) setMsg(method === "POST" ? `Granted flight_review to ${grantEmail}.` : `Revoked flight_review from ${grantEmail}.`);
+    if (ok) {
+      setMsg(
+        method === "POST"
+          ? `Granted 1 review credit to ${grantEmail}.`
+          : `Revoked 1 unused review credit from ${grantEmail}.`,
+      );
+    }
+  }
+
+  // A review is closed out by a person, not a timer: only the examiner knows
+  // whether the student actually showed up. Either outcome burns the credit.
+  async function close(bookingId: string, outcome: "COMPLETED" | "NO_SHOW") {
+    const label = outcome === "COMPLETED" ? "completed" : "a no-show";
+    if (!window.confirm(`Mark this review as ${label}? This uses up the student's credit.`)) return;
+    const ok = await send(`${BOOKINGS_API}/${bookingId}/close`, "POST", { outcome });
+    if (ok) setMsg(`Review marked ${label}.`);
   }
 
   return (
@@ -120,8 +136,12 @@ export default function FlightReviewAdmin({ initialSlots }: { initialSlots: Slot
       {msg && <p className="admin-empty">{msg}</p>}
 
       <section style={{ marginBottom: 24 }}>
-        <h2>Eligibility</h2>
-        <p className="admin-empty">Grant or revoke the flight_review entitlement. The student also needs PAID access.</p>
+        <h2>Review credits</h2>
+        <p className="admin-empty">
+          A Flight Review is a one-shot credit: buying the course bundle or the add-on mints one,
+          booking holds it, and completing (or no-showing) uses it up. Revoke only takes back a
+          credit the student has not spent.
+        </p>
         <div className="admin-filters">
           <input
             type="email"
@@ -194,6 +214,16 @@ export default function FlightReviewAdmin({ initialSlots }: { initialSlots: Slot
                 )}
               </td>
               <td>
+                {s.booking ? (
+                  <>
+                    <button type="button" disabled={busy} onClick={() => close(s.booking!.id, "COMPLETED")}>
+                      Mark completed
+                    </button>{" "}
+                    <button type="button" disabled={busy} onClick={() => close(s.booking!.id, "NO_SHOW")}>
+                      No-show
+                    </button>{" "}
+                  </>
+                ) : null}
                 <button type="button" disabled={busy} onClick={() => toggleArchive(s)}>
                   {s.status === "ACTIVE" ? "Archive" : "Unarchive"}
                 </button>{" "}

@@ -9,7 +9,8 @@ export async function GET(): Promise<Response> {
 
   const slots = await prisma.flightReviewSlot.findMany({
     include: {
-      booking: {
+      bookings: {
+        where: { status: "BOOKED" },
         include: { customer: { select: { displayName: true, email: true, phone: true } } },
       },
     },

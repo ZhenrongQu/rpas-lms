@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { requireMobileAccount } from "../../../../src/lib/mobile/account";
-import { canBookFlightReview } from "../../../../src/lib/payments/entitlements";
+import { canBookFlightReview, canManageFlightReviewBooking } from "../../../../src/lib/payments/entitlements";
 import {
   listOpenSlots,
-  getUserBooking,
+  getActiveBooking,
   bookSlot,
   cancelBooking,
 } from "../../../../src/lib/flightReview/booking";
@@ -41,7 +41,7 @@ export async function GET(req: Request): Promise<Response> {
 
   const [eligible, booking, slots] = await Promise.all([
     canBookFlightReview(auth.account.userId),
-    getUserBooking(auth.account.userId),
+    getActiveBooking(auth.account.userId),
     listOpenSlots(),
   ]);
 
@@ -56,7 +56,7 @@ export async function GET(req: Request): Promise<Response> {
 export async function POST(req: Request): Promise<Response> {
   const auth = await requireMobileAccount(req);
   if (!auth.ok) return auth.response;
-  if (!(await canBookFlightReview(auth.account.userId))) {
+  if (!(await canManageFlightReviewBooking(auth.account.userId))) {
     return Response.json({ error: "not_eligible" }, { status: 403 });
   }
 
@@ -100,7 +100,7 @@ export async function DELETE(req: Request): Promise<Response> {
     await notifyCancellation({
       student: { email: auth.account.email, name: auth.account.name ?? auth.account.email },
       locale: localeFrom(req),
-      slot: removed.slot,
+      slot: removed.booking.slot,
     });
   }
 

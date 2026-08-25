@@ -5,10 +5,10 @@ import { FLIGHT_REVIEW_PRODUCT } from '@/lib/payments/config';
 import { formatSlotDateTime } from '@/lib/flightReview/format';
 import PurchaseButton from '@/components/payments/PurchaseButton';
 import { isNativeRequest } from '@/lib/platform.server';
-import type { getUserBooking } from '@/lib/flightReview/booking';
+import type { getActiveBooking } from '@/lib/flightReview/booking';
 import FlightReviewActions from './FlightReviewActions';
 
-type Booking = Awaited<ReturnType<typeof getUserBooking>>;
+type Booking = Awaited<ReturnType<typeof getActiveBooking>>;
 
 /** Flight-review status card. Eligibility/booking/native are computed once on the
  *  dashboard page (also feeds the KPI stat) and passed in to avoid duplicate queries. */
@@ -55,7 +55,7 @@ export default async function FlightReviewPanel({
               <span className="fr-value">{booking.slot.examinerName}</span>
             </span>
           </div>
-          <FlightReviewActions locale={locale} canReschedule={eligible} />
+          <FlightReviewActions locale={locale} />
         </div>
       ) : eligible ? (
         <div className="fr-panel-cta">

@@ -1,8 +1,8 @@
 import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { auth } from '../../../auth';
-import { canBookFlightReview } from '@/lib/payments/entitlements';
-import { listOpenSlots, getUserBooking } from '@/lib/flightReview/booking';
+import { canManageFlightReviewBooking } from '@/lib/payments/entitlements';
+import { listOpenSlots, getActiveBooking } from '@/lib/flightReview/booking';
 import BookingClient from '@/components/flightReview/BookingClient';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -13,9 +13,9 @@ export default async function FlightReviewPage({ params }: Props) {
   if (!session?.user?.id) redirect(`/${locale}/signin`);
 
   const userId = session.user.id;
-  if (!(await canBookFlightReview(userId))) redirect(`/${locale}/dashboard`);
+  if (!(await canManageFlightReviewBooking(userId))) redirect(`/${locale}/dashboard`);
 
-  const [slots, booking] = await Promise.all([listOpenSlots(), getUserBooking(userId)]);
+  const [slots, booking] = await Promise.all([listOpenSlots(), getActiveBooking(userId)]);
   const t = await getTranslations({ locale });
 
   const slotData = slots.map((s) => ({

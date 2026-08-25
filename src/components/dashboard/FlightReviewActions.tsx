@@ -5,13 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
-export default function FlightReviewActions({
-  locale,
-  canReschedule,
-}: {
-  locale: string;
-  canReschedule: boolean;
-}) {
+export default function FlightReviewActions({ locale }: { locale: string }) {
   const t = useTranslations('flightReview');
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -26,11 +20,9 @@ export default function FlightReviewActions({
 
   return (
     <div className="fr-actions">
-      {canReschedule && (
-        <Link href={`/${locale}/flight-review`} className="btn-review">
-          {t('reschedule')}
-        </Link>
-      )}
+      <Link href={`/${locale}/flight-review`} className="btn-review">
+        {t('reschedule')}
+      </Link>
       <button type="button" className="btn-cancel" onClick={cancel} disabled={busy}>
         {t('cancel')}
       </button>

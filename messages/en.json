@@ -277,6 +277,7 @@
     "flightTitle": "Flight Review",
     "flightBody": "Book your in-person flight review with a Transport Canada examiner.",
     "flightCta": "Add Flight Review",
+    "reviewCredits": "You have {count} unused review credit(s)",
     "owned": "✓ Already on your account",
     "manageOnWeb": "Purchases are managed on the web. Open pacificdrone.ca in your browser to upgrade."
   },

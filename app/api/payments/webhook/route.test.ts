@@ -23,6 +23,7 @@ describe("POST /api/payments/webhook", () => {
   beforeEach(async () => {
     __setStripeClientForTests(null);
     await prisma.webhookEvent.deleteMany();
+    await prisma.flightReviewCredit.deleteMany();
     await prisma.payment.deleteMany();
     await prisma.entitlement.deleteMany();
     await prisma.customer.deleteMany();
@@ -104,7 +105,7 @@ describe("POST /api/payments/webhook", () => {
     expect(await prisma.entitlement.count()).toBe(1);
   });
 
-  it("grants the flight_review entitlement without changing access tier", async () => {
+  it("mints a review credit without changing access tier", async () => {
     const flightReviewEvent = {
       id: "evt_fr",
       type: "checkout.session.completed",
@@ -134,9 +135,9 @@ describe("POST /api/payments/webhook", () => {
 
     const user = await prisma.customer.findUniqueOrThrow({ where: { id: "u1" } });
     expect(user.accessTier).toBe("FREE"); // unchanged — Flight Review is an add-on
-    const entitlement = await prisma.entitlement.findUnique({
-      where: { userId_product: { userId: "u1", product: "flight_review" } },
-    });
-    expect(entitlement).not.toBeNull();
+    // U13: the add-on is a consumable credit now, not a standing entitlement.
+    const credits = await prisma.flightReviewCredit.findMany({ where: { customerId: "u1" } });
+    expect(credits.length).toBe(1);
+    expect(credits[0].source).toBe("stripe_checkout");
   });
 });

@@ -277,6 +277,7 @@
     "flightTitle": "飞行考核",
     "flightBody": "预约与加拿大交通部考官的线下飞行考核。",
     "flightCta": "加购飞行考核",
+    "reviewCredits": "你当前有 {count} 张未使用的审查券",
     "owned": "✓ 已在你的账户中",
     "manageOnWeb": "购买在网页端进行。请在浏览器打开 pacificdrone.ca 升级。"
   },

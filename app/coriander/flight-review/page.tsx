@@ -4,7 +4,11 @@ import FlightReviewAdmin from "./FlightReviewAdmin";
 export default async function AdminFlightReviewPage() {
   const slots = await prisma.flightReviewSlot.findMany({
     include: {
-      booking: { include: { customer: { select: { displayName: true, email: true, phone: true } } } },
+      // Only the in-progress booking occupies the slot; cancelled ones are history.
+      bookings: {
+        where: { status: "BOOKED" },
+        include: { customer: { select: { displayName: true, email: true, phone: true } } },
+      },
     },
     orderBy: { startsAt: "asc" },
   });
@@ -19,11 +23,12 @@ export default async function AdminFlightReviewPage() {
     examinerPhone: s.examinerPhone,
     notes: s.notes,
     status: s.status,
-    booking: s.booking
+    booking: s.bookings[0]
       ? {
-          name: s.booking.customer.displayName ?? s.booking.customer.email ?? "—",
-          email: s.booking.customer.email,
-          phone: s.booking.customer.phone,
+          id: s.bookings[0].id,
+          name: s.bookings[0].customer.displayName ?? s.bookings[0].customer.email ?? "—",
+          email: s.bookings[0].customer.email,
+          phone: s.bookings[0].customer.phone,
         }
       : null,
   }));

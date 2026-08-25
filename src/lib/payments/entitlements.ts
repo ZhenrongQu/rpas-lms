@@ -1,5 +1,7 @@
 import { prisma } from "../db";
 import { ADVANCED_BUNDLE_PRODUCT, FLIGHT_REVIEW_PRODUCT } from "./config";
+import { getActiveBooking } from "../flightReview/booking";
+import { countAvailableCredits, grantCredit, type CreditSource, type Db } from "../flightReview/credits";
 
 export type CheckoutGrant = {
   id: string;
@@ -60,7 +62,11 @@ export async function revokePaidAccessEntitlement(userId: string): Promise<void>
   ]);
 }
 
-/** True when the user holds an active (not revoked) flight_review entitlement. */
+/**
+ * @deprecated Flight Review is a consumable credit, not an entitlement (PRD U13).
+ * Kept only so the one-time migration can find pre-credit purchases; no runtime
+ * eligibility decision may read it.
+ */
 export async function hasFlightReviewEntitlement(userId: string): Promise<boolean> {
   const entitlement = await prisma.entitlement.findUnique({
     where: { userId_product: { userId, product: FLIGHT_REVIEW_PRODUCT } },
@@ -70,37 +76,82 @@ export async function hasFlightReviewEntitlement(userId: string): Promise<boolea
 }
 
 /**
- * Eligibility to book a Flight Review. Two independent unlocks:
- * - the standalone flight_review entitlement (bought on its own or admin-granted), OR
- * - paid course access (PAID tier / advanced_bundle entitlement) — the review is
- *   bundled in for paid students.
- * Single source of truth for the dashboard, booking page, and every booking API.
+ * Eligibility to START a Flight Review booking (PRD U13 §13.1).
+ *
+ *   canBookFlightReview = has a spendable credit AND has no booking in progress
+ *
+ * The old model ORed in `hasPaidAccess`, which made the review a permanent perk
+ * of owning the course. Under the consumable model a paid student books with the
+ * credit their bundle minted, and once it is spent they buy another — so the OR
+ * branch is gone. `hasPaidAccess` itself is untouched: courses, exams and the AI
+ * assistant still gate on it.
+ *
+ * This answers "can they book a NEW review", not "can they reschedule": a student
+ * with a booking in progress has no spendable credit but may still move it.
  */
 export async function canBookFlightReview(userId: string): Promise<boolean> {
-  return (await hasFlightReviewEntitlement(userId)) || (await hasPaidAccess(userId));
-}
-
-/** Admin-grants the flight_review entitlement (idempotent; un-revokes if needed). */
-export async function grantFlightReviewEntitlement(userId: string): Promise<void> {
-  await prisma.entitlement.upsert({
-    where: { userId_product: { userId, product: FLIGHT_REVIEW_PRODUCT } },
-    create: { userId, product: FLIGHT_REVIEW_PRODUCT, source: "admin_grant" },
-    update: { source: "admin_grant", revokedAt: null },
-  });
-}
-
-/** Admin-revokes the flight_review entitlement (no-op if it doesn't exist). */
-export async function revokeFlightReviewEntitlement(userId: string): Promise<void> {
-  await prisma.entitlement.updateMany({
-    where: { userId, product: FLIGHT_REVIEW_PRODUCT, revokedAt: null },
-    data: { revokedAt: new Date() },
-  });
+  if ((await countAvailableCredits(userId)) === 0) return false;
+  return (await getActiveBooking(userId)) === null;
 }
 
 /**
- * Records a paid Flight Review checkout and grants the flight_review entitlement.
- * Unlike paid access this does NOT change accessTier — Flight Review is a
- * standalone add-on, not the course bundle.
+ * May this student act on bookings — start a new one, or move the one they hold?
+ *
+ * Rescheduling spends no credit (PRD U13 §13.4), so holding a booking is its own
+ * authorisation. Gating the booking endpoints on `canBookFlightReview` alone
+ * would lock a student out of rescheduling the moment their credit went on hold.
+ */
+export async function canManageFlightReviewBooking(userId: string): Promise<boolean> {
+  if (await canBookFlightReview(userId)) return true;
+  return (await getActiveBooking(userId)) !== null;
+}
+
+/** Admin-grants one review credit. */
+export async function grantFlightReviewCredit(userId: string): Promise<void> {
+  await grantCredit(userId, "admin_grant");
+}
+
+/** Admin-revokes one spendable credit. Returns false when they have none left —
+ *  credits already spent on a completed review are not clawed back here. */
+export async function revokeFlightReviewCredit(userId: string): Promise<boolean> {
+  const credit = await prisma.flightReviewCredit.findFirst({
+    where: { customerId: userId, bookingId: null, consumedAt: null, revokedAt: null },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
+  if (!credit) return false;
+  await prisma.flightReviewCredit.update({
+    where: { id: credit.id },
+    data: { revokedAt: new Date() },
+  });
+  return true;
+}
+
+/**
+ * Mints one review credit for a checkout, unless this payment already minted one.
+ *
+ * Stripe redelivers webhooks, and the surrounding Payment upsert is idempotent by
+ * design — so the credit grant has to be too, or a retried delivery hands out a
+ * free review. `paymentId` is the checkout session id, which is what makes the
+ * replay recognisable.
+ */
+async function grantCreditForPayment(
+  userId: string,
+  source: CreditSource,
+  paymentId: string,
+  db: Db,
+): Promise<void> {
+  const existing = await db.flightReviewCredit.findFirst({
+    where: { customerId: userId, paymentId },
+    select: { id: true },
+  });
+  if (!existing) await grantCredit(userId, source, paymentId, db);
+}
+
+/**
+ * Records a paid Flight Review checkout and mints one review credit. Unlike paid
+ * access this does NOT change accessTier — Flight Review is a standalone add-on,
+ * not the course bundle.
  */
 export async function grantFlightReviewFromCheckout(grant: CheckoutGrant): Promise<void> {
   await prisma.$transaction(async (tx) => {
@@ -125,11 +176,7 @@ export async function grantFlightReviewFromCheckout(grant: CheckoutGrant): Promi
       },
     });
 
-    await tx.entitlement.upsert({
-      where: { userId_product: { userId: grant.userId, product: FLIGHT_REVIEW_PRODUCT } },
-      create: { userId: grant.userId, product: FLIGHT_REVIEW_PRODUCT, source: "stripe_checkout" },
-      update: { source: "stripe_checkout", revokedAt: null },
-    });
+    await grantCreditForPayment(grant.userId, "stripe_checkout", grant.id, tx);
   });
 }
 
@@ -168,6 +215,11 @@ export async function grantPaidAccessFromCheckout(grant: CheckoutGrant): Promise
         revokedAt: null,
       },
     });
+
+    // U13 §13.4: the course bundle includes one Flight Review, so buying it mints
+    // a credit. Without this a paid student would have no way to book at all —
+    // canBookFlightReview no longer falls back to hasPaidAccess.
+    await grantCreditForPayment(grant.userId, "course_bundle", grant.id, tx);
   });
 
   // Update Customer.accessTier outside the transaction. Entitlement is the source

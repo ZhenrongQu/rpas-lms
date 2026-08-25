@@ -55,7 +55,8 @@ model Customer {
   advancedProgress AdvancedLessonProgress[]
   payments         Payment[]
   entitlements     Entitlement[]
-  flightReviewBooking FlightReviewBooking?
+  flightReviewBookings FlightReviewBooking[]
+  flightReviewCredits  FlightReviewCredit[]
 }
 
 model UserIdentity {
@@ -170,9 +171,19 @@ model WebhookEvent {
 
 // ─── Flight Review booking ───────────────────────────────────────────────────
 // Admins publish discrete dated slots (each carrying its own location + examiner);
-// an eligible student books exactly one. A booking row's existence == an active
-// booking: cancelling deletes the row (slot reopens), rescheduling moves slotId.
-// `slotId @unique` makes double-booking impossible at the DB level.
+// a student with an unused review CREDIT books one (PRD U13). Flight Review is a
+// consumable, not a permanent entitlement: buying it — or buying the course
+// bundle, which includes one — mints a FlightReviewCredit that a booking holds
+// and a completed review burns.
+//
+// A booking row is now permanent history: cancelling sets status = CANCELLED
+// rather than deleting, so `slotId @unique` alone can no longer keep a slot
+// bookable after a cancellation. Both invariants are enforced by partial unique
+// indexes in prisma/sql/ (Prisma cannot declare a WHERE clause on an index):
+//   - one BOOKED booking per slot
+//   - one BOOKED booking per customer  ← was `customerId @unique`
+// `prisma db push` does NOT create them. Run `pnpm db:indexes` after any push,
+// in test setup and in production, or the concurrency guarantees silently vanish.
 
 model FlightReviewSlot {
   id            String               @id @default(cuid())
@@ -183,22 +194,56 @@ model FlightReviewSlot {
   examinerEmail String?
   examinerPhone String?
   notes         String?
-  status        String               @default("ACTIVE") // "ACTIVE" | "ARCHIVED"
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  booking       FlightReviewBooking?
+  status        String                @default("ACTIVE") // "ACTIVE" | "ARCHIVED"
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  // Many, not one: a cancelled booking stays on the slot as history. Only one of
+  // them may be BOOKED at a time — enforced by a partial unique index, see above.
+  bookings      FlightReviewBooking[]
 
   @@index([startsAt])
 }
 
 model FlightReviewBooking {
-  id         String           @id @default(cuid())
-  slotId     String           @unique // one booking per slot → blocks double-booking
-  slot       FlightReviewSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
-  customerId String           @unique // one active booking per student
-  customer   Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  id          String              @id @default(cuid())
+  slotId      String
+  slot        FlightReviewSlot    @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  customerId  String
+  customer    Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  status      String              @default("BOOKED") // "BOOKED" | "COMPLETED" | "CANCELLED" | "NO_SHOW"
+  completedAt DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  credit      FlightReviewCredit?
+
+  @@index([slotId])
+  @@index([customerId])
+  @@index([customerId, status])
+}
+
+// A one-shot Flight Review credit (PRD U13 §13.2). Its four states are read off
+// its own columns — there is deliberately no `creditId` back-pointer on the
+// booking, because a >=48h cancellation RELEASES the credit (bookingId → null)
+// and a second pointer would then outlive the link it describes:
+//   available  bookingId = null, consumedAt = null, revokedAt = null
+//   held       bookingId → a BOOKED booking
+//   consumed   consumedAt set (review completed, no-show, or a late cancellation)
+//   revoked    revokedAt set (refunded)
+model FlightReviewCredit {
+  id         String               @id @default(cuid())
+  customerId String
+  customer   Customer             @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  source     String // "stripe_checkout" | "course_bundle" | "admin_grant" | "migration"
+  paymentId  String? // originating payment; null for admin_grant / migration
+  bookingId  String?              @unique
+  booking    FlightReviewBooking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  consumedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime             @default(now())
+
+  @@index([customerId])
+  @@index([paymentId])
 }
 
 // ─── Question banks (split by certification level) ───────────────────────────
