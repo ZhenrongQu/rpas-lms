@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { loadQuestionBankFromDB } from "../content/loadBank";
 import { EXAM_SPECS, examQuestionCount } from "./config";
-import { generateExam } from "./generate";
+import { eligible, generateExam } from "./generate";
+import { InsufficientQuestionPoolError } from "./errors";
 import { mulberry32 } from "./rng";
 import { scoreExam, type ExamResult } from "./score";
 import { toPublicQuestion, type PublicQuestion } from "./serialize";
@@ -45,6 +46,17 @@ export class ExamService {
       questions: questionsForAccess(bank.questions, accessTier, certLevel),
     };
     const total = examQuestionCount(accessTier, certLevel);
+
+    // DEF-003 / U1: generateExam returns min(total, poolSize). Without this guard a
+    // thin pool silently produced a short paper that was still graded against the
+    // level's pass threshold — a false readiness signal. Count the level-eligible
+    // subset, not scopedBank.questions.length: generateExam filters by certLevel
+    // again internally, so the raw length overstates what is actually drawable.
+    const available = eligible(scopedBank.questions, certLevel).length;
+    if (available < total) {
+      throw new InsufficientQuestionPoolError(certLevel, available, total);
+    }
+
     const questions = generateExam(certLevel, total, mulberry32(seed), scopedBank);
     const startedAt = this.now();
     const session: ExamSession = {

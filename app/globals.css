@@ -1288,6 +1288,12 @@ html, body {
 .admin-table a:hover { text-decoration: underline; }
 .admin-empty { margin-top: 16px; font-size: 14px; color: #6b7280; }
 
+/* Bank health (PRD U1): fail = exam creation is blocked for that tier. */
+.admin-bank-health { margin-bottom: 24px; }
+.admin-bank-health h2 { font-size: 15px; margin-bottom: 8px; }
+.admin-table tr[data-health="warn"] { background: #fffbeb; }
+.admin-table tr[data-health="fail"] { background: #fef2f2; color: #b91c1c; font-weight: 600; }
+
 .admin-form { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
 .admin-form-row { display: flex; flex-direction: column; gap: 6px; }
 .admin-form-row label { font-size: 13px; font-weight: 600; color: #4a515f; }

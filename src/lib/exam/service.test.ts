@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { ExamService } from "./service";
+import { InsufficientQuestionPoolError } from "./errors";
 import { InMemorySessionStore } from "./store";
 import { makeTestBank } from "../content/__fixtures__/bank";
 import { correctOptionIds } from "./grade";
@@ -7,8 +8,16 @@ import type { QuestionBank } from "../content/types";
 
 const bank = makeTestBank();
 
-/** Single-question bank whose correct option can be flipped, for snapshot-isolation tests. */
-function oneQuestionBank(correctOptionId: "a" | "b"): QuestionBank {
+/**
+ * A full-size Basic bank (exactly 35 questions, so generation picks all of them)
+ * whose `air-law-0001` entry has a flippable correct option. Used to prove an
+ * in-flight exam grades from its own snapshot, not the live bank.
+ */
+function flippableBank(correctOptionId: "a" | "b"): QuestionBank {
+  const filler = makeTestBank()
+    .questions.filter((q) => q.certLevel === "BASIC" && q.difficulty === 1)
+    .slice(0, 34)
+    .map((q) => structuredClone(q));
   return {
     schemaVersion: 1,
     questions: [
@@ -28,6 +37,7 @@ function oneQuestionBank(correctOptionId: "a" | "b"): QuestionBank {
         reference: { EN: "r", ZH: "r" },
         tags: [],
       },
+      ...filler,
     ],
   };
 }
@@ -248,7 +258,7 @@ describe("ExamService", () => {
   });
 
   it("grades an in-flight exam from its snapshot even after the bank's correct answer changes", async () => {
-    const liveBank = oneQuestionBank("a"); // correct answer is "a" at creation time
+    const liveBank = flippableBank("a"); // correct answer is "a" at creation time
     const svc = new ExamService(new InMemorySessionStore(), () => 1_000, liveBank);
     const { sessionId } = await svc.createMock("BASIC", "EN", 1, null, "PAID");
     await svc.answer(sessionId, "air-law-0001", ["a"]);
@@ -259,8 +269,8 @@ describe("ExamService", () => {
 
     // The in-flight exam still grades "a" as correct — it reads its own snapshot.
     const result = await svc.submit(sessionId);
-    expect(result!.correct).toBe(1);
-    expect(result!.scorePct).toBe(1);
+    expect(result!.correct).toBe(1); // only the answered question; the other 34 are blank
+    expect(result!.scorePct).toBeCloseTo(1 / 35);
 
     // A brand-new exam built from the edited bank reflects the change: "a" is now wrong.
     const svc2 = new ExamService(new InMemorySessionStore(), () => 1_000, liveBank);
@@ -268,5 +278,54 @@ describe("ExamService", () => {
     await svc2.answer(created2.sessionId, "air-law-0001", ["a"]);
     const result2 = await svc2.submit(created2.sessionId);
     expect(result2!.correct).toBe(0);
+  });
+});
+
+// DEF-003 / PRD U1: generateExam returns min(total, poolSize), so a thin pool used
+// to yield a short paper whose pass threshold was computed against the questions it
+// happened to find — a false "you're ready" signal. Creation now refuses instead.
+describe("question pool sufficiency", () => {
+  function bankOf(count: number): QuestionBank {
+    return {
+      schemaVersion: 1,
+      questions: makeTestBank()
+        .questions.filter((q) => q.certLevel === "BASIC" && q.difficulty === 1)
+        .slice(0, count),
+    };
+  }
+
+  it("refuses to create when the scoped pool cannot fill a full paper", async () => {
+    const svc = new ExamService(new InMemorySessionStore(), () => 1_000, bankOf(3));
+    await expect(svc.createMock("BASIC", "EN", 1, "u1", "FREE")).rejects.toBeInstanceOf(
+      InsufficientQuestionPoolError,
+    );
+  });
+
+  it("carries the shortfall on the error for logs and the CMS bank-health view", async () => {
+    const svc = new ExamService(new InMemorySessionStore(), () => 1_000, bankOf(3));
+    const err = await svc.createMock("BASIC", "EN", 1, "u1", "FREE").catch((e) => e);
+    expect(err).toBeInstanceOf(InsufficientQuestionPoolError);
+    expect(err.available).toBe(3);
+    expect(err.required).toBe(35);
+    expect(err.certLevel).toBe("BASIC");
+  });
+
+  it("creates normally when the pool is exactly the required size", async () => {
+    const svc = new ExamService(new InMemorySessionStore(), () => 1_000, bankOf(35));
+    const created = await svc.createMock("BASIC", "EN", 1, "u1", "FREE");
+    expect(created.total).toBe(35);
+  });
+
+  it("counts only questions of the requested level, not the whole bank", async () => {
+    // 40 questions in the bank, but every one of them is ADVANCED: a BASIC exam
+    // must still be refused. Counting bank.questions.length would wrongly pass.
+    const advancedOnly: QuestionBank = {
+      schemaVersion: 1,
+      questions: makeTestBank().questions.filter((q) => q.certLevel === "ADVANCED"),
+    };
+    const svc = new ExamService(new InMemorySessionStore(), () => 1_000, advancedOnly);
+    await expect(svc.createMock("BASIC", "EN", 1, "u1", "PAID")).rejects.toBeInstanceOf(
+      InsufficientQuestionPoolError,
+    );
   });
 });

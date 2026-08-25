@@ -2,6 +2,7 @@ import { z } from "zod";
 import { examService } from "../../../../src/lib/exam/instance";
 import { canCreateExam } from "../../../../src/lib/exam/access";
 import { requireMobileAccount } from "../../../../src/lib/mobile/account";
+import { InsufficientQuestionPoolError } from "../../../../src/lib/exam/errors";
 
 const CreateBody = z
   .object({
@@ -32,6 +33,14 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "upgrade required" }, { status: 403 });
   }
 
-  const created = await examService.createMock(certLevel, locale, seed, auth.account.userId, auth.account.accessTier);
-  return Response.json(created, { status: 201 });
+  // DEF-003 / U1: mirrors the web route — 409, no bank internals in the message.
+  try {
+    const created = await examService.createMock(certLevel, locale, seed, auth.account.userId, auth.account.accessTier);
+    return Response.json(created, { status: 201 });
+  } catch (err) {
+    if (err instanceof InsufficientQuestionPoolError) {
+      return Response.json({ error: "question pool unavailable" }, { status: 409 });
+    }
+    throw err;
+  }
 }
