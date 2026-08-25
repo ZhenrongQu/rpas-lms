@@ -21,6 +21,7 @@ import { POST as grantPOST, DELETE as grantDELETE } from "./flight-review/grant/
 import { POST as entitlementPOST, DELETE as entitlementDELETE } from "./entitlements/route";
 import { POST as closeBookingPOST } from "./flight-review/bookings/[id]/close/route";
 import { GET as refundsGET, POST as refundsPOST } from "./refunds/route";
+import { POST as resendPOST } from "./flight-review/bookings/[id]/resend/route";
 import { GET as mfaGET, POST as mfaPOST } from "./mfa/route";
 
 const ADMIN = "sec12-admin";
@@ -78,6 +79,7 @@ describe("/api/coriander/* admin guards (SEC-12)", () => {
       ["close booking POST", closeBookingPOST(body({}), ctx("x"))],
       ["refunds GET", refundsGET()],
       ["refunds POST", refundsPOST(body({}))],
+      ["resend booking POST", resendPOST(req(), ctx("x"))],
       ["mfa GET", mfaGET()],
       ["mfa POST", mfaPOST(body({ action: "begin" }))],
     ];

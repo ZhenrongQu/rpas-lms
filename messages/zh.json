@@ -326,7 +326,10 @@
     "booking": "预约中…",
     "bookingError": "该时段刚被预约。请选择其他时段。",
     "genericError": "出现错误，请重试。",
-    "minutes": "分钟"
+    "minutes": "分钟",
+    "resend": "重新发送确认邮件",
+    "resendSent": "确认邮件已发送。",
+    "resendTooSoon": "刚刚已发送，请一分钟后再试。"
   },
   "modules": {
     "intro": "平台介绍",

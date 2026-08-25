@@ -326,7 +326,10 @@
     "booking": "Booking…",
     "bookingError": "That slot was just taken. Please pick another.",
     "genericError": "Something went wrong. Please try again.",
-    "minutes": "min"
+    "minutes": "min",
+    "resend": "Resend confirmation",
+    "resendSent": "Confirmation email sent.",
+    "resendTooSoon": "Just sent one — try again in a minute."
   },
   "modules": {
     "intro": "Intro",

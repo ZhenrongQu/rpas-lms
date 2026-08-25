@@ -52,7 +52,16 @@ export default async function FlightReviewPanel({
             <span className="fr-detail-ico"><IconUser size={16} stroke={2} /></span>
             <span>
               <span className="fr-label">{t('flightReview.examiner')}</span>
-              <span className="fr-value">{booking.slot.examinerName}</span>
+              {/* U12: everything needed to show up is on this page, so a student
+                  whose confirmation email never arrived is not stuck. */}
+              <span className="fr-value">
+                {booking.slot.examinerName}
+                {booking.slot.examinerEmail ? ` · ${booking.slot.examinerEmail}` : ''}
+                {booking.slot.examinerPhone ? ` · ${booking.slot.examinerPhone}` : ''}
+              </span>
+              <span className="fr-value">
+                {booking.slot.durationMin} {t('flightReview.minutes')}
+              </span>
             </span>
           </div>
           <FlightReviewActions locale={locale} />

@@ -15,7 +15,13 @@ type Slot = {
   examinerPhone: string | null;
   notes: string | null;
   status: string;
-  booking: { id: string; name: string; email: string | null; phone: string | null } | null;
+  booking: {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    notificationFailed: boolean;
+  } | null;
 };
 
 const SLOTS_API = `${ADMIN_API_BASE}/flight-review/slots`;
@@ -124,6 +130,13 @@ export default function FlightReviewAdmin({ initialSlots }: { initialSlots: Slot
 
   // A review is closed out by a person, not a timer: only the examiner knows
   // whether the student actually showed up. Either outcome burns the credit.
+  // U12: a swallowed delivery failure is unrecoverable unless someone can act on
+  // it. The row flags the failure; this is the action.
+  async function resend(bookingId: string) {
+    const ok = await send(`${BOOKINGS_API}/${bookingId}/resend`, "POST");
+    if (ok) setMsg("Confirmation email re-sent.");
+  }
+
   async function close(bookingId: string, outcome: "COMPLETED" | "NO_SHOW") {
     const label = outcome === "COMPLETED" ? "completed" : "a no-show";
     if (!window.confirm(`Mark this review as ${label}? This uses up the student's credit.`)) return;
@@ -216,6 +229,9 @@ export default function FlightReviewAdmin({ initialSlots }: { initialSlots: Slot
               <td>
                 {s.booking ? (
                   <>
+                    <button type="button" disabled={busy} onClick={() => resend(s.booking!.id)}>
+                      {s.booking.notificationFailed ? "Resend (failed)" : "Resend email"}
+                    </button>{" "}
                     <button type="button" disabled={busy} onClick={() => close(s.booking!.id, "COMPLETED")}>
                       Mark completed
                     </button>{" "}

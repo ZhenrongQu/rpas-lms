@@ -37,6 +37,8 @@ export async function POST(req: Request): Promise<Response> {
         slot: result.booking.slot,
         previousSlot: result.previousSlot,
         kind: result.action === "rescheduled" ? "rescheduled" : "booked",
+        bookingId: result.booking.id,
+        customerId: userId,
       });
     }
   }
@@ -56,7 +58,15 @@ export async function DELETE(req: Request): Promise<Response> {
 
   const locale = new URL(req.url).searchParams.get("locale") === "zh" ? "zh" : "en";
   const who = await student(userId);
-  if (who) await notifyCancellation({ student: who, locale, slot: removed.booking.slot });
+  if (who) {
+    await notifyCancellation({
+      student: who,
+      locale,
+      slot: removed.booking.slot,
+      bookingId: removed.booking.id,
+      customerId: userId,
+    });
+  }
 
   return Response.json({ ok: true }, { status: 200 });
 }

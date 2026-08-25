@@ -190,6 +190,26 @@ model RefundRequest {
   @@index([paymentId])
 }
 
+// A record of every transactional email we tried to send (PRD U12).
+//
+// Delivery failure must never roll back the thing it is reporting — a booking is
+// the product, the email is a courtesy — so a failed send is swallowed. Swallowed
+// silently, though, it is unrecoverable: nobody knows to resend. Deliberately
+// FK-free so the log outlives whatever it describes.
+model NotificationLog {
+  id         String   @id @default(cuid())
+  kind       String // "flight_review_booked" | "flight_review_rescheduled" | "flight_review_cancelled"
+  recipient  String
+  bookingId  String?
+  customerId String?
+  status     String // "SENT" | "FAILED"
+  error      String?
+  createdAt  DateTime @default(now())
+
+  @@index([bookingId])
+  @@index([status])
+}
+
 model WebhookEvent {
   id          String   @id
   type        String

@@ -9,6 +9,7 @@ export default function FlightReviewActions({ locale }: { locale: string }) {
   const t = useTranslations('flightReview');
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
 
   async function cancel() {
     if (!window.confirm(t('cancelConfirm'))) return;
@@ -18,14 +19,34 @@ export default function FlightReviewActions({ locale }: { locale: string }) {
     router.refresh();
   }
 
+  // U12: the page is the source of truth for the appointment, so this is a
+  // convenience, not a recovery path — but it is the one the student reaches for
+  // when the confirmation never arrived.
+  async function resend() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/flight-review/resend?locale=${locale}`, { method: 'POST' });
+      setMsg(res.ok ? t('resendSent') : res.status === 429 ? t('resendTooSoon') : t('genericError'));
+    } catch {
+      setMsg(t('genericError'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="fr-actions">
       <Link href={`/${locale}/flight-review`} className="btn-review">
         {t('reschedule')}
       </Link>
+      <button type="button" className="btn-review" onClick={resend} disabled={busy}>
+        {t('resend')}
+      </button>
       <button type="button" className="btn-cancel" onClick={cancel} disabled={busy}>
         {t('cancel')}
       </button>
+      {msg && <span className="fr-resend-msg">{msg}</span>}
     </div>
   );
 }

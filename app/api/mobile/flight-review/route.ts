@@ -79,6 +79,8 @@ export async function POST(req: Request): Promise<Response> {
       slot: result.booking.slot,
       previousSlot: result.previousSlot,
       kind: result.action === "rescheduled" ? "rescheduled" : "booked",
+      bookingId: result.booking.id,
+      customerId: auth.account.userId,
     });
   }
 
@@ -101,6 +103,8 @@ export async function DELETE(req: Request): Promise<Response> {
       student: { email: auth.account.email, name: auth.account.name ?? auth.account.email },
       locale: localeFrom(req),
       slot: removed.booking.slot,
+      bookingId: removed.booking.id,
+      customerId: auth.account.userId,
     });
   }
 
