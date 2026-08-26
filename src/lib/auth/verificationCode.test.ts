@@ -146,19 +146,33 @@ describe("verification code service", () => {
     });
 
     const at = () => new Date("2026-06-06T00:01:00.000Z");
-    const results = await Promise.all(
+    // allSettled, not all: a rejected call must be REPORTED next to the count,
+    // not replace it. This case failed once under full-suite load and the plain
+    // `Promise.all` form could not say which of two very different things
+    // happened. It has not reproduced in 14 consecutive full-suite runs since;
+    // the message below is what makes the next occurrence self-diagnosing:
+    //   >1 succeeded → a single-use code was redeemed twice (security defect)
+    //    0 succeeded, no rejections → nobody got through; a real logic bug
+    //    0 succeeded, with rejections → transport/timeout, not a leak
+    // Nothing here is time-dependent: `now` is pinned, so expiry and the attempt
+    // cap cannot vary between runs.
+    const settled = await Promise.allSettled(
       Array.from({ length: 8 }, () =>
         verifyCode({ channel: "email", target: "race@example.com", code: "424242", now: at }),
       ),
     );
 
-    // Reported with the losers' reasons, because the two failure directions mean
-    // completely different things and the count alone cannot tell them apart:
-    //   >1 succeeded → a single-use code was redeemed twice (security defect)
-    //    0 succeeded → nobody got through at all (transport/timeout, not a leak)
+    const results = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+    const rejected = settled.flatMap((r) =>
+      r.status === "rejected" ? [String(r.reason).slice(0, 200)] : [],
+    );
     const succeeded = results.filter((r) => r.ok).length;
     const reasons = results.filter((r) => !r.ok).map((r) => (r.ok ? "" : r.reason));
-    expect(succeeded, `succeeded=${succeeded}, loser reasons=[${reasons.join(",")}]`).toBe(1);
+
+    expect(
+      succeeded,
+      `succeeded=${succeeded}, loser reasons=[${reasons.join(",")}], rejected=[${rejected.join(" | ")}]`,
+    ).toBe(1);
   });
 
   // P1-4: concurrent wrong guesses must each be counted — no undercount that
