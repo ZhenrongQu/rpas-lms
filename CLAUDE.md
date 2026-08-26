@@ -21,12 +21,25 @@ pnpm db:verify        # deploy gate: exits non-zero if indexes or the credit mig
 pnpm seed:content     # tsx scripts/seed-content.ts (loads lessons/questions into DB)
 ```
 
-**`db:push` is not sufficient on its own.** Partial (WHERE-clause) unique indexes
-are not expressible in the Prisma schema, so `db:indexes` must follow every push —
-in test setup (handled by `vitest.globalSetup.ts`) and in production. Skipping it
-fails silently: the Flight Review booking uniqueness guarantees quietly degrade to
-application-level checks. `db:verify` is what turns that silence into a failure;
-the full deploy sequence is in `docs/qa/release-checklist.md` §1.7.1.
+**`db:push` is not sufficient on its own.** `db:indexes` applies `prisma/sql/*` —
+Row Level Security (`001-rls.sql`) and the partial (WHERE-clause) unique indexes
+(`002-…`), neither of which the Prisma schema can express. It must follow every
+push, in test setup (handled by `vitest.globalSetup.ts`) and in production;
+`--force-reset` cascades the RLS function and event trigger away too. Skipping it
+fails silently: the Flight Review booking uniqueness guarantees degrade to
+application-level checks, and Supabase's anon/authenticated roles stop being
+denied by default. `db:verify` turns that silence into a non-zero exit; the full
+deploy sequence is in `docs/qa/release-checklist.md` §1.7.1.
+
+**Ops scripts default to `.env`, which is production.** `pnpm db:indexes` and
+`pnpm db:verify` print `→ target: <host>/<db>` before doing anything, and
+`db:indexes` refuses a non-local target unless `ALLOW_REMOTE_DB_WRITE=1` is set.
+Point them at the test database explicitly:
+`DATABASE_URL=postgresql://postgres:postgres@localhost:5433/postgres pnpm db:verify`.
+
+`prisma/migrations/` is **not executed by anything** — this project uses `db push`.
+It is a historical record only, and it lags the schema by 8 models. Do not add to
+it; hardening that must actually run belongs in `prisma/sql/`.
 
 **pnpm is pinned** via `packageManager` in `package.json`. If `node_modules` was
 built by a different pnpm major, every `pnpm add` fails with a store-location

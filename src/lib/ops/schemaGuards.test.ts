@@ -29,7 +29,12 @@ describe("deployment schema invariants", () => {
   it("passes on a correctly provisioned database", async () => {
     const report = await verifySchemaInvariants();
 
-    expect(report).toEqual({ ok: true, missingIndexes: [], pendingCreditGrants: 0 });
+    expect(report).toEqual({
+      ok: true,
+      missingIndexes: [],
+      tablesWithoutRls: [],
+      pendingCreditGrants: 0,
+    });
     expect(describeSchemaDrift(report)).toBe("schema invariants satisfied");
   });
 
@@ -61,6 +66,34 @@ describe("deployment schema invariants", () => {
     } finally {
       await applyDbIndexes();
     }
+  });
+
+  it("catches a table left without row level security", async () => {
+    await prisma.$executeRawUnsafe('ALTER TABLE "Payment" DISABLE ROW LEVEL SECURITY');
+    try {
+      const report = await verifySchemaInvariants();
+
+      expect(report.ok).toBe(false);
+      expect(report.tablesWithoutRls).toEqual(["Payment"]);
+      expect(describeSchemaDrift(report)).toContain("row level security");
+    } finally {
+      await applyDbIndexes();
+    }
+
+    expect((await verifySchemaInvariants()).ok).toBe(true);
+  });
+
+  // The failure mode this exists for: the original hardening listed tables by
+  // name, so every model added afterwards was silently unprotected. The backfill
+  // is now catalog-driven, and this proves it reaches a table the old list never
+  // mentioned.
+  it("re-protects a table the hand-written backfill list never covered", async () => {
+    await prisma.$executeRawUnsafe('ALTER TABLE "FlightReviewCredit" DISABLE ROW LEVEL SECURITY');
+    expect((await verifySchemaInvariants()).tablesWithoutRls).toEqual(["FlightReviewCredit"]);
+
+    await applyDbIndexes();
+
+    expect((await verifySchemaInvariants()).tablesWithoutRls).toEqual([]);
   });
 
   it("catches a credit migration that was never run", async () => {

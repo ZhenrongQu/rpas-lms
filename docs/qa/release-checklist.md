@@ -87,11 +87,14 @@
 
 #### 1.7.1 Schema 部署步骤（**有序**，PRD U13 首次上线必做）
 
-`prisma db push` 只能创建 Prisma schema 能表达的东西。以下两步在它的能力之外，**漏跑没有任何症状**：
+`prisma db push` 只能创建 Prisma schema 能表达的东西。以下步骤在它的能力之外，**漏跑没有任何症状**：
 
 ```bash
 1. pnpm db:push      # 同步 schema
-2. pnpm db:indexes   # ⚠️ 部分唯一索引；漏跑 = 「一人一约/一时段一约」从数据库保证降级为应用层判断，只在并发下暴露
+2. ALLOW_REMOTE_DB_WRITE=1 pnpm db:indexes
+                     # 应用 prisma/sql/*：RLS 加固 + 部分唯一索引
+                     # ⚠️ 漏跑索引 = 「一人一约/一时段一约」从数据库保证降级为应用层判断，只在并发下暴露
+                     # ⚠️ 漏跑 RLS  = Supabase 的 anon/authenticated 角色不再默认被拒（应用本身无感）
 3. pnpm db:verify    # 门禁：不通过（非零退出）就不要切流量
 4. pnpm exec tsx scripts/migrate-flight-review-credits.ts --dry-run   # 先看将发放的券数，确认数字合理
 5. pnpm exec tsx scripts/migrate-flight-review-credits.ts             # ⚠️ 漏跑 = 全部已付费用户静默失去已购的预约资格
@@ -100,6 +103,8 @@
 
 - [ ] 上述 6 步已按顺序执行，两次 `db:verify` 均通过
       > **不要依赖 CI 的绿灯**：`vitest.globalSetup` 会自己补建这些索引，所以 CI 无论生产是否跑过这一步都是绿的。这正是 `db:verify` 存在的原因。
+- [ ] 每一步开头打印的 `→ target: <host>/<db>` 确认是**要发布的那个库**
+      > `db:indexes` / `db:verify` 都会先打印目标。`db:indexes` 对非本机目标默认**拒绝执行**，必须显式加 `ALLOW_REMOTE_DB_WRITE=1` —— 因为开发机的 `.env` 里就是生产库，一条读起来像本地命令的脚本会直接改到生产。
 - [ ] 迁移脚本的 dry-run 数字与预期一致（应约等于「持 `flight_review` 权益的人数 + `accessTier=PAID` 的人数」）
 
 ### 1.8 内容与国际化

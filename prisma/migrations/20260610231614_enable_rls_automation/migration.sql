@@ -1,3 +1,11 @@
+-- SUPERSEDED — do not edit. The live copy is prisma/sql/001-rls.sql.
+--
+-- Nothing in this project executes prisma/migrations: the schema workflow is
+-- `prisma db push`. This file is kept only as the historical record of what was
+-- applied to the original Supabase project. The maintained version differs in
+-- one way: its backfill (step 3 below) is derived from pg_class instead of the
+-- hand-written table list here, which had fallen 14 tables behind the schema.
+--
 -- Auto-enable Row Level Security (RLS) on every public table, reproducibly.
 --
 -- Captured from the original Supabase project so this hardening exists in any
