@@ -240,11 +240,15 @@ DEF-001 / DEF-002 / DEF-003 **均已于 2026-08-25 修复**（见 [`README.md`](
 | 1 | 漏跑 `pnpm db:indexes` | 「一人一约 / 一时段一约」降级为应用层判断，只在并发下暴露；**且全表 RLS 不会被开启** | `pnpm db:verify` + `/api/health/schema`（§1.7.1、§3.1） |
 | 2 | 漏跑券迁移脚本 | **全部已付费用户静默失去已购的预约资格** | 同上；`db:verify` 的 `pendingCreditGrants` 必须为 0 |
 | 3 | 出问题想回滚 | **回不去**，唯一约束无法恢复 | 见 §4。发布前就要接受「只能向前修复」 |
-| 4 | ops 脚本打错库 | `db:indexes` / `db:verify` 默认读 `.env`，而开发机的 `.env` 里是**生产** | 两者都会先打印 `→ target:`；`db:indexes` 对非本机目标默认拒绝，需显式 `ALLOW_REMOTE_DB_WRITE=1` |
+| 4 | ops 脚本打错库 | `db:indexes` / `db:verify` / 券迁移脚本都默认读 `.env`，而**哪个库在 `.env` 里全凭当时的配置** | 三者都会先打印 `→ target:`；两个会写库的对非本机目标默认拒绝，需显式 `ALLOW_REMOTE_DB_WRITE=1` |
 
 > 第 1、2 项的共同点：**CI 绿灯不能证明它们做了**。`vitest.globalSetup` 会自己补建索引与 RLS，所以测试环境永远是好的。
 >
-> 第 4 项不是假设：2026-08-25 构建这套门禁时，`pnpm db:indexes` 就这样打到过生产库。当时无损（语句幂等、RLS 覆盖已是 100%、索引语句因 `status` 列尚未部署而失败中止），门禁即为此而加。
+> 第 4 项不是假设：2026-08-25 构建这套门禁时，`pnpm db:indexes` 就在无人察觉的情况下打到了 `.env` 指向的远端库（事后确认是 **dev**，非生产，且语句幂等无实际改动）。**当时并不知道它打的是哪个库 —— 这才是问题本身。**门禁要保证的不是"猜对了"，是"每次都先看一眼"。
+>
+> **本仓库当前的对应关系**（会变，用 `→ target:` 那一行确认，不要背下来）：
+> `.env` → dev（us-west-1，Stripe test）；`.env.production` → 生产（ca-central-1，Stripe live）。
+> ⚠️ `next start` 在 `NODE_ENV=production` 下会**优先加载 `.env.production`**，所以本地跑生产构建时目标库不是 `.env` 里那个。
 
 ### 5.2 残余覆盖缺口（发布决策需明确接受）
 
