@@ -52,6 +52,16 @@ export async function migrateFlightReviewCredits(
   const { dryRun = false, now = new Date(), db = prisma } = options;
   const summary: MigrationSummary = { granted: 0, skipped: 0, bookingsBound: 0, orphanedBookings: [] };
 
+  /**
+   * Dry run only: credits this run WOULD create, per customer.
+   *
+   * A dry run writes nothing, so the booking pass below finds no credit to bind
+   * and would report every pre-existing booking as orphaned — a false alarm at
+   * exactly the moment an operator is deciding whether to run the real thing.
+   * Counting the grants it would have made keeps the preview truthful.
+   */
+  const wouldGrant = new Map<string, number>();
+
   for (const plan of await planGrants(db)) {
     const existing = await db.flightReviewCredit.findFirst({
       where: { customerId: plan.customerId, source: plan.source },
@@ -62,7 +72,9 @@ export async function migrateFlightReviewCredits(
       continue;
     }
     summary.granted++;
-    if (!dryRun) {
+    if (dryRun) {
+      wouldGrant.set(plan.customerId, (wouldGrant.get(plan.customerId) ?? 0) + 1);
+    } else {
       await db.flightReviewCredit.create({
         data: { customerId: plan.customerId, source: plan.source },
       });
@@ -74,9 +86,27 @@ export async function migrateFlightReviewCredits(
   // review that was actually delivered.
   const bookings = await db.flightReviewBooking.findMany({ include: { slot: true, credit: true } });
 
+  // Dry run only: how many credits each customer still has left to bind, so two
+  // bookings by one customer cannot both claim the same credit in the preview.
+  const remaining = new Map<string, number>();
+
   for (const booking of bookings) {
     if (booking.credit) continue; // already migrated
     const delivered = booking.slot.startsAt <= now;
+
+    if (dryRun) {
+      let left = remaining.get(booking.customerId);
+      if (left === undefined) {
+        left =
+          (await db.flightReviewCredit.count({
+            where: { customerId: booking.customerId, bookingId: null, consumedAt: null, revokedAt: null },
+          })) + (wouldGrant.get(booking.customerId) ?? 0);
+      }
+      if (left > 0) summary.bookingsBound++;
+      else summary.orphanedBookings.push(booking.id);
+      remaining.set(booking.customerId, Math.max(0, left - 1));
+      continue;
+    }
 
     const credit = await db.flightReviewCredit.findFirst({
       where: { customerId: booking.customerId, bookingId: null, consumedAt: null, revokedAt: null },
@@ -89,7 +119,6 @@ export async function migrateFlightReviewCredits(
     }
 
     summary.bookingsBound++;
-    if (dryRun) continue;
     await db.flightReviewCredit.update({
       where: { id: credit.id },
       data: { bookingId: booking.id, consumedAt: delivered ? booking.slot.startsAt : null },

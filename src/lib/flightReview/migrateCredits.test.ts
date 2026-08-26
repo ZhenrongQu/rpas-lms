@@ -133,6 +133,55 @@ describe("flight review credit migration (PRD U13 §13.6)", () => {
     expect(await prisma.flightReviewCredit.count()).toBe(0);
   });
 
+  // Found on the first real deploy: the dry run wrote no credits, so the booking
+  // pass found none to bind and flagged every pre-existing booking as orphaned —
+  // a false alarm at exactly the moment an operator decides whether to proceed.
+  it("a dry run counts the credits it would create when matching bookings", async () => {
+    await prisma.customer.create({ data: { id: "u", email: "u@test.local", accessTier: "PAID" } });
+    const slot = await prisma.flightReviewSlot.create({
+      data: { startsAt: plusDays(7), location: "YVR", examinerName: "Pat" },
+    });
+    await prisma.flightReviewBooking.create({ data: { customerId: "u", slotId: slot.id } });
+
+    const summary = await migrateFlightReviewCredits({ dryRun: true });
+
+    expect(summary).toMatchObject({ granted: 1, bookingsBound: 1, orphanedBookings: [] });
+    expect(await prisma.flightReviewCredit.count()).toBe(0);
+  });
+
+  it("a dry run still flags a booking no credit would cover", async () => {
+    await prisma.customer.create({ data: { id: "free", email: "free@test.local", accessTier: "FREE" } });
+    const slot = await prisma.flightReviewSlot.create({
+      data: { startsAt: plusDays(7), location: "YVR", examinerName: "Pat" },
+    });
+    const booking = await prisma.flightReviewBooking.create({
+      data: { customerId: "free", slotId: slot.id },
+    });
+
+    const summary = await migrateFlightReviewCredits({ dryRun: true });
+
+    expect(summary.orphanedBookings).toEqual([booking.id]);
+    expect(summary.bookingsBound).toBe(0);
+  });
+
+  // One credit, two bookings: the preview must not hand the same credit out twice.
+  it("a dry run does not let two bookings claim one credit", async () => {
+    await prisma.customer.create({ data: { id: "u", email: "u@test.local", accessTier: "PAID" } });
+    const [a, b] = await Promise.all([
+      prisma.flightReviewSlot.create({ data: { startsAt: plusDays(7), location: "YVR", examinerName: "Pat" } }),
+      prisma.flightReviewSlot.create({ data: { startsAt: plusDays(8), location: "YVR", examinerName: "Sam" } }),
+    ]);
+    await prisma.flightReviewBooking.create({ data: { customerId: "u", slotId: a.id } });
+    await prisma.flightReviewBooking.create({
+      data: { customerId: "u", slotId: b.id, status: "CANCELLED" },
+    });
+
+    const summary = await migrateFlightReviewCredits({ dryRun: true });
+
+    expect(summary.bookingsBound).toBe(1);
+    expect(summary.orphanedBookings).toHaveLength(1);
+  });
+
   it("reports a booking it cannot fund instead of guessing", async () => {
     await prisma.customer.create({ data: { id: "free", email: "free@test.local", accessTier: "FREE" } });
     const slot = await prisma.flightReviewSlot.create({
