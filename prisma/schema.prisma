@@ -1,3 +1,13 @@
+// Schema is synced with `prisma db push`, NOT `prisma migrate`.
+//
+// Two consequences worth knowing before editing this file:
+//   * `prisma/migrations/` is executed by nothing. It is a historical record,
+//     and it already lags this file by 8 models. Do not add to it.
+//   * Anything this schema cannot express — partial (WHERE-clause) unique
+//     indexes, Row Level Security — belongs in `prisma/sql/`, which
+//     `pnpm db:indexes` applies after every push and `pnpm db:verify` audits.
+//     Put it anywhere else and it silently never runs.
+
 generator client {
   provider        = "prisma-client-js"
   // postgresqlExtensions lets `prisma db push`/migrate manage the pgvector

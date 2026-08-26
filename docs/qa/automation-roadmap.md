@@ -83,7 +83,22 @@
 - run: pnpm build       # 最慢，放最后
 ```
 
-补 `build` 的理由：对 Next.js 项目，服务端/客户端边界错误（如在 Server Component 中使用浏览器 API）**只有 `build` 才会发现**，`vitest` 全绿也拦不住。
+补 `build` 的理由：对 Next.js 项目，服务端/客户端边界错误**只有 `build` 才会发现**，`vitest` 全绿也拦不住。
+
+> **实测校正（2026-08-25，throwaway PR #43）**：写这句话时以为 `build` 能覆盖整类边界错误，实际不是。
+> 逐个种错误跑过之后：
+>
+> | 种下的错误 | `typecheck` | `vitest` | `build` |
+> |---|:---:|:---:|:---:|
+> | Server Component 里用 React hook | 通过 | 通过 | **失败** ✅ |
+> | Client Component 里 import `next/headers` | 通过 | 通过 | **失败** ✅ |
+> | Server Component 里裸用 `window` | 通过 | 通过 | **通过** ❌ |
+>
+> 最后一行不是 `build` 这一步的缺陷，是本应用的形态：每条路由都编译为 ƒ（按需服务端渲染），
+> 构建期不预渲染任何页面，那段代码根本没被求值 —— 它会在运行时 500。
+> 目前只有 Playwright 走到的页面能覆盖到这一类，其余仍是空白。
+>
+> **教训**：门禁的能力边界要靠种错误实测，不能靠推断。我原来的断言是错的，而且错在偏乐观的方向。
 
 #### ⚠️ CI 结构上看不见的一类故障
 
@@ -94,6 +109,21 @@
 这类「环境配置对不对」的问题，测试环境天然无法产生信号 —— 只能靠**对着真实目标库运行的部署门禁**：`pnpm db:verify`（见 [`release-checklist.md`](./release-checklist.md) §1.7.1）与 `/api/health/schema` 冒烟探针。
 
 > 这条经验值得记住：**当一个故障的成因是「测试环境和生产环境不同」时，再多的测试也不会变红。**该做的是把检查搬到生产那一侧去。
+
+**同一类的第三例（2026-08-25 发现）**：RLS 加固（给每张表开 Row Level Security，让 Supabase 的 anon/authenticated 角色默认被拒）
+只存在于 `prisma/migrations/` 里 —— 而这个项目**从不执行 migrations**，它用 `db push`。
+于是任何全新环境（staging / 重建 / 换 Supabase 项目）起来后 30 张表全部没开 RLS，且**没有任何症状**：
+应用以表 owner 身份连接，本来就绕过 RLS，能不能用完全看不出差别。
+
+更隐蔽的是它的 backfill 是**手写的 16 张表清单**，schema 早已长到 30 张 ——
+即使有人跑过它，`FlightReviewCredit` / `RefundRequest` / `MobileSession` / `RateLimit` 等 14 张仍然裸奔。
+
+处理：搬到 `prisma/sql/001-rls.sql`（会被 `db:indexes` 执行），backfill 改成查 `pg_class` 派生，
+并让 `db:verify` 直接断言**「哪些表没开 RLS」这个不变量本身**，而不是断言「event trigger 在不在」——
+后者只对未来的 CREATE TABLE 生效，证明不了已有的表。
+
+> **判据**：一段安全加固如果放在没有任何部署步骤会读到的地方，它等于不存在。
+> 检查"这段东西真的会被执行吗"，和检查"这段东西写得对吗"，是两件不同的事，后者不能替代前者。
 
 ---
 

@@ -36,8 +36,13 @@
 - [ ] 任何失败用例都有**逐条解释**（不接受"重跑一次就好了"）
 - [ ] `pnpm typecheck` 通过　　✅ 2026-08-25 起已进 CI 门禁
 - [ ] `pnpm build` 通过　　　　✅ 2026-08-25 起已进 CI 门禁
-      > 这一项拦的是 vitest 抓不到的一整类问题：Server/Client 边界错误（如在 Server Component 里用浏览器 API）只有 `build` 会发现。
+      > 拦的是 vitest 抓不到的一类：Server/Client 边界错误。**能力边界已实测**（2026-08-25 用 throwaway PR #43 验收）：
+      > 抓得到「Server Component 里用 React hook」和「Client Component 里 import `next/headers`」；
+      > **抓不到**「Server Component 里裸用 `window`」—— 本应用每条路由都编译为 ƒ（按需渲染），构建期不预渲染，那段代码根本没被求值，只会在运行时 500。
+- [ ] `pnpm e2e` 通过　　　　　✅ 2026-08-25 起已进 CI（独立 job）
+      > 只覆盖预约链路一条旅程（登录 → 预约 → 取消 → 券回池 → 改约）。**购买链路与考试链路仍是零 E2E**，见 automation-roadmap P2。
 - [ ] `pnpm db:verify` 通过（对着**将要部署的那个库**跑，不是本地测试库）
+      > 它会先打印 `→ target:`。确认那一行是要发布的库 —— 默认读 `.env`，而开发机的 `.env` 里是生产。
 - [ ] 无新增的 flaky test；已隔离的 flaky test 均有跟踪单
 
 ### 1.3 回归
