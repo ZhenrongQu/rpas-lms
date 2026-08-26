@@ -254,11 +254,19 @@ DEF-001 / DEF-002 / DEF-003 **均已于 2026-08-25 修复**（见 [`README.md`](
 
 > 第 1、2 项的共同点：**CI 绿灯不能证明它们做了**。`vitest.globalSetup` 会自己补建索引与 RLS，所以测试环境永远是好的。
 >
-> 第 4 项不是假设：2026-08-25 构建这套门禁时，`pnpm db:indexes` 就在无人察觉的情况下打到了 `.env` 指向的远端库（事后确认是 **dev**，非生产，且语句幂等无实际改动）。**当时并不知道它打的是哪个库 —— 这才是问题本身。**门禁要保证的不是"猜对了"，是"每次都先看一眼"。
+> 第 4 项不是假设，而且比一开始判断的严重得多：
 >
-> **本仓库当前的对应关系**（会变，用 `→ target:` 那一行确认，不要背下来）：
-> `.env` → dev（us-west-1，Stripe test）；`.env.production` → 生产（ca-central-1，Stripe live）。
-> ⚠️ `next start` 在 `NODE_ENV=production` 下会**优先加载 `.env.production`**，所以本地跑生产构建时目标库不是 `.env` 里那个。
+> 2026-08-25 构建这套门禁时，`pnpm db:indexes` 在无人察觉的情况下打到了 `.env` 指向的远端库。当时我据「Stripe 是 test key、只有 4 个客户、有 `@rpas.test` 邮箱、`APP_URL=localhost`」推断那是 dev，并把这个推断写进了本文档。**推断是错的。**
+>
+> 2026-08-26 从 Supabase 控制台确认：两个项目的命名与引用它们的 env 文件**完全相反** ——
+> `pacificdrone-prod` 在 **us-west-1**，正是 `.env` 指向的那个（活跃，就是生产）；
+> `pacificdrone-dev` 在 ca-central-1，是 `.env.production` 指向的那个（已暂停，所以连不上）。
+>
+> 于是整轮"在 dev 上的演练"实际都跑在**生产库**上，包括一次 `db push --accept-data-loss`，删掉了 `AgentRun` / `AgentStep` / `MockTicket` 三张表共 32 行（已终止的 SDLC 实验产物，无客户/支付/产品数据）。客户数据未受影响，`db:verify` 通过。
+>
+> **教训不是"当时猜错了"，是"当时在猜"。** 关于目标库的判断必须来自控制台或 `→ target:` 那一行，不能来自同一个文件里其它变量长什么样。
+>
+> 处置：`.env` 已改为本地 Postgres；生产连接串移到 `.secrets/prod-db.env`（无人自动加载）；`.env.production` 不再存放任何 DB URL；`db:push` 也加上了目标守卫。对应关系见 `CLAUDE.md`「Which database a command talks to」。
 
 ### 5.2 残余覆盖缺口（发布决策需明确接受）
 

@@ -31,11 +31,40 @@ application-level checks, and Supabase's anon/authenticated roles stop being
 denied by default. `db:verify` turns that silence into a non-zero exit; the full
 deploy sequence is in `docs/qa/release-checklist.md` §1.7.1.
 
-**Ops scripts default to `.env`, which is production.** `pnpm db:indexes` and
-`pnpm db:verify` print `→ target: <host>/<db>` before doing anything, and
-`db:indexes` refuses a non-local target unless `ALLOW_REMOTE_DB_WRITE=1` is set.
-Point them at the test database explicitly:
-`DATABASE_URL=postgresql://postgres:postgres@localhost:5433/postgres pnpm db:verify`.
+### Which database a command talks to
+
+Until 2026-08-26 `.env` held the **production** connection string while being
+named, documented, and treated as dev — the two Supabase projects are named the
+opposite way round from the env files that referenced them
+(`pacificdrone-prod` = us-west-1 = what `.env` pointed at; `pacificdrone-dev` =
+ca-central-1 = what `.env.production` pointed at, and it is paused). A full
+release rehearsal, including `db push --accept-data-loss`, ran against
+production before anyone noticed. Current layout:
+
+| Where | Database |
+|---|---|
+| `.env` | local Postgres, `localhost:5433/rpas_dev` |
+| `.env.production` | **no** DB URL — `next start` loads this file, so a real one here means a local production build talks to production |
+| Vercel | production and preview, both `sensitive` (write-only — nobody can read them back, including the owner) |
+| `.secrets/prod-db.env` | production, gitignored, **loaded by nothing** — source it deliberately for a one-off migration |
+
+`db:push`, `db:indexes`, `db:verify` and `migrate-flight-review-credits` all
+print `→ target: <host>/<db>` first, and the three that write refuse a non-local
+target unless `ALLOW_REMOTE_DB_WRITE=1`. **Read that line.** Still unguarded, and
+all of them mutate: `seed:content`, `create-admin.ts`, `create-customer.ts`
+(local-only files, so the guard cannot be committed for them).
+
+A real deploy against production:
+
+```bash
+set -a; . ./.secrets/prod-db.env; set +a
+DATABASE_URL="$PROD_DATABASE_URL" DIRECT_URL="$PROD_DIRECT_URL" \
+  ALLOW_REMOTE_DB_WRITE=1 pnpm db:push
+```
+
+`tsx` does not load `.env` the way the Prisma CLI and Next do — an ops script
+that wraps them must call `loadEnvFile()` from `src/lib/ops/dbTarget.ts`, or its
+target check inspects one database while the command reshapes another.
 
 `prisma/migrations/` is **not executed by anything** — this project uses `db push`.
 It is a historical record only, and it lags the schema by 8 models. Do not add to

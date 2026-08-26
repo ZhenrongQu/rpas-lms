@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   assertWritableDbTarget,
   describeDbTarget,
   isLocalDbTarget,
+  loadEnvFile,
   resolveDbUrl,
 } from "./dbTarget";
 
@@ -63,5 +67,41 @@ describe("ops database target", () => {
     delete process.env.DATABASE_URL;
 
     expect(() => resolveDbUrl()).toThrow(/No database URL/);
+  });
+});
+
+describe("loadEnvFile", () => {
+  const file = join(tmpdir(), `dbtarget-env-${process.pid}`);
+  const KEY = "OPS_DBTARGET_PROBE";
+  const OTHER = "OPS_DBTARGET_PROBE_PRESET";
+
+  afterEach(() => {
+    delete process.env[KEY];
+    delete process.env[OTHER];
+    rmSync(file, { force: true });
+  });
+
+  it("reads quoted and unquoted values, ignoring comments and blanks", () => {
+    writeFileSync(file, `# a comment\n\n${KEY}="${LOCAL}"\n`);
+
+    loadEnvFile(file);
+
+    expect(process.env[KEY]).toBe(LOCAL);
+  });
+
+  // The precedence the Prisma CLI and Next both use: an inline override on the
+  // command line must beat the file, or a guarded deploy command would check the
+  // file's database while reshaping the one the operator named.
+  it("does not override a variable that is already set", () => {
+    process.env[OTHER] = "already-set";
+    writeFileSync(file, `${OTHER}=from-file\n`);
+
+    loadEnvFile(file);
+
+    expect(process.env[OTHER]).toBe("already-set");
+  });
+
+  it("is a no-op when the file does not exist", () => {
+    expect(() => loadEnvFile(join(tmpdir(), "definitely-not-here-12345"))).not.toThrow();
   });
 });

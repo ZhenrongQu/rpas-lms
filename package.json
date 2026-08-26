@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
-    "db:push": "prisma db push",
+    "db:push": "tsx scripts/db-push.ts",
     "db:indexes": "tsx scripts/apply-db-indexes.ts",
     "db:verify": "tsx scripts/verify-schema.ts",
     "seed:content": "tsx scripts/seed-content.ts",
