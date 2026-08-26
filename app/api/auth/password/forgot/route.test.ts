@@ -21,6 +21,7 @@ function req(body: unknown) {
 async function cleanup() {
   await prisma.verificationCode.deleteMany({ where: { target: { in: [EMAIL, MISSING] } } });
   await prisma.customer.deleteMany({ where: { email: { in: [EMAIL, MISSING] } } });
+  await prisma.rateLimit.deleteMany(); // U8: reset the per-address send budget between cases
 }
 
 describe("POST /api/auth/password/forgot", () => {
@@ -68,5 +69,22 @@ describe("POST /api/auth/password/forgot", () => {
 
   it("rejects an invalid body", async () => {
     expect((await forgot(req({ email: "not-an-email" }))).status).toBe(400);
+  });
+
+  // PRD U8: the same uniform 200 protects against enumeration; the send limit
+  // must not reintroduce a difference between a real and an unknown address.
+  it("responds identically to a registered and an unknown address when rate-limited", async () => {
+    await prisma.customer.create({ data: { email: EMAIL, hashedPassword: "x" } });
+
+    const known = await forgot(req({ email: EMAIL }));
+    const unknown = await forgot(req({ email: MISSING }));
+    expect(known.status).toBe(unknown.status);
+    expect(await known.json()).toEqual(await unknown.json());
+
+    const knownAgain = await forgot(req({ email: EMAIL }));
+    const unknownAgain = await forgot(req({ email: MISSING }));
+    expect(knownAgain.status).toBe(429);
+    expect(unknownAgain.status).toBe(429);
+    expect(await knownAgain.json()).toEqual(await unknownAgain.json());
   });
 });

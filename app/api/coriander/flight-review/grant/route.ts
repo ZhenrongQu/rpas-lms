@@ -2,8 +2,8 @@ import { prisma } from "../../../../../src/lib/db";
 import { requireAdminApi } from "../../../../../src/lib/auth/adminGuard";
 import { adminGrantSchema } from "../../../../../src/lib/flightReview/schemas";
 import {
-  grantFlightReviewEntitlement,
-  revokeFlightReviewEntitlement,
+  grantFlightReviewCredit,
+  revokeFlightReviewCredit,
 } from "../../../../../src/lib/payments/entitlements";
 
 type FindResult = { ok: true; customerId: string } | { ok: false; response: Response };
@@ -23,7 +23,7 @@ async function findCustomer(req: Request): Promise<FindResult> {
   return { ok: true, customerId: customer.id };
 }
 
-/** POST /api/<admin>/flight-review/grant — grant flight_review eligibility by email. */
+/** POST /api/<admin>/flight-review/grant — mint one review credit by email. */
 export async function POST(req: Request): Promise<Response> {
   const deny = await requireAdminApi();
   if (deny) return deny;
@@ -31,11 +31,13 @@ export async function POST(req: Request): Promise<Response> {
   const found = await findCustomer(req);
   if (!found.ok) return found.response;
 
-  await grantFlightReviewEntitlement(found.customerId);
+  await grantFlightReviewCredit(found.customerId);
   return Response.json({ ok: true }, { status: 200 });
 }
 
-/** DELETE /api/<admin>/flight-review/grant — revoke flight_review eligibility by email. */
+/** DELETE /api/<admin>/flight-review/grant — revoke one spendable review credit
+ *  by email. 409 when they have none left to take back: a credit already spent on
+ *  a completed review is not clawed back here. */
 export async function DELETE(req: Request): Promise<Response> {
   const deny = await requireAdminApi();
   if (deny) return deny;
@@ -43,6 +45,8 @@ export async function DELETE(req: Request): Promise<Response> {
   const found = await findCustomer(req);
   if (!found.ok) return found.response;
 
-  await revokeFlightReviewEntitlement(found.customerId);
+  if (!(await revokeFlightReviewCredit(found.customerId))) {
+    return Response.json({ error: "no spendable credit" }, { status: 409 });
+  }
   return Response.json({ ok: true }, { status: 200 });
 }

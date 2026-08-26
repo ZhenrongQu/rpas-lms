@@ -32,10 +32,10 @@ export async function DELETE(_req: Request, ctx: Ctx): Promise<Response> {
   const { id } = await ctx.params;
   const existing = await prisma.flightReviewSlot.findUnique({
     where: { id },
-    include: { booking: true },
+    include: { bookings: { where: { status: "BOOKED" } } },
   });
   if (!existing) return Response.json({ error: "not found" }, { status: 404 });
-  if (existing.booking) {
+  if (existing.bookings.length > 0) {
     return Response.json({ error: "slot is booked — archive it instead" }, { status: 409 });
   }
 

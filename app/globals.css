@@ -991,6 +991,19 @@ html, body {
 /* Hover lift via shadow only — these cards are Motion-revealed, so Motion owns their transform. */
 .track-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-md); }
 .track-card.advanced { border-top: 3px solid var(--amber); }
+
+/* Guest taster band (PRD U6) — sits below the tracks grid, outside its subgrid. */
+.taster-band {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;
+  margin-top: 24px; padding: 28px 32px;
+  border: 1px dashed var(--border-strong); border-radius: var(--r-card); background: var(--surface);
+}
+.taster-title { font-size: 20px; margin: 6px 0 4px; }
+.taster-body { color: var(--muted, #6b7280); font-size: 14px; max-width: 56ch; }
+.taster-cta { flex-shrink: 0; }
+@media (max-width: 720px) {
+  .taster-band { flex-direction: column; align-items: flex-start; padding: 24px; }
+}
 .track-card.flight-review { border-top: 3px solid var(--accent); }
 .track-card.basic { border-top: 3px solid var(--green); }
 .fr-cta { }
@@ -1286,7 +1299,37 @@ html, body {
 .admin-table tr[data-archived] { opacity: .5; }
 .admin-table a { color: #0066ff; text-decoration: none; }
 .admin-table a:hover { text-decoration: underline; }
+.result-timed-out {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--amber, #b45309);
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
 .admin-empty { margin-top: 16px; font-size: 14px; color: #6b7280; }
+
+/* Bank health (PRD U1): fail = exam creation is blocked for that tier. */
+/* Zero-height marker the auto-complete observer watches (PRD U11). */
+.lesson-end-sentinel { height: 1px; }
+
+.lesson-translation-notice {
+  font-size: 13px; color: var(--amber, #b45309);
+  border-left: 3px solid currentColor; padding: 8px 12px; margin-bottom: 16px;
+}
+
+.fr-resend-msg { font-family: var(--font-mono); font-size: 12px; color: var(--green); }
+
+.dash-refund-form { display: flex; flex-direction: column; gap: 10px; max-width: 460px; }
+.dash-refund-form select, .dash-refund-form textarea { width: 100%; }
+.dash-account-note { font-size: 13px; color: rgba(255, 255, 255, 0.7); }
+
+.admin-bank-health { margin-bottom: 24px; }
+.admin-bank-health h2 { font-size: 15px; margin-bottom: 8px; }
+.admin-table tr[data-health="warn"] { background: #fffbeb; }
+.admin-table tr[data-health="fail"] { background: #fef2f2; color: #b91c1c; font-weight: 600; }
 
 .admin-form { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
 .admin-form-row { display: flex; flex-direction: column; gap: 6px; }

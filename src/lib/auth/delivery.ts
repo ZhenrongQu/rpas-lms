@@ -1,3 +1,4 @@
+import { deliverViaResend } from "../email/resend";
 import type { VerificationChannel } from "./types";
 
 export async function sendVerificationCode({
@@ -19,10 +20,9 @@ export async function sendVerificationCode({
     if (!apiKey) throw new Error("RESEND_API_KEY is not configured");
 
     const fromAddress = process.env.EMAIL_FROM ?? "noreply@rpasacademy.ca";
-    const { Resend } = await import("resend");
-    const resend = new Resend(apiKey);
-
-    await resend.emails.send({
+    // A rejected send must throw here: the caller tells the user to check their
+    // inbox, and the Resend SDK resolves rather than throwing on rejection.
+    await deliverViaResend(apiKey, {
       from: fromAddress,
       to: target,
       subject: "Your PACIFIC DRONE verification code",
@@ -52,10 +52,7 @@ export async function sendPasswordResetLink({
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured");
 
   const fromAddress = process.env.EMAIL_FROM ?? "noreply@rpasacademy.ca";
-  const { Resend } = await import("resend");
-  const resend = new Resend(apiKey);
-
-  await resend.emails.send({
+  await deliverViaResend(apiKey, {
     from: fromAddress,
     to,
     subject: "Reset your PACIFIC DRONE password",

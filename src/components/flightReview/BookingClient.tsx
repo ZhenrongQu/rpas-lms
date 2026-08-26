@@ -64,7 +64,7 @@ export default function BookingClient({
       ) : (
         <ul className="fr-slot-list">
           {slots.map((s) => (
-            <li key={s.id} className="fr-slot">
+            <li key={s.id} className="fr-slot" data-testid="fr-slot">
               <div className="fr-slot-info">
                 <span className="fr-slot-when">{formatSlotDateTime(new Date(s.startsAt), locale)}</span>
                 <span className="fr-slot-meta">
@@ -74,6 +74,7 @@ export default function BookingClient({
               <button
                 type="button"
                 className="btn-launch"
+                data-testid="fr-book-slot"
                 onClick={() => book(s.id)}
                 disabled={busyId !== null}
               >

@@ -1,14 +1,24 @@
 import { describe, it, expect, vi } from "vitest";
 import { ExamService } from "./service";
-import { InMemorySessionStore } from "./store";
+import { InsufficientQuestionPoolError } from "./errors";
+import { InMemorySessionStore, type ExamSession } from "./store";
+import { GUEST_SESSION_TTL_MS } from "./config";
 import { makeTestBank } from "../content/__fixtures__/bank";
 import { correctOptionIds } from "./grade";
 import type { QuestionBank } from "../content/types";
 
 const bank = makeTestBank();
 
-/** Single-question bank whose correct option can be flipped, for snapshot-isolation tests. */
-function oneQuestionBank(correctOptionId: "a" | "b"): QuestionBank {
+/**
+ * A full-size Basic bank (exactly 35 questions, so generation picks all of them)
+ * whose `air-law-0001` entry has a flippable correct option. Used to prove an
+ * in-flight exam grades from its own snapshot, not the live bank.
+ */
+function flippableBank(correctOptionId: "a" | "b"): QuestionBank {
+  const filler = makeTestBank()
+    .questions.filter((q) => q.certLevel === "BASIC" && q.difficulty === 1)
+    .slice(0, 34)
+    .map((q) => structuredClone(q));
   return {
     schemaVersion: 1,
     questions: [
@@ -28,6 +38,7 @@ function oneQuestionBank(correctOptionId: "a" | "b"): QuestionBank {
         reference: { EN: "r", ZH: "r" },
         tags: [],
       },
+      ...filler,
     ],
   };
 }
@@ -67,15 +78,15 @@ describe("ExamService", () => {
     })).toBe(true);
   });
 
-  it("guests receive a 10-question Basic taster of difficulty 0 questions", async () => {
+  it("guests receive a 15-question Basic taster of difficulty 0 questions", async () => {
     const store = new InMemorySessionStore();
     const svc = new ExamService(store, () => 1_000, bank);
     const created = await svc.createMock("BASIC", "EN", 42, null, "GUEST");
     const session = await store.get(created.sessionId);
 
-    expect(created.total).toBe(10);
+    expect(created.total).toBe(15);
     expect(session?.userId).toBeNull();
-    expect(session?.questionIds.length).toBe(10);
+    expect(session?.questionIds.length).toBe(15);
     expect(session?.questionIds.every((id) => {
       const q = bank.questions.find((item) => item.id === id);
       return q?.difficulty === 0;
@@ -202,11 +213,11 @@ describe("ExamService", () => {
   });
 
   it("createMock defaults to the GUEST taster (least privilege) when tier omitted", async () => {
-    // SEC-02: an omitted accessTier must fail to the smallest pool (10-question
+    // SEC-02: an omitted accessTier must fail to the smallest pool (15-question
     // difficulty-0 Basic taster), never the full paid bank.
     const svc = newService();
     const created = await svc.createMock("BASIC", "EN", 42);
-    expect(created.total).toBe(10);
+    expect(created.total).toBe(15);
   });
 
   it("getReview() is null before submit", async () => {
@@ -248,7 +259,7 @@ describe("ExamService", () => {
   });
 
   it("grades an in-flight exam from its snapshot even after the bank's correct answer changes", async () => {
-    const liveBank = oneQuestionBank("a"); // correct answer is "a" at creation time
+    const liveBank = flippableBank("a"); // correct answer is "a" at creation time
     const svc = new ExamService(new InMemorySessionStore(), () => 1_000, liveBank);
     const { sessionId } = await svc.createMock("BASIC", "EN", 1, null, "PAID");
     await svc.answer(sessionId, "air-law-0001", ["a"]);
@@ -259,8 +270,8 @@ describe("ExamService", () => {
 
     // The in-flight exam still grades "a" as correct — it reads its own snapshot.
     const result = await svc.submit(sessionId);
-    expect(result!.correct).toBe(1);
-    expect(result!.scorePct).toBe(1);
+    expect(result!.correct).toBe(1); // only the answered question; the other 34 are blank
+    expect(result!.scorePct).toBeCloseTo(1 / 35);
 
     // A brand-new exam built from the edited bank reflects the change: "a" is now wrong.
     const svc2 = new ExamService(new InMemorySessionStore(), () => 1_000, liveBank);
@@ -268,5 +279,212 @@ describe("ExamService", () => {
     await svc2.answer(created2.sessionId, "air-law-0001", ["a"]);
     const result2 = await svc2.submit(created2.sessionId);
     expect(result2!.correct).toBe(0);
+  });
+});
+
+// DEF-003 / PRD U1: generateExam returns min(total, poolSize), so a thin pool used
+// to yield a short paper whose pass threshold was computed against the questions it
+// happened to find — a false "you're ready" signal. Creation now refuses instead.
+describe("question pool sufficiency", () => {
+  function bankOf(count: number): QuestionBank {
+    return {
+      schemaVersion: 1,
+      questions: makeTestBank()
+        .questions.filter((q) => q.certLevel === "BASIC" && q.difficulty === 1)
+        .slice(0, count),
+    };
+  }
+
+  it("refuses to create when the scoped pool cannot fill a full paper", async () => {
+    const svc = new ExamService(new InMemorySessionStore(), () => 1_000, bankOf(3));
+    await expect(svc.createMock("BASIC", "EN", 1, "u1", "FREE")).rejects.toBeInstanceOf(
+      InsufficientQuestionPoolError,
+    );
+  });
+
+  it("carries the shortfall on the error for logs and the CMS bank-health view", async () => {
+    const svc = new ExamService(new InMemorySessionStore(), () => 1_000, bankOf(3));
+    const err = await svc.createMock("BASIC", "EN", 1, "u1", "FREE").catch((e) => e);
+    expect(err).toBeInstanceOf(InsufficientQuestionPoolError);
+    expect(err.available).toBe(3);
+    expect(err.required).toBe(35);
+    expect(err.certLevel).toBe("BASIC");
+  });
+
+  it("creates normally when the pool is exactly the required size", async () => {
+    const svc = new ExamService(new InMemorySessionStore(), () => 1_000, bankOf(35));
+    const created = await svc.createMock("BASIC", "EN", 1, "u1", "FREE");
+    expect(created.total).toBe(35);
+  });
+
+  it("counts only questions of the requested level, not the whole bank", async () => {
+    // 40 questions in the bank, but every one of them is ADVANCED: a BASIC exam
+    // must still be refused. Counting bank.questions.length would wrongly pass.
+    const advancedOnly: QuestionBank = {
+      schemaVersion: 1,
+      questions: makeTestBank().questions.filter((q) => q.certLevel === "ADVANCED"),
+    };
+    const svc = new ExamService(new InMemorySessionStore(), () => 1_000, advancedOnly);
+    await expect(svc.createMock("BASIC", "EN", 1, "u1", "PAID")).rejects.toBeInstanceOf(
+      InsufficientQuestionPoolError,
+    );
+  });
+});
+
+// DEF-002 / PRD U2: the server used to trust the client timer. Close the tab
+// mid-exam and the session hung unsubmitted forever — the answers already saved
+// were, in effect, thrown away. Reading an expired session now grades it.
+describe("expired session lazy settlement", () => {
+  const NINETY_ONE_MINUTES = 91 * 60_000;
+
+  function clockedService(store = new InMemorySessionStore()) {
+    let now = 1_000;
+    const svc = new ExamService(store, () => now, bank);
+    return { svc, store, expire: () => { now = 1_000 + NINETY_ONE_MINUTES; } };
+  }
+
+  async function answerFirstCorrectly(svc: ExamService, store: InMemorySessionStore, sessionId: string) {
+    const session = await store.get(sessionId);
+    const q = session!.questionSnapshot[0];
+    await svc.answer(sessionId, q.id, correctOptionIds(q));
+  }
+
+  it("grades an abandoned exam from the answers saved before the timeout", async () => {
+    const { svc, store, expire } = clockedService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, "u1", "PAID");
+    await answerFirstCorrectly(svc, store, sessionId);
+
+    expire();
+    const result = await svc.getResult(sessionId);
+
+    expect(result).not.toBeNull();
+    expect(result!.timedOut).toBe(true);
+    expect(result!.total).toBe(35);
+    expect(result!.correct).toBe(1);
+    // …and it is persisted, not recomputed per read.
+    expect((await store.get(sessionId))!.submitted).toBe(true);
+  });
+
+  it("makes the settled exam reviewable, like a submitted one", async () => {
+    const { svc, expire } = clockedService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, "u1", "PAID");
+
+    expire();
+    const review = await svc.getReview(sessionId);
+
+    expect(review).not.toBeNull();
+    expect(review!.length).toBe(35);
+  });
+
+  it("settles exactly once under concurrent reads, and losers see the finished result", async () => {
+    class CountingStore extends InMemorySessionStore {
+      settles = 0;
+      async settleIfUnsubmitted(session: ExamSession): Promise<boolean> {
+        const won = await super.settleIfUnsubmitted(session);
+        if (won) this.settles++;
+        return won;
+      }
+    }
+    const store = new CountingStore();
+    const { svc, expire } = clockedService(store);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, "u1", "PAID");
+
+    expire();
+    const [result, review, meta] = await Promise.all([
+      svc.getResult(sessionId),
+      svc.getReview(sessionId),
+      svc.getSessionMeta(sessionId),
+    ]);
+
+    expect(store.settles).toBe(1);
+    // The readers that lost the race must still see a fully written row — a
+    // "submitted but no result yet" read is the hang this fix removes.
+    expect(result!.timedOut).toBe(true);
+    expect(review).not.toBeNull();
+    expect(meta).not.toBeNull();
+  });
+
+  it("submitting after the deadline returns the settled result rather than regrading", async () => {
+    const { svc, store, expire } = clockedService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, "u1", "PAID");
+    await answerFirstCorrectly(svc, store, sessionId);
+
+    expire();
+    const settled = await svc.getResult(sessionId);
+    const submitted = await svc.submit(sessionId);
+
+    expect(submitted).toEqual(settled);
+    expect(submitted!.timedOut).toBe(true);
+  });
+
+  it("leaves a normally submitted exam untouched", async () => {
+    const { svc, store, expire } = clockedService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, "u1", "PAID");
+    await answerFirstCorrectly(svc, store, sessionId);
+    const onTime = await svc.submit(sessionId);
+    expect(onTime!.timedOut).toBeUndefined();
+
+    expire();
+    expect(await svc.getResult(sessionId)).toEqual(onTime);
+  });
+
+  it("does not settle a session that is still running", async () => {
+    const { svc, store } = clockedService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, "u1", "PAID");
+
+    expect(await svc.getResult(sessionId)).toBeNull();
+    expect((await store.get(sessionId))!.submitted).toBe(false);
+  });
+
+  it("rejects new answers on an expired session", async () => {
+    const { svc, store, expire } = clockedService();
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, "u1", "PAID");
+    const q = (await store.get(sessionId))!.questionSnapshot[0];
+
+    expire();
+    expect(await svc.answer(sessionId, q.id, correctOptionIds(q))).toBe(false);
+  });
+});
+
+// PRD U6: an anonymous session is reachable by its unguessable id alone, so it
+// should not stay addressable forever.
+describe("guest session lifetime", () => {
+  function serviceAt(startNow: number) {
+    let now = startNow;
+    return { svc: new ExamService(new InMemorySessionStore(), () => now, bank), set: (t: number) => { now = t; } };
+  }
+
+  it("stops serving an ownerless session after 24 hours", async () => {
+    const { svc, set } = serviceAt(1_000);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, null, "GUEST");
+
+    set(1_000 + GUEST_SESSION_TTL_MS + 1);
+
+    expect(await svc.getSessionMeta(sessionId)).toBeNull();
+    expect(await svc.getPublicQuestions(sessionId)).toBeNull();
+    expect(await svc.getResult(sessionId)).toBeNull();
+  });
+
+  it("keeps serving it right up to the boundary", async () => {
+    const { svc, set } = serviceAt(1_000);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, null, "GUEST");
+
+    set(1_000 + GUEST_SESSION_TTL_MS - 1);
+
+    expect(await svc.getSessionMeta(sessionId)).not.toBeNull();
+  });
+
+  it("does not expire a claimed session — ownership makes it permanent", async () => {
+    const store = new InMemorySessionStore();
+    let now = 1_000;
+    const svc = new ExamService(store, () => now, bank);
+    const { sessionId } = await svc.createMock("BASIC", "EN", 7, null, "GUEST");
+
+    // Claiming is what registration does: it writes an owner onto the session.
+    const claimed = await store.get(sessionId);
+    await store.update({ ...claimed!, userId: "u1" });
+    now = 1_000 + GUEST_SESSION_TTL_MS * 10;
+
+    expect(await svc.getSessionMeta(sessionId)).not.toBeNull();
   });
 });

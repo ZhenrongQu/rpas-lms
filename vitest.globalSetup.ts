@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
 import { PrismaClient } from "@prisma/client";
+import { applyDbIndexes } from "./scripts/apply-db-indexes";
 
 // Build (or reset) the Postgres schema in the test database once, before the suite,
 // then seed the real question bank + lessons so DB-backed exam/checkpoint/lesson
@@ -11,6 +12,11 @@ export default async function setup(): Promise<void> {
     process.env.TEST_DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5433/postgres";
   const env = { ...process.env, DATABASE_URL: url, DIRECT_URL: url };
   execSync("pnpm exec prisma db push --force-reset --skip-generate", { stdio: "inherit", env });
+  // `db push` cannot create partial (WHERE-clause) unique indexes, and the Flight
+  // Review booking concurrency guarantees are exactly that. Re-apply them here or
+  // the concurrency tests pass locally against a database that lacks the
+  // constraint they are meant to prove.
+  await applyDbIndexes(url);
   execSync("pnpm exec tsx scripts/seed-test-fixtures.ts", { stdio: "inherit", env });
   await ensureRemediationDatabase(url);
 }

@@ -1,10 +1,12 @@
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import { auth } from '../../../auth';
-import { hasPaidAccess, hasFlightReviewEntitlement } from '@/lib/payments/entitlements';
+import { hasPaidAccess } from '@/lib/payments/entitlements';
+import { countAvailableCredits } from '@/lib/flightReview/credits';
 import { ADVANCED_BUNDLE_PRODUCT, FLIGHT_REVIEW_PRODUCT } from '@/lib/payments/config';
 import { isNativeRequest } from '@/lib/platform.server';
 import PurchaseButton from '@/components/payments/PurchaseButton';
+import TrackView from '@/components/analytics/TrackView';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -28,9 +30,9 @@ export default async function BillingPage({ params }: Props) {
   }
 
   const native = await isNativeRequest();
-  const [paid, flightReview] = await Promise.all([
+  const [paid, reviewCredits] = await Promise.all([
     hasPaidAccess(userId),
-    hasFlightReviewEntitlement(userId),
+    countAvailableCredits(userId),
   ]);
 
   function action(owned: boolean, product: string, cta: string) {
@@ -40,8 +42,31 @@ export default async function BillingPage({ params }: Props) {
     return <PurchaseButton locale={locale} product={product} label={cta} className="btn-launch" />;
   }
 
+  /* U13: Flight Review is consumable, so "owned" is the wrong frame — show how
+     many reviews are banked and keep the buy button available either way. */
+  function reviewAction() {
+    if (native) return <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>{t('manageOnWeb')}</p>;
+    return (
+      <>
+        {reviewCredits > 0 && (
+          <span style={{ color: 'var(--green)', fontFamily: 'var(--font-mono)' }}>
+            {t('reviewCredits', { count: reviewCredits })}
+          </span>
+        )}
+        <PurchaseButton
+          locale={locale}
+          product={FLIGHT_REVIEW_PRODUCT}
+          label={t('flightCta')}
+          className="btn-launch"
+        />
+      </>
+    );
+  }
+
   return (
     <div className="auth-view">
+      {/* U7 conversion funnel: viewing pricing, before any checkout starts. */}
+      <TrackView event="pricing_viewed" userId={userId} />
       <div className="hud-panel" style={{ maxWidth: 560, width: '100%', display: 'flex', flexDirection: 'column', gap: 24, padding: 28 }}>
         <div>
           <h1 className="auth-title" style={{ marginBottom: 8 }}>{t('title')}</h1>
@@ -57,7 +82,7 @@ export default async function BillingPage({ params }: Props) {
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 20 }}>
           <h2 style={{ fontSize: 18 }}>{t('flightTitle')}</h2>
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>{t('flightBody')}</p>
-          {action(flightReview, FLIGHT_REVIEW_PRODUCT, t('flightCta'))}
+          {reviewAction()}
         </section>
       </div>
     </div>

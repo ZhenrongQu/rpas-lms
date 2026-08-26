@@ -18,6 +18,10 @@ import { GET as questionGET, PUT as questionPUT, DELETE as questionDELETE } from
 import { GET as slotsGET, POST as slotsPOST } from "./flight-review/slots/route";
 import { PUT as slotPUT, DELETE as slotDELETE } from "./flight-review/slots/[id]/route";
 import { POST as grantPOST, DELETE as grantDELETE } from "./flight-review/grant/route";
+import { POST as entitlementPOST, DELETE as entitlementDELETE } from "./entitlements/route";
+import { POST as closeBookingPOST } from "./flight-review/bookings/[id]/close/route";
+import { GET as refundsGET, POST as refundsPOST } from "./refunds/route";
+import { POST as resendPOST } from "./flight-review/bookings/[id]/resend/route";
 import { GET as mfaGET, POST as mfaPOST } from "./mfa/route";
 
 const ADMIN = "sec12-admin";
@@ -70,6 +74,12 @@ describe("/api/coriander/* admin guards (SEC-12)", () => {
       ["slot DELETE", slotDELETE(req(), ctx("x"))],
       ["grant POST", grantPOST(body({}))],
       ["grant DELETE", grantDELETE(body({}))],
+      ["entitlements POST", entitlementPOST(body({}))],
+      ["entitlements DELETE", entitlementDELETE(body({}))],
+      ["close booking POST", closeBookingPOST(body({}), ctx("x"))],
+      ["refunds GET", refundsGET()],
+      ["refunds POST", refundsPOST(body({}))],
+      ["resend booking POST", resendPOST(req(), ctx("x"))],
       ["mfa GET", mfaGET()],
       ["mfa POST", mfaPOST(body({ action: "begin" }))],
     ];
@@ -83,5 +93,19 @@ describe("/api/coriander/* admin guards (SEC-12)", () => {
     expect((await questionsPOST(body({ bad: true }))).status).toBe(422);
     expect((await lessonsPOST(body({ bad: true }))).status).toBe(422);
     expect((await slotsPOST(body({ bad: true }))).status).toBe(422);
+    expect((await entitlementPOST(body({ bad: true }))).status).toBe(422);
+    expect((await closeBookingPOST(body({ bad: true }), ctx("x"))).status).toBe(422);
+    expect((await refundsPOST(body({ bad: true }))).status).toBe(422);
+  });
+
+  it("an admin can revoke a customer's paid access by email (DEF-001)", async () => {
+    asAdmin();
+    await prisma.customer.update({ where: { id: CUSTOMER }, data: { email: "sec12@test.local", accessTier: "PAID" } });
+
+    const res = await entitlementDELETE(body({ email: "sec12@test.local" }));
+
+    expect(res.status).toBe(200);
+    const after = await prisma.customer.findUniqueOrThrow({ where: { id: CUSTOMER } });
+    expect(after.accessTier).toBe("FREE");
   });
 });

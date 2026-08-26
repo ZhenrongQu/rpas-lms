@@ -5,7 +5,7 @@ import { getCourseLessonCount } from "../lessons/catalog";
 import { getResumeLesson } from "../lessons/resume";
 import { listUserExamHistory } from "../exam/history";
 import { canBookFlightReview } from "../payments/entitlements";
-import { getUserBooking } from "../flightReview/booking";
+import { getActiveBooking } from "../flightReview/booking";
 import type { ExamHistoryItem } from "../exam/history";
 import type { BookingWithSlot } from "../flightReview/booking";
 
@@ -14,7 +14,7 @@ vi.mock("../lessons/catalog", () => ({ getCourseLessonCount: vi.fn() }));
 vi.mock("../lessons/resume", () => ({ getResumeLesson: vi.fn() }));
 vi.mock("../exam/history", () => ({ listUserExamHistory: vi.fn() }));
 vi.mock("../payments/entitlements", () => ({ canBookFlightReview: vi.fn() }));
-vi.mock("../flightReview/booking", () => ({ getUserBooking: vi.fn() }));
+vi.mock("../flightReview/booking", () => ({ getActiveBooking: vi.fn() }));
 
 function examHistoryItem(overrides: Partial<ExamHistoryItem> = {}): ExamHistoryItem {
   return {
@@ -59,7 +59,7 @@ describe("getMobileDashboard", () => {
     vi.mocked(getResumeLesson).mockResolvedValue(null);
     vi.mocked(listUserExamHistory).mockResolvedValue([]);
     vi.mocked(canBookFlightReview).mockResolvedValue(false);
-    vi.mocked(getUserBooking).mockResolvedValue(null);
+    vi.mocked(getActiveBooking).mockResolvedValue(null);
   });
 
   it("returns progress, resume lesson, exam summary, and locked flight-review status for a free user", async () => {
@@ -207,7 +207,7 @@ describe("getMobileDashboard", () => {
   });
 
   it("returns a booked flight-review status with a narrow booking DTO", async () => {
-    vi.mocked(getUserBooking).mockResolvedValue(bookingFixture());
+    vi.mocked(getActiveBooking).mockResolvedValue(bookingFixture());
 
     await expect(
       getMobileDashboard({

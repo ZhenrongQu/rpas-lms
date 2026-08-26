@@ -71,6 +71,12 @@
         ],
         "duration": "约1小时 · 现场考试",
         "cta": "预约复查"
+      },
+      "taster": {
+        "kicker": "无需注册",
+        "title": "现在就试一套模拟考",
+        "body": "直接在浏览器里做 15 道真实的基础级题目 —— 不用注册，不用付费。之后注册，这次作答会自动归入你的账户。",
+        "cta": "开始免费体验"
       }
     },
     "privileges": {
@@ -277,6 +283,26 @@
     "flightTitle": "飞行考核",
     "flightBody": "预约与加拿大交通部考官的线下飞行考核。",
     "flightCta": "加购飞行考核",
+    "reviewCredits": "你当前有 {count} 张未使用的审查券",
+    "refundTitle": "申请退款",
+    "refundIntro": "退款申请由人工审核。在批准之前，不会退款，也不会收回你账户中的任何权限。",
+    "refundSelectPurchase": "选择一笔购买…",
+    "refundReasonPlaceholder": "请说明申请退款的原因",
+    "refundSubmit": "提交申请",
+    "refundSubmitting": "提交中…",
+    "refundFiled": "已收到申请。审核完成后我们会邮件通知你。",
+    "refundAlreadyFiled": "该笔购买已有一条退款申请正在审核中。",
+    "refundAllFiled": "所有购买都已提交过退款申请。",
+    "refundNoPayments": "暂无购买记录。",
+    "refundFailed": "提交失败，请重试。",
+    "alreadyOwned": "你已拥有此项，无需重复购买。",
+    "unusedCreditsWarning": "你还有 {count} 张未使用的审查券，建议先去预约。",
+    "bookNow": "去预约",
+    "buyAnyway": "仍要购买",
+    "checkoutUnavailable": "结账暂不可用 —— 支付尚未配置。",
+    "networkError": "无法连接服务器，请重试。",
+    "openingCheckout": "正在打开结账…",
+    "defaultCta": "解锁付费课程",
     "owned": "✓ 已在你的账户中",
     "manageOnWeb": "购买在网页端进行。请在浏览器打开 pacificdrone.ca 升级。"
   },
@@ -300,7 +326,10 @@
     "booking": "预约中…",
     "bookingError": "该时段刚被预约。请选择其他时段。",
     "genericError": "出现错误，请重试。",
-    "minutes": "分钟"
+    "minutes": "分钟",
+    "resend": "重新发送确认邮件",
+    "resendSent": "确认邮件已发送。",
+    "resendTooSoon": "刚刚已发送，请一分钟后再试。"
   },
   "modules": {
     "intro": "平台介绍",
@@ -368,7 +397,8 @@
     "newMission": "新考试",
     "notFound": "未找到成绩。该 session 可能已过期或尚未提交。",
     "incorrectReview": "错题解析",
-    "noIncorrect": "没有错题。"
+    "noIncorrect": "没有错题。",
+    "timedOutNotice": "考试已超时，按超时前的作答判分。"
   },
   "review": {
     "title": "答案解析",

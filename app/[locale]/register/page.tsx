@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useTranslations, useLocale } from 'next-intl';
 import { PASSWORD_RULES, isPasswordValid } from '@/lib/auth/passwordPolicy';
+import { forgetGuestExamSession, takeGuestExamSession } from '@/lib/exam/guestSessionStorage';
+import { track } from '@/lib/analytics/client';
 
 type OAuthStatus = { google: boolean; apple: boolean };
 
@@ -69,9 +71,17 @@ export default function RegisterPage() {
         password,
         phone: phone.trim() || undefined,
         username: username.trim() || undefined,
+        // U6: carry the taster they just took into the new account.
+        guestExamSessionId: takeGuestExamSession(),
       }),
     });
-    if (res.ok) return { ok: true };
+    if (res.ok) {
+      forgetGuestExamSession();
+      // U7 conversion funnel. identifyUser() runs at first sign-in, once there is
+      // a Customer id to stitch the anonymous history onto.
+      track('user_registered');
+      return { ok: true };
+    }
     const data = await res.json().catch(() => null);
     return { ok: false, fields: data?.fields };
   }

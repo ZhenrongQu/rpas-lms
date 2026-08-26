@@ -17,13 +17,15 @@ import { listCompletedLessonIds } from '@/lib/lessons/progress';
 import { getResumeLesson } from '@/lib/lessons/resume';
 import type { Course, RouteLocale } from '@/lib/lessons/types';
 import { canBookFlightReview } from '@/lib/payments/entitlements';
-import { getUserBooking } from '@/lib/flightReview/booking';
+import { getActiveBooking } from '@/lib/flightReview/booking';
 import { listUserExamHistory, type ExamHistoryItem } from '@/lib/exam/history';
 import FlightReviewPanel from '@/components/dashboard/FlightReviewPanel';
 import MockExamCard from '@/components/dashboard/MockExamCard';
 import ProgressRing from '@/components/dashboard/ProgressRing';
 import ChangePasswordForm from '@/components/dashboard/ChangePasswordForm';
 import DeleteAccountForm from '@/components/dashboard/DeleteAccountForm';
+import RefundRequestForm from '@/components/dashboard/RefundRequestForm';
+import IdentifyUser from '@/components/analytics/IdentifyUser';
 import StudyAssistant from '@/components/dashboard/StudyAssistant';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -51,7 +53,7 @@ export default async function DashboardPage({ params }: Props) {
       getCourseLessonCount('basic'),
       getCourseLessonCount('advanced'),
       userId ? canBookFlightReview(userId) : Promise.resolve(false),
-      userId ? getUserBooking(userId) : Promise.resolve(null),
+      userId ? getActiveBooking(userId) : Promise.resolve(null),
       userId ? listUserExamHistory(userId, 20) : Promise.resolve<ExamHistoryItem[]>([]),
     ]);
 
@@ -217,6 +219,10 @@ export default async function DashboardPage({ params }: Props) {
           </div>
         )}
 
+        {/* U7: links anonymous pre-signup activity to the account, and gives
+            Sentry the same id so errors can be joined to customers. */}
+        {userId && <IdentifyUser userId={userId} />}
+
         {/* ── Study assistant (paid feature; free users see an upsell) ── */}
         {userId && <StudyAssistant locale={locale} isPaid={isPaid} />}
 
@@ -245,6 +251,10 @@ export default async function DashboardPage({ params }: Props) {
             <div className="dash-account-pw">
               <div className="dash-account-pw-title">{t('dashboard.changePassword')}</div>
               <ChangePasswordForm />
+            </div>
+            <div className="dash-account-pw">
+              <div className="dash-account-pw-title">{t('billing.refundTitle')}</div>
+              <RefundRequestForm />
             </div>
             <div className="dash-account-pw">
               <div className="dash-account-pw-title">{t('dashboard.deleteAccount')}</div>

@@ -1,3 +1,5 @@
+import { deliverViaResend } from "./resend";
+
 /**
  * Generic transactional email sender. Mirrors the auth verification-code
  * delivery pattern: outside production it logs to the console instead of
@@ -20,8 +22,8 @@ export async function sendEmail({ to, subject, text, html }: EmailMessage): Prom
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured");
 
   const fromAddress = process.env.EMAIL_FROM ?? "noreply@rpasacademy.ca";
-  const { Resend } = await import("resend");
-  const resend = new Resend(apiKey);
-
-  await resend.emails.send({ from: fromAddress, to, subject, text, html });
+  // deliverViaResend, not resend.emails.send: the SDK resolves rather than
+  // throwing on a rejected send, and every caller here reads "did not throw" as
+  // "delivered".
+  await deliverViaResend(apiKey, { from: fromAddress, to, subject, text, html });
 }

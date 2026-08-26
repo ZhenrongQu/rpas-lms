@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useLocale, useTranslations } from 'next-intl';
+import { rememberGuestExamSession } from '@/lib/exam/guestSessionStorage';
+import { track } from '@/lib/analytics/client';
 
 type CertLevel = 'BASIC' | 'ADVANCED';
 
@@ -10,6 +13,8 @@ export default function ExamLaunchPage() {
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
+  const { data: session } = useSession();
+  const userId = session?.user?.id ?? null;
   const [selected, setSelected] = useState<CertLevel | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,6 +34,14 @@ export default function ExamLaunchPage() {
       if (!res.ok) throw new Error('Failed to create exam session');
       const { sessionId } = await res.json();
       if (!sessionId) throw new Error('Failed to create exam session');
+      // U6: if this turns out to be a guest taster, registering later claims it.
+      // Stored unconditionally — the server refuses to claim an owned session.
+      rememberGuestExamSession(sessionId);
+      // U7: any exam is a learning-funnel step. Only an anonymous one is the
+      // conversion funnel's taster — counting a signed-in user's exam as a taster
+      // would inflate the very step the funnel is measuring drop-off across.
+      track('exam_started', { certLevel: selected }, userId);
+      if (!userId) track('taster_started', { certLevel: selected });
       router.push(`/${locale}/exam/${sessionId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');

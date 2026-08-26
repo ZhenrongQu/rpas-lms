@@ -71,6 +71,12 @@
         ],
         "duration": "Approx. 1 hr · On-site",
         "cta": "Book a review"
+      },
+      "taster": {
+        "kicker": "No signup",
+        "title": "Try a mock exam right now",
+        "body": "Answer 15 real Basic-level questions in your browser — no account, no card. Sign up afterwards and the attempt follows you into your dashboard.",
+        "cta": "Start the free taster"
       }
     },
     "privileges": {
@@ -277,6 +283,26 @@
     "flightTitle": "Flight Review",
     "flightBody": "Book your in-person flight review with a Transport Canada examiner.",
     "flightCta": "Add Flight Review",
+    "reviewCredits": "You have {count} unused review credit(s)",
+    "refundTitle": "Request a refund",
+    "refundIntro": "Refund requests are reviewed by a person. Nothing is charged back or removed from your account until it is approved.",
+    "refundSelectPurchase": "Choose a purchase…",
+    "refundReasonPlaceholder": "Tell us why you'd like a refund",
+    "refundSubmit": "Submit request",
+    "refundSubmitting": "Submitting…",
+    "refundFiled": "Request received. We'll email you once it has been reviewed.",
+    "refundAlreadyFiled": "A refund request for that purchase is already being reviewed.",
+    "refundAllFiled": "Every purchase already has a refund request on file.",
+    "refundNoPayments": "No purchases yet.",
+    "refundFailed": "Could not file the request. Please try again.",
+    "alreadyOwned": "You already own this — it is on your account.",
+    "unusedCreditsWarning": "You still have {count} unused review credit(s). Book that one before buying another.",
+    "bookNow": "Book your review",
+    "buyAnyway": "Buy another anyway",
+    "checkoutUnavailable": "Checkout unavailable — payment is not configured yet.",
+    "networkError": "Could not reach the server. Please try again.",
+    "openingCheckout": "Opening checkout…",
+    "defaultCta": "Unlock paid lessons",
     "owned": "✓ Already on your account",
     "manageOnWeb": "Purchases are managed on the web. Open pacificdrone.ca in your browser to upgrade."
   },
@@ -300,7 +326,10 @@
     "booking": "Booking…",
     "bookingError": "That slot was just taken. Please pick another.",
     "genericError": "Something went wrong. Please try again.",
-    "minutes": "min"
+    "minutes": "min",
+    "resend": "Resend confirmation",
+    "resendSent": "Confirmation email sent.",
+    "resendTooSoon": "Just sent one — try again in a minute."
   },
   "modules": {
     "intro": "Intro",
@@ -368,7 +397,8 @@
     "newMission": "New Mission",
     "notFound": "Result not found. The session may have expired or not been submitted.",
     "incorrectReview": "Incorrect Answer Review",
-    "noIncorrect": "Good Job! You are ready to take the exam!"
+    "noIncorrect": "Good Job! You are ready to take the exam!",
+    "timedOutNotice": "This exam timed out. It was graded from the answers saved before the deadline."
   },
   "review": {
     "title": "Answer Review",

@@ -1,6 +1,6 @@
 import { listUserExamHistory } from "../exam/history";
 import type { AccessTier } from "../exam/access";
-import { getUserBooking } from "../flightReview/booking";
+import { getActiveBooking } from "../flightReview/booking";
 import { getCourseLessonCount } from "../lessons/catalog";
 import { listCompletedLessonIds } from "../lessons/progress";
 import { getResumeLesson } from "../lessons/resume";
@@ -30,7 +30,7 @@ export async function getMobileDashboard({ userId, locale, accessTier }: Input) 
       getCourseLessonCount("advanced"),
       listUserExamHistory(userId, 5),
       canBookFlightReview(userId),
-      getUserBooking(userId),
+      getActiveBooking(userId),
     ]);
 
   const completed = new Set(completedIds);

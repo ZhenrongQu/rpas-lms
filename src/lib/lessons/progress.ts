@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 
 /** lessonId is "${course}/${moduleId}/${slug}"; basic vs advanced progress are
@@ -16,20 +17,33 @@ export async function lessonExists(lessonId: string): Promise<boolean> {
   return row !== null;
 }
 
-/** Upsert a completed lesson for a user (idempotent on [userId, lessonId]). */
+/**
+ * Records a lesson as completed for a user. Idempotent on [userId, lessonId],
+ * and `update: {}` means revisiting never moves the original completedAt.
+ *
+ * P2002 is swallowed because a lesson now has two completion triggers (PRD U11):
+ * the button and scrolling to the end. Those can fire within milliseconds of each
+ * other, and a Prisma upsert is not atomic against a concurrent insert — the
+ * loser's create hits the unique constraint. The row existing IS the outcome both
+ * callers wanted, so a duplicate-key collision here is success, not failure.
+ */
 export async function markLessonComplete(userId: string, lessonId: string): Promise<void> {
-  if (isBasic(lessonId)) {
-    await prisma.basicLessonProgress.upsert({
-      where: { userId_lessonId: { userId, lessonId } },
-      create: { userId, lessonId },
-      update: {},
-    });
-  } else {
-    await prisma.advancedLessonProgress.upsert({
-      where: { userId_lessonId: { userId, lessonId } },
-      create: { userId, lessonId },
-      update: {},
-    });
+  const upsert = isBasic(lessonId)
+    ? prisma.basicLessonProgress.upsert({
+        where: { userId_lessonId: { userId, lessonId } },
+        create: { userId, lessonId },
+        update: {},
+      })
+    : prisma.advancedLessonProgress.upsert({
+        where: { userId_lessonId: { userId, lessonId } },
+        create: { userId, lessonId },
+        update: {},
+      });
+
+  try {
+    await upsert;
+  } catch (err) {
+    if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) throw err;
   }
 }
 

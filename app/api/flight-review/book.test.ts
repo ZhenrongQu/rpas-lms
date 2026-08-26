@@ -20,7 +20,12 @@ function postReq(userId: string | null, slotId: string): Request {
   });
 }
 
+async function activeBooking(userId: string) {
+  return prisma.flightReviewBooking.findFirst({ where: { customerId: userId, status: "BOOKED" } });
+}
+
 async function cleanup() {
+  await prisma.flightReviewCredit.deleteMany({ where: { customerId: { in: USERS } } });
   await prisma.flightReviewBooking.deleteMany({ where: { customerId: { in: USERS } } });
   await prisma.flightReviewSlot.deleteMany({ where: { id: SLOT } });
   await prisma.entitlement.deleteMany({ where: { userId: { in: USERS } } });
@@ -37,11 +42,12 @@ describe("POST/DELETE /api/flight-review/book", () => {
         { id: INELIG, email: "fr-inelig@test.dev", displayName: "Inelig", accessTier: "FREE" },
       ],
     });
-    // ELIG + ELIG2 get the flight_review entitlement; INELIG is FREE with none.
-    await prisma.entitlement.createMany({
+    // ELIG + ELIG2 hold a review credit; INELIG is PAID-tier but credit-less,
+    // which under the consumable model (PRD U13) is not enough to book.
+    await prisma.flightReviewCredit.createMany({
       data: [
-        { userId: ELIG, product: "flight_review", source: "test" },
-        { userId: ELIG2, product: "flight_review", source: "test" },
+        { customerId: ELIG, source: "admin_grant" },
+        { customerId: ELIG2, source: "admin_grant" },
       ],
     });
     await prisma.flightReviewSlot.create({
@@ -58,15 +64,15 @@ describe("POST/DELETE /api/flight-review/book", () => {
     expect((await POST(postReq(null, SLOT))).status).toBe(401);
   });
 
-  it("403 when the user is not eligible (FREE with no flight_review)", async () => {
+  it("403 when the user holds no review credit", async () => {
     expect((await POST(postReq(INELIG, SLOT))).status).toBe(403);
-    expect(await prisma.flightReviewBooking.findUnique({ where: { customerId: INELIG } })).toBeNull();
+    expect(await activeBooking(INELIG)).toBeNull();
   });
 
   it("201 when an eligible user books an open slot", async () => {
     const res = await POST(postReq(ELIG, SLOT));
     expect(res.status).toBe(201);
-    expect(await prisma.flightReviewBooking.findUnique({ where: { customerId: ELIG } })).not.toBeNull();
+    expect(await activeBooking(ELIG)).not.toBeNull();
   });
 
   it("409 when a second eligible user books the taken slot", async () => {
@@ -79,6 +85,6 @@ describe("POST/DELETE /api/flight-review/book", () => {
       headers: { "x-test-user-id": ELIG },
     });
     expect((await DELETE(del)).status).toBe(200);
-    expect(await prisma.flightReviewBooking.findUnique({ where: { customerId: ELIG } })).toBeNull();
+    expect(await activeBooking(ELIG)).toBeNull();
   });
 });

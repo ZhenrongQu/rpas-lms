@@ -19,7 +19,7 @@ describe("exam API route handlers", () => {
     });
   });
 
-  it("lets a guest create a 10-question Basic taster", async () => {
+  it("lets a guest create a 15-question Basic taster", async () => {
     const res = await createExam(
       new Request("http://test/api/exam", {
         method: "POST",
@@ -28,8 +28,40 @@ describe("exam API route handlers", () => {
     );
     const { status, body } = await json(res);
     expect(status).toBe(201);
-    expect(body.total).toBe(10);
+    expect(body.total).toBe(15);
     expect(typeof body.sessionId).toBe("string");
+  });
+
+  it("409 — not 500 — when the bank cannot fill a full paper (DEF-003)", async () => {
+    const ids = (
+      await prisma.basicQuestionBank.findMany({
+        where: { difficulty: 0, status: "ACTIVE" },
+        select: { id: true },
+      })
+    ).map((r) => r.id);
+    // Leave 2 active: far short of the guest taster's size.
+    const archived = ids.slice(0, ids.length - 2);
+    await prisma.basicQuestionBank.updateMany({
+      where: { id: { in: archived } },
+      data: { status: "ARCHIVED" },
+    });
+    try {
+      const res = await createExam(
+        new Request("http://test/api/exam", {
+          method: "POST",
+          body: JSON.stringify({ certLevel: "BASIC", locale: "EN", seed: 42 }),
+        }),
+      );
+      const { status, body } = await json(res);
+      expect(status).toBe(409);
+      // The message must not leak how many questions the bank holds.
+      expect(JSON.stringify(body)).not.toMatch(/[0-9]/);
+    } finally {
+      await prisma.basicQuestionBank.updateMany({
+        where: { id: { in: archived } },
+        data: { status: "ACTIVE" },
+      });
+    }
   });
 
   it("403 when a guest tries to create an Advanced exam", async () => {

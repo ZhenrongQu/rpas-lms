@@ -26,20 +26,23 @@ export async function getCourseModules(_locale: RouteLocale, course: Course): Pr
   return MODULE_IDS.filter((id) => present.has(id));
 }
 
-/** One lesson's metadata + raw MDX body (frontmatter stripped) for a locale, or null. */
+/** One lesson's metadata + raw MDX body (frontmatter stripped) for a locale, or
+ *  null. `fellBackToEN` is true when the locale had no body and English was
+ *  served instead (PRD U10). */
 export async function getLesson(
   locale: RouteLocale,
   course: Course,
   moduleId: string,
   slug: string,
-): Promise<{ meta: LessonMeta; body: string } | null> {
+): Promise<{ meta: LessonMeta; body: string; fellBackToEN: boolean } | null> {
   const where = { course_moduleId_slug: { course, moduleId, slug } };
   const row =
     course === "basic"
       ? await prisma.basicLesson.findUnique({ where })
       : await prisma.advancedLesson.findUnique({ where });
   if (!row) return null;
-  return { meta: dbLessonToMeta(row, locale), body: dbLessonBody(row, locale) };
+  const { body, fellBack } = dbLessonBody(row, locale);
+  return { meta: dbLessonToMeta(row, locale), body, fellBackToEN: fellBack };
 }
 
 /** Lesson count for a module in a course. */

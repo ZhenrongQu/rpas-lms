@@ -64,4 +64,16 @@ export class PrismaSessionStore implements SessionStore {
     const { id, ...data } = toRow(session);
     await prisma.examSession.update({ where: { id }, data });
   }
+
+  /** `updateMany` with a `submitted: false` predicate — Postgres evaluates it
+   *  under a row lock, so exactly one concurrent settler writes and the losers
+   *  see a fully written row afterwards. */
+  async settleIfUnsubmitted(session: ExamSession): Promise<boolean> {
+    const { id, ...data } = toRow(session);
+    const { count } = await prisma.examSession.updateMany({
+      where: { id, submitted: false },
+      data,
+    });
+    return count === 1;
+  }
 }

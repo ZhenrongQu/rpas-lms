@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect } from "vitest";
+import { prisma } from "../db";
 import {
   getModuleLessons,
   getCourseModules,
@@ -62,5 +63,51 @@ describe("lesson catalog", () => {
     expect(await getModuleLessonCount("basic", "radiotelephony")).toBe(0); // advanced-only
     expect(await getCourseLessonCount("basic")).toBe(3);
     expect(await getCourseLessonCount("advanced")).toBe(2);
+  });
+
+  // PRD U10: an untranslated lesson serves English rather than a blank page,
+  // and says so — silently swapping languages reads as a bug.
+  describe("single-language fallback", () => {
+    const LESSON = { course: "basic", moduleId: "air-law", slug: "intro-1" };
+    const where = { course_moduleId_slug: LESSON };
+
+    async function setZhBody(bodyZH: string) {
+      await prisma.basicLesson.update({ where, data: { bodyZH } });
+    }
+
+    afterEach(async () => {
+      await prisma.basicLesson.update({ where, data: { bodyZH: "# 航空法基础 1\n\n中文正文。" } });
+    });
+
+    it("serves English and flags the fallback when the Chinese body is empty", async () => {
+      await setZhBody("");
+
+      const lesson = await getLesson("zh", "basic", "air-law", "intro-1");
+
+      expect(lesson?.fellBackToEN).toBe(true);
+      expect(lesson?.body).toContain("VLOS"); // the English fixture body
+    });
+
+    it("treats a whitespace-only body as missing, not as content", async () => {
+      await setZhBody("   \n\t  ");
+
+      const lesson = await getLesson("zh", "basic", "air-law", "intro-1");
+
+      expect(lesson?.fellBackToEN).toBe(true);
+      expect(lesson?.body.trim().length).toBeGreaterThan(0);
+    });
+
+    it("does not fall back when the translation exists", async () => {
+      const lesson = await getLesson("zh", "basic", "air-law", "intro-1");
+
+      expect(lesson?.fellBackToEN).toBe(false);
+      expect(lesson?.body).toContain("中文");
+    });
+
+    it("never flags a fallback for the English reader", async () => {
+      const lesson = await getLesson("en", "basic", "air-law", "intro-1");
+
+      expect(lesson?.fellBackToEN).toBe(false);
+    });
   });
 });

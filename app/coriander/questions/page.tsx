@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { MODULE_IDS } from "@/lib/content/types";
 import { ADMIN_BASE } from "@/lib/admin/route";
+import { bankHealth } from "@/lib/admin/bankHealth";
 
 type Props = { searchParams: Promise<Record<string, string>> };
 
@@ -33,6 +34,7 @@ export default async function AdminQuestionsPage({ searchParams }: Props) {
     status: true,
     stemEN: true,
   };
+  const health = await bankHealth();
   const rows =
     level === "BASIC"
       ? await prisma.basicQuestionBank.findMany({ where, select, orderBy: { id: "asc" } })
@@ -46,6 +48,42 @@ export default async function AdminQuestionsPage({ searchParams }: Props) {
           + New question
         </Link>
       </div>
+
+      {/* Bank health (PRD U1): each tier draws from a different slice of the bank,
+          and exam creation refuses outright once a slice drops below `required`. */}
+      <section className="admin-bank-health">
+        <h2>Bank health</h2>
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Bank</th>
+              <th>Tier</th>
+              <th>Available</th>
+              <th>Required</th>
+              <th>Target</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {health.map((h) => (
+              <tr key={`${h.certLevel}-${h.tier}`} data-health={h.ok ? (h.meetsTarget ? "ok" : "warn") : "fail"}>
+                <td>{h.certLevel}</td>
+                <td>{h.tier}</td>
+                <td>{h.available}</td>
+                <td>{h.required}</td>
+                <td>{h.target}</td>
+                <td>
+                  {!h.ok
+                    ? "Exam creation is BLOCKED for this tier"
+                    : !h.meetsTarget
+                      ? "Above the floor, below the redundancy target"
+                      : "OK"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
 
       {/* Filters */}
       <form method="get" className="admin-filters">

@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import { examService } from '@/lib/exam/instance';
 import ProgressRing from '@/components/dashboard/ProgressRing';
 import SubjectBreakdown from '@/components/results/SubjectBreakdown';
+import TrackView from '@/components/analytics/TrackView';
 
 type Props = { params: Promise<{ locale: string; id: string }> };
 
@@ -39,6 +40,14 @@ export default async function ResultsPage({ params }: Props) {
 
   return (
     <div className="results-view">
+      {/* U7 conversion funnel: reaching a result page means the taster was
+          finished, which is the step that predicts registration. */}
+      <TrackView event="taster_completed" />
+
+      {/* PRD U2: a server-settled exam must say so, or the learner reads a low
+          score as their real performance rather than an abandoned attempt. */}
+      {result.timedOut && <div className="result-timed-out">{t('results.timedOutNotice')}</div>}
+
       <div className="result-header">
         <div className={`result-status${passed ? ' pass' : ' fail'}`}>
           {passed ? t('results.missionComplete') : t('results.missionFailed')}

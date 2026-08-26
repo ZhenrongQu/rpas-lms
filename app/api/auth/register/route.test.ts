@@ -13,6 +13,7 @@ describe("POST /api/auth/register", () => {
   beforeEach(async () => {
     await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
+    await prisma.examSession.deleteMany();
     await prisma.customer.deleteMany();
     await prisma.rateLimit.deleteMany(); // SEC-11: reset register IP/email caps between cases
   });
@@ -88,5 +89,42 @@ describe("POST /api/auth/register", () => {
     const res = await register(req({ email: "dup@example.com", password: "correct-password" }));
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: "email_already_registered" });
+  });
+
+  // PRD U6: the taster a visitor took before signing up should follow them in.
+  it("claims the guest exam session the visitor arrived with", async () => {
+    await prisma.examSession.create({
+      data: {
+        id: "guest-taster",
+        userId: null,
+        certLevel: "BASIC",
+        locale: "EN",
+        questionIds: "[]",
+        answers: "{}",
+        startedAt: new Date(),
+        expiresAt: new Date(Date.now() + 90 * 60_000),
+      },
+    });
+
+    const res = await register(req({
+      email: "claimer@test.local",
+      password: "correct horse battery",
+      guestExamSessionId: "guest-taster",
+    }));
+    expect(res.status).toBe(201);
+
+    const session = await prisma.examSession.findUniqueOrThrow({ where: { id: "guest-taster" } });
+    const user = await prisma.customer.findUniqueOrThrow({ where: { email: "claimer@test.local" } });
+    expect(session.userId).toBe(user.id);
+  });
+
+  it("registers fine when the session id cannot be claimed", async () => {
+    const res = await register(req({
+      email: "noclaim@test.local",
+      password: "correct horse battery",
+      guestExamSessionId: "does-not-exist",
+    }));
+
+    expect(res.status).toBe(201);
   });
 });

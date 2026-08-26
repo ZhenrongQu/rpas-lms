@@ -8,10 +8,13 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
+    "e2e": "playwright test",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
-    "db:push": "prisma db push",
+    "db:push": "tsx scripts/db-push.ts",
+    "db:indexes": "tsx scripts/apply-db-indexes.ts",
+    "db:verify": "tsx scripts/verify-schema.ts",
     "seed:content": "tsx scripts/seed-content.ts",
     "eval:assistant": "tsx scripts/eval/run.ts",
     "remediation:smoke": "tsx scripts/agents/remediation-smoke.ts",
@@ -24,6 +27,7 @@
     "postinstall": "prisma generate"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/bcryptjs": "^3.0.0",
     "@types/node": "^20.14.0",
     "@types/react": "^19.2.17",

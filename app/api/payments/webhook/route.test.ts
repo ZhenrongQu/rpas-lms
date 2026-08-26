@@ -23,6 +23,8 @@ describe("POST /api/payments/webhook", () => {
   beforeEach(async () => {
     __setStripeClientForTests(null);
     await prisma.webhookEvent.deleteMany();
+    await prisma.refundRequest.deleteMany();
+    await prisma.flightReviewCredit.deleteMany();
     await prisma.payment.deleteMany();
     await prisma.entitlement.deleteMany();
     await prisma.customer.deleteMany();
@@ -104,7 +106,7 @@ describe("POST /api/payments/webhook", () => {
     expect(await prisma.entitlement.count()).toBe(1);
   });
 
-  it("grants the flight_review entitlement without changing access tier", async () => {
+  it("mints a review credit without changing access tier", async () => {
     const flightReviewEvent = {
       id: "evt_fr",
       type: "checkout.session.completed",
@@ -134,9 +136,73 @@ describe("POST /api/payments/webhook", () => {
 
     const user = await prisma.customer.findUniqueOrThrow({ where: { id: "u1" } });
     expect(user.accessTier).toBe("FREE"); // unchanged — Flight Review is an add-on
-    const entitlement = await prisma.entitlement.findUnique({
-      where: { userId_product: { userId: "u1", product: "flight_review" } },
+    // U13: the add-on is a consumable credit now, not a standing entitlement.
+    const credits = await prisma.flightReviewCredit.findMany({ where: { customerId: "u1" } });
+    expect(credits.length).toBe(1);
+    expect(credits[0].source).toBe("stripe_checkout");
+  });
+
+  // PRD U5. These two events are the only signal for money leaving without an
+  // in-app approval: a refund issued from the Stripe dashboard, and a chargeback.
+  describe("refunds and disputes", () => {
+    function deliver(event: unknown) {
+      __setStripeClientForTests({ webhooks: { constructEvent: () => event } });
+      return POST(
+        new Request("http://test/api/payments/webhook", {
+          method: "POST",
+          headers: { "stripe-signature": "sig" },
+          body: JSON.stringify(event),
+        }),
+      );
+    }
+
+    async function seedPaidPayment() {
+      await prisma.payment.create({
+        data: {
+          userId: "u1",
+          stripeCheckoutSessionId: "cs_paid",
+          stripePaymentIntentId: "pi_paid",
+          product: "paid_access",
+          status: "paid",
+        },
+      });
+      await prisma.entitlement.create({
+        data: { userId: "u1", product: "paid_access", source: "stripe_checkout" },
+      });
+      await prisma.customer.update({ where: { id: "u1" }, data: { accessTier: "PAID" } });
+    }
+
+    it("charge.refunded withdraws the access the payment bought", async () => {
+      await seedPaidPayment();
+
+      const res = await deliver({
+        id: "evt_refund",
+        type: "charge.refunded",
+        data: { object: { payment_intent: "pi_paid" } },
+      });
+
+      expect(res.status).toBe(200);
+      const user = await prisma.customer.findUniqueOrThrow({ where: { id: "u1" } });
+      expect(user.accessTier).toBe("FREE");
+      const payment = await prisma.payment.findFirstOrThrow({ where: { userId: "u1" } });
+      expect(payment.status).toBe("refunded");
     });
-    expect(entitlement).not.toBeNull();
+
+    it("charge.dispute.created queues a review without revoking — disputes can be won", async () => {
+      await seedPaidPayment();
+
+      const res = await deliver({
+        id: "evt_dispute",
+        type: "charge.dispute.created",
+        data: { object: { payment_intent: "pi_paid" } },
+      });
+
+      expect(res.status).toBe(200);
+      const request = await prisma.refundRequest.findFirstOrThrow({ where: { userId: "u1" } });
+      expect(request.reason).toBe("dispute");
+      expect(request.status).toBe("PENDING");
+      const user = await prisma.customer.findUniqueOrThrow({ where: { id: "u1" } });
+      expect(user.accessTier).toBe("PAID");
+    });
   });
 });

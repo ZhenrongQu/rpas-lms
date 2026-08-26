@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useLessonProgress } from '@/components/learn/lessonProgressContext';
+import { track } from '@/lib/analytics/client';
 
 interface Props {
   lessonId: string;
@@ -25,6 +26,7 @@ export default function CompleteButton({ lessonId, nextHref, backHref }: Props) 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lessonId }),
     }).catch(() => {});
+    track('lesson_completed', { lessonId, trigger: 'button' });
     setBusy(false);
     router.push(nextHref ?? backHref);
     router.refresh();

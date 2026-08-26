@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createPasswordResetToken } from "../../../../../src/lib/auth/localAccount";
 import { sendPasswordResetLink } from "../../../../../src/lib/auth/delivery";
 import { clientIp, enforceRateLimit } from "../../../../../src/lib/security/rateLimit";
+import { enforceCodeSendLimit } from "../../../../../src/lib/auth/codeSendLimit";
 
 const Body = z.object({
   email: z.string({ required_error: "email_required" }).email("email_invalid"),
@@ -40,12 +41,10 @@ export async function POST(req: Request): Promise<Response> {
 
   const { email, locale = "en" } = parsed.data;
 
-  // SEC-11: per-target cap (counted whether or not the account exists).
-  const targetLimited = await enforceRateLimit(`forgot:email:${email.trim().toLowerCase()}`, {
-    limit: 5,
-    windowSec: 60 * 60,
-    blockSec: 60 * 60,
-  });
+  // SEC-11 / U8: 1 per minute and 10 per day for this address, counted whether or
+  // not the account exists — a limit that only applied to real accounts would
+  // answer "is this email registered?" all by itself.
+  const targetLimited = await enforceCodeSendLimit("forgot", email);
   if (targetLimited) return targetLimited;
   const result = await createPasswordResetToken({ email });
   if (result.ok) {

@@ -7,10 +7,8 @@ import {
   FLIGHT_REVIEW_PRODUCT,
   type CheckoutProduct,
 } from "../../../../src/lib/payments/config";
-import {
-  hasPaidAccess,
-  hasFlightReviewEntitlement,
-} from "../../../../src/lib/payments/entitlements";
+import { hasPaidAccess } from "../../../../src/lib/payments/entitlements";
+import { countAvailableCredits } from "../../../../src/lib/flightReview/credits";
 import { getStripeClient } from "../../../../src/lib/payments/stripeClient";
 import { enforceRateLimit } from "../../../../src/lib/security/rateLimit";
 
@@ -49,12 +47,17 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "payments not configured" }, { status: 503 });
   }
 
-  // Already entitled → skip checkout and send them to the success page.
-  const alreadyEntitled =
-    product === FLIGHT_REVIEW_PRODUCT
-      ? await hasFlightReviewEntitlement(account.userId)
-      : await hasPaidAccess(account.userId);
-  if (alreadyEntitled) return Response.json({ url: successUrl }, { status: 200 });
+  // U13 §13.5: the course is a permanent unlock, so a repeat purchase is always a
+  // mistake — refuse before creating a Stripe session, so no payment can start.
+  if (product === ADVANCED_BUNDLE_PRODUCT && (await hasPaidAccess(account.userId))) {
+    return Response.json({ error: "already_owned" }, { status: 409 });
+  }
+
+  // Flight Review is consumable, so buying another is a legitimate need once the
+  // first is spent. Report the unused balance instead of blocking: the point is to
+  // catch someone who forgot they already have one, not to stop a real purchase.
+  const availableCredits =
+    product === FLIGHT_REVIEW_PRODUCT ? await countAvailableCredits(account.userId) : 0;
 
   const session = await getStripeClient().checkout.sessions.create({
     mode: "payment",
@@ -66,5 +69,10 @@ export async function POST(req: Request): Promise<Response> {
   });
 
   if (!session.url) return Response.json({ error: "checkout unavailable" }, { status: 502 });
-  return Response.json({ url: session.url }, { status: 200 });
+  return Response.json(
+    product === FLIGHT_REVIEW_PRODUCT
+      ? { url: session.url, availableCredits }
+      : { url: session.url },
+    { status: 200 },
+  );
 }
