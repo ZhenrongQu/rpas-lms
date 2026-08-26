@@ -53,3 +53,9 @@ scripts/eval/results.json
 /scripts/create-customer.ts
 /scripts/migrate-checkpoints.ts
 /scripts/seed-content.ts
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

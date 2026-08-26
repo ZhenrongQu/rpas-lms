@@ -43,7 +43,7 @@ export default function FlightReviewActions({ locale }: { locale: string }) {
       <button type="button" className="btn-review" onClick={resend} disabled={busy}>
         {t('resend')}
       </button>
-      <button type="button" className="btn-cancel" onClick={cancel} disabled={busy}>
+      <button type="button" className="btn-cancel" data-testid="fr-cancel" onClick={cancel} disabled={busy}>
         {t('cancel')}
       </button>
       {msg && <span className="fr-resend-msg">{msg}</span>}

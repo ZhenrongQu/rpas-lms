@@ -27,8 +27,39 @@ jobs:
       - if: failure()
         uses: actions/upload-artifact@v4
         with: { name: vitest-report, path: vitest-report.json }
-      # Slowest gate last, and the only one that catches Server/Client boundary
-      # mistakes — a browser API in a Server Component compiles and passes vitest,
-      # then 500s in production. Needs no .env: every route is server-rendered on
-      # demand, so nothing reads runtime config at build time.
+      # Slowest gate last. Verified by seeding each mistake and watching it fail:
+      #   caught — a React hook in a Server Component (the common slip)
+      #   caught — a Client Component importing next/headers or other server-only code
+      #   NOT caught — a bare `window` / `document` in a Server Component
+      # The last one is not a gap in this step but in this app: every route builds
+      # as ƒ (server-rendered on demand), so nothing prerenders and that code is
+      # never evaluated at build time — it 500s at runtime instead. The Playwright
+      # smoke covers the pages it walks; the rest is open (automation-roadmap P2).
+      # Same reason this needs no .env: nothing reads runtime config at build time.
       - run: pnpm build
+
+  # Separate job, not another step: this one needs a browser and a live server,
+  # and it must not be able to disturb the vitest database. It builds its own
+  # (rpas_e2e) on the same server.
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5433/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: playwright-report, path: playwright-report/ }
