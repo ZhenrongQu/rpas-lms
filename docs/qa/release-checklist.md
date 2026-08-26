@@ -109,7 +109,17 @@
 - [ ] 上述 6 步已按顺序执行，两次 `db:verify` 均通过
       > **不要依赖 CI 的绿灯**：`vitest.globalSetup` 会自己补建这些索引，所以 CI 无论生产是否跑过这一步都是绿的。这正是 `db:verify` 存在的原因。
 - [ ] 每一步开头打印的 `→ target: <host>/<db>` 确认是**要发布的那个库**
-      > `db:indexes` / `db:verify` 都会先打印目标。`db:indexes` 对非本机目标默认**拒绝执行**，必须显式加 `ALLOW_REMOTE_DB_WRITE=1` —— 因为开发机的 `.env` 里就是生产库，一条读起来像本地命令的脚本会直接改到生产。
+      > `db:indexes` / `db:verify` / 券迁移脚本都会先打印目标。两个会写库的对非本机目标默认**拒绝执行**，必须显式加 `ALLOW_REMOTE_DB_WRITE=1`。
+- [ ] **目标库用内联环境变量传，不要写进 `.env` 或 `.env.production`**
+      > Prisma CLI 只加载 `.env`（不加载 `.env.production`），所以不加前缀的 `pnpm db:push` 打的是 `.env` 里那个库 —— 它会成功、会打印 "in sync"，而目标库一个字没动。正确写法：
+      > ```bash
+      > export PROD_POOLED="postgresql://...:6543/postgres?pgbouncer=true"
+      > export PROD_DIRECT="postgresql://...:5432/postgres"   # db push 走直连，不走 pgbouncer
+      > DATABASE_URL="$PROD_POOLED" DIRECT_URL="$PROD_DIRECT" pnpm exec prisma db push
+      > ```
+      > 写进文件的风险是它会被后续命令静默继承 —— 例如 `next start` 在 `NODE_ENV=production` 下会加载 `.env.production`。
+- [ ] **从有新 schema 的检出上跑**（发布分支，不是 `main`）
+      > `prisma db push` 读的是当前工作区的 `prisma/schema.prisma`。在尚未合并的 `main` 上跑，等于把旧结构推回目标库。
 - [ ] 迁移脚本的 dry-run 数字与预期一致（应约等于「持 `flight_review` 权益的人数 + `accessTier=PAID` 的人数」）
 
 ### 1.8 内容与国际化
