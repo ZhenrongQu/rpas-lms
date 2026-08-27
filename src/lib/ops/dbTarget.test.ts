@@ -27,6 +27,32 @@ describe("ops database target", () => {
     expect(described).not.toContain("u:p");
   });
 
+  // Two projects in the same region print the same host, so the ref is the only
+  // thing left to tell them apart — and it lives in the username, next to the
+  // password that must never be logged.
+  it("names the Supabase project a pooled URL points at", () => {
+    const described = describeDbTarget(
+      "postgresql://postgres.abcdefghijklmnopqrst:s3cret@aws-1-us-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true",
+    );
+
+    expect(described).toBe(
+      "aws-1-us-west-1.pooler.supabase.com:6543/postgres (project abcdefghijklmnopqrst)",
+    );
+    expect(described).not.toContain("s3cret");
+  });
+
+  it("separates two projects that share a region", () => {
+    const host = "aws-1-us-west-1.pooler.supabase.com:6543";
+    const dev = describeDbTarget(`postgresql://postgres.devref:p@${host}/postgres`);
+    const prod = describeDbTarget(`postgresql://postgres.prodref:p@${host}/postgres`);
+
+    expect(dev).not.toBe(prod);
+  });
+
+  it("says nothing about a project for a plain postgres URL", () => {
+    expect(describeDbTarget(LOCAL)).toBe("localhost:5433/postgres");
+  });
+
   it("defaults the port when the URL omits it", () => {
     expect(describeDbTarget("postgresql://h/appdb")).toBe("h:5432/appdb");
   });
