@@ -12,6 +12,7 @@
 import { readFileSync } from "node:fs";
 import { prisma } from "../../src/lib/db";
 import { indexSource, ensureVectorIndex } from "./_shared";
+import { guardDbWrite } from "../../src/lib/ops/dbTarget";
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -19,6 +20,7 @@ function arg(name: string): string | undefined {
 }
 
 async function main(): Promise<void> {
+  guardDbWrite();
   const file = arg("file");
   const sourceId = arg("source-id");
   const title = arg("title");

@@ -48,11 +48,24 @@ production before anyone noticed. Current layout:
 | Vercel | production and preview, both `sensitive` (write-only — nobody can read them back, including the owner) |
 | `.secrets/prod-db.env` | production, gitignored, **loaded by nothing** — source it deliberately for a one-off migration |
 
-`db:push`, `db:indexes`, `db:verify` and `migrate-flight-review-credits` all
-print `→ target: <host>/<db>` first, and the three that write refuse a non-local
-target unless `ALLOW_REMOTE_DB_WRITE=1`. **Read that line.** Still unguarded, and
-all of them mutate: `seed:content`, `create-admin.ts`, `create-customer.ts`
-(local-only files, so the guard cannot be committed for them).
+Every ops script prints `→ target: <host>/<db>` before its first query, and
+every one that writes refuses a non-local target unless `ALLOW_REMOTE_DB_WRITE=1`.
+**Read that line.** Covered: `db:push`, `db:indexes`, `db:verify`,
+`migrate-flight-review-credits`, `seed:content`, `seed-test-fixtures.ts`,
+`migrate-checkpoints.ts`, `create-admin.ts`, `create-customer.ts`,
+`eval:assistant` (it creates and deletes `Customer` rows) and `scripts/kb/*`.
+`verify-schema` only reads, so it announces its target without refusing a remote
+one; `scripts/agents/*` carry their own local-only host checks. The guard is one call — `guardDbWrite()` from
+`src/lib/ops/dbTarget.ts` — as the first statement of `main()`; a read-only dry
+run passes `{ dryRun: true }`, which announces the target without demanding the
+opt-in. Four of those files are local-only (untracked), so their wiring lives on
+this checkout and will not survive a fresh clone.
+
+Why the guard has to resolve the URL itself: `@prisma/client` loads `.env` when
+it is imported, even under `tsx`, which does not. So a plain
+`tsx scripts/whatever.ts` connects to whatever that file names with nothing on
+screen to say which database that is — the exact shape of the 2026-08-26
+incident. `guardDbWrite()` calls `loadEnvFile()` for the same reason.
 
 A real deploy against production:
 

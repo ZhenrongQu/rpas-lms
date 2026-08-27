@@ -11,6 +11,7 @@
 import "./loadEnv";
 import { writeFileSync } from "node:fs";
 import { prisma } from "../../src/lib/db";
+import { guardDbWrite } from "../../src/lib/ops/dbTarget";
 import { runAssistant } from "../../src/lib/chat/loop";
 import type { ToolContext } from "../../src/lib/chat/tools";
 import { buildCases, type Fixtures } from "./cases";
@@ -83,6 +84,8 @@ type Result = {
 };
 
 async function main(): Promise<void> {
+  // Seeds and deletes Customer rows: it must never run against a live database.
+  guardDbWrite();
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error("ANTHROPIC_API_KEY is not set (add it to .env). Cannot run the eval.");
     process.exit(1);

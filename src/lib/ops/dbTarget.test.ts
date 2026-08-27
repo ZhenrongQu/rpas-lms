@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,6 +6,7 @@ import {
   assertWritableDbTarget,
   describeDbTarget,
   isLocalDbTarget,
+  guardDbWrite,
   loadEnvFile,
   resolveDbUrl,
 } from "./dbTarget";
@@ -103,5 +104,68 @@ describe("loadEnvFile", () => {
 
   it("is a no-op when the file does not exist", () => {
     expect(() => loadEnvFile(join(tmpdir(), "definitely-not-here-12345"))).not.toThrow();
+  });
+});
+
+// The guard the eight non-deploy ops scripts run before their first query. It
+// exists because @prisma/client loads .env on import — even under tsx, which
+// does not — so `tsx scripts/seed-content.ts` connects to whatever that file
+// names with nothing on screen to say which database that is.
+describe("guardDbWrite", () => {
+  const originalUrl = process.env.DATABASE_URL;
+  const originalOptIn = process.env.ALLOW_REMOTE_DB_WRITE;
+
+  afterEach(() => {
+    process.env.DATABASE_URL = originalUrl;
+    if (originalOptIn === undefined) delete process.env.ALLOW_REMOTE_DB_WRITE;
+    else process.env.ALLOW_REMOTE_DB_WRITE = originalOptIn;
+    vi.restoreAllMocks();
+  });
+
+  function runWith(url: string, optIn?: string, options?: { dryRun?: boolean }) {
+    process.env.DATABASE_URL = url;
+    if (optIn === undefined) delete process.env.ALLOW_REMOTE_DB_WRITE;
+    else process.env.ALLOW_REMOTE_DB_WRITE = optIn;
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    return { log, run: () => guardDbWrite(options) };
+  }
+
+  it("announces the target and returns it for a local database", () => {
+    const { log, run } = runWith(LOCAL);
+
+    expect(run()).toBe(LOCAL);
+    expect(log).toHaveBeenCalledWith("→ target: localhost:5433/postgres");
+  });
+
+  // The line that has to be on screen even when the command is allowed to run:
+  // the incident was not a refused write, it was an unannounced one.
+  it("announces the target before refusing a remote one", () => {
+    const { log, run } = runWith(REMOTE);
+
+    expect(run).toThrow(/Refusing to write/);
+    expect(log).toHaveBeenCalledWith("→ target: aws-1-us-west-1.pooler.supabase.com:6543/postgres");
+  });
+
+  it("allows a remote target once the operator opts in", () => {
+    const { run } = runWith(REMOTE, "1");
+
+    expect(run()).toBe(REMOTE);
+  });
+
+  it("does not treat any other value of the opt-in as consent", () => {
+    const { run } = runWith(REMOTE, "true");
+
+    expect(run).toThrow(/Refusing to write/);
+  });
+
+  // A dry run reads. Refusing it would push operators toward passing the write
+  // opt-in for a read, which is how an opt-in stops meaning anything.
+  it("lets a dry run see a remote target, marked read-only", () => {
+    const { log, run } = runWith(REMOTE, undefined, { dryRun: true });
+
+    expect(run()).toBe(REMOTE);
+    expect(log).toHaveBeenCalledWith(
+      "→ target: aws-1-us-west-1.pooler.supabase.com:6543/postgres (dry run, read-only)",
+    );
   });
 });

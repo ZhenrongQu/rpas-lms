@@ -72,3 +72,30 @@ export function loadEnvFile(path = ".env"): void {
     process.env[key] = raw.trim().replace(/^(['"])(.*)\1$/s, "$2");
   }
 }
+
+/**
+ * What a mutating ops script runs before its first query: resolve the URL it is
+ * about to use, print it, and refuse a non-local target without an explicit
+ * opt-in. Returns the target for a caller that builds its own client.
+ *
+ * `@prisma/client` loads `.env` itself the moment it is imported — even under
+ * `tsx`, which does not — so a plain `tsx scripts/whatever.ts` connects to
+ * whatever that file names with nothing on screen to say which database that
+ * is. The four deploy-path commands got this guard on 2026-08-26; every other
+ * script that writes was still resolving the same ambient URL in silence.
+ *
+ * Throws rather than exiting: each script's entry point already catches, prints
+ * and sets a non-zero status, and a function that exits cannot be tested.
+ */
+export function guardDbWrite(options: { dryRun?: boolean } = {}): string {
+  // Only matters when the guard runs before @prisma/client is imported; it does
+  // not override what is already set, so an inline DATABASE_URL still wins.
+  loadEnvFile();
+  const url = resolveDbUrl();
+  const dryRun = options.dryRun ?? false;
+  console.log(`→ target: ${describeDbTarget(url)}${dryRun ? " (dry run, read-only)" : ""}`);
+  // A dry run needs no opt-in: it reads, and "look before you write" should cost
+  // nothing. Matches the credit migration's CLI.
+  if (!dryRun) assertWritableDbTarget(url, process.env.ALLOW_REMOTE_DB_WRITE === "1");
+  return url;
+}

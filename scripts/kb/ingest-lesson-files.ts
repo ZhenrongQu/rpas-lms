@@ -19,6 +19,7 @@ import matter from "gray-matter";
 import { prisma } from "../../src/lib/db";
 import { voyageConfigured } from "../../src/lib/agents/chat/rag/embed";
 import { reindexLesson, ensureVectorIndex } from "./_shared";
+import { guardDbWrite } from "../../src/lib/ops/dbTarget";
 
 const ROOT = join(process.cwd(), "content/lessons");
 const DRY = process.argv.includes("--dry-run");
@@ -83,6 +84,7 @@ function collect(): Lesson[] {
 }
 
 async function main(): Promise<void> {
+  guardDbWrite({ dryRun: DRY });
   const lessons = collect();
   const basic = lessons.filter((l) => l.course === "basic");
   const advanced = lessons.filter((l) => l.course === "advanced");
