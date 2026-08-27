@@ -74,13 +74,17 @@
 
 ## 当前的关键结论
 
-### 已确认的缺陷 —— 均已修复（2026-08-25）
+### 已确认的缺陷 —— 均已修复（2026-08-25 / 08-26）
 
 | ID | 问题 | Severity | 状态 |
 |---|---|:---:|:---:|
 | **DEF-001** | `paid_access` 权益**无任何撤销路径** —— 退款后课程权限无法收回，只能手工改数据库 | **S1** | ✅ 已修复 |
 | **DEF-002** | 服务端不校验考试超时，**客户端未运行时超时会话永久悬挂**，作答事实上丢失 | S2 | ✅ 已修复 |
 | **DEF-003** | 题池不足时**静默生成题量不完整的试卷**，且及格线按实际题量计算 → 给出虚假的通过信号 | S2 | ✅ 已修复 |
+| **DEF-004** | Resend 拒绝的邮件被记为**发送成功** —— 预约通知写 `SENT`，`hasFailedNotification` 永不触发，U12 重发入口从未出现；验证码与密码重置同样静默失败 | **S1** | ✅ 已修复 |
+| **DEF-004b** | DEF-004 的**下半段**：发信层改成会抛之后，两个 auth 调用方把这句实话又处理错了 —— 注册把「账号已建好 + 邮件被拒」答成 `registration failed` 并回传 provider 原文；忘记密码整条吞掉，**两条链路都没有任何持久记录** | **S1** | ✅ 已修复 |
+| **DEF-004c** | 同一个 bug 长在了**它自己的恢复入口**上：`safeSend` 按设计吞掉投递异常（预约不能因邮件失败而回滚），于是两个 resend 端点在被拒时照样回 `ok: true` —— 学员点「重新发送」看到「已发送」 | **S1** | ✅ 已修复 |
+| **DEF-005** | ops 脚本默认连 `.env` 指向的库且不打印目标；`.env` 实际指着生产，而两个 Supabase 项目的命名与引用它们的 env 文件完全相反 | **S1** | ✅ 已修复 |
 
 **修复实现**（PRD 第 10 章 U5 / U2 / U1，2026-08-25 落地）：
 
@@ -91,6 +95,25 @@
 | DEF-003 | `createMock` 生成前校验**按等级过滤后**的题池；不足抛 `InsufficientQuestionPoolError` → 路由 409；CMS 题库健康度表 | `src/lib/exam/service.ts`、`src/lib/admin/bankHealth.ts` |
 
 > 相关用例已从「缺陷证据」转为**回归防线**：`service.test.ts` 的并发结算用例做过变异测试（退回「先抢占后写入」的两步实现即转红）。
+
+**DEF-004 / DEF-005 的修复**（2026-08-26 落地）：
+
+| ID | 实现 | 关键代码 |
+|---|---|---|
+| DEF-004 | Resend SDK 用 `{ data, error }` **resolve** 而非 reject，三处调用点各自把「没抛」读成「已投递」。统一收敛到 `deliverViaResend`：`error` 抛，没有 message id 也抛（provider 的 id 是「被接受」的唯一正面证据） | `src/lib/email/resend.ts` |
+| DEF-004b | 抽出共享的 `recordNotificationAttempt` —— Flight Review 原本独享的 `NotificationLog` 记录，auth 两条链路现在同样写入。注册：投递失败与注册失败分离，返回 201 + `codeDelivered: false`，前端提示走既有的「重新发送」；忘记密码：保持统一 200（不能泄露账号是否存在），但失败落库不再只有一行 console | `src/lib/email/log.ts`、`app/api/auth/register/route.ts`、`app/api/auth/password/forgot/route.ts` |
+| DEF-004c | `safeSend` 返回是否投递成功，`notifyBookingChange` 上抛**学员那一封**的结果（管理员抄送失败不影响告诉学员什么），`resendBookingConfirmation` 从 boolean 改为 `sent` / `delivery_failed` / `no_address` 三态；两个端点被拒时回 502，前端给出专门文案。预约链路仍然忽略该结果 —— 邮件失败不能回滚已成交的预约 | `src/lib/flightReview/notifications.ts`、两个 `resend/route.ts` |
+| DEF-005 | `guardDbWrite()` —— 每个 ops 脚本第一句：打印 `→ target:`，非本机目标默认拒绝。`.env` 改本地库，生产串移入无人加载的 `.secrets/prod-db.env` | `src/lib/ops/dbTarget.ts` |
+
+**为什么这两个漏测**（复盘）：
+
+| | DEF-004 | DEF-005 |
+|---|---|---|
+| 漏测原因 | 单测都 mock 掉了发信；**"发送成功"这个断言从来没有对照过 provider 的真实响应形状**。DEF-004b 更进一层：只修了发信层，没有回头问「调用方拿到这个异常之后做了什么」 | 根本不在测试的射程内 —— "命令打到哪个库"属于环境配置，测试库里永远是对的（同 [`automation-roadmap.md`](./automation-roadmap.md) §1.5 那一类） |
+| 发现方式 | 拿生产构建 + 故意无效的 API key 实跑一遍，读通知日志 | 事后核对 Supabase 控制台 |
+| 防复发 | `resend.test.ts` 的**入口点断言**：全 `src/`+`app/` 里只有 `src/lib/email/resend.ts` 可以 import `resend` 包。已做变异验证 —— 任意新增一处直连 import 立即转红并点名文件 | `guardDbWrite()` 已覆盖全部 13 个会写库的 ops 脚本（含 `pnpm eval:assistant` —— 它会 create/delete `Customer` 行，此前完全无守卫）。`verify-schema` 只读，按设计不拒绝远端；`scripts/agents/*` 早已自带本机限定检查。其中 4 个是本地未跟踪文件，**新克隆上不存在这层保护** |
+
+> **两条共同的教训**：DEF-004 是「三处调用点各自独立犯了同一个错」—— 修好三处不等于修好这一类，所以防线建在**入口点唯一性**上而不是调用点上。而 DEF-004b 说明**「让它抛出来」只是修了一半**：异常改变了每个调用方的控制流，不跟着走一遍就会把静默失败换成另一种错误答案。DEF-004c 则是这条链上的第三段 —— **恢复入口本身也是一个调用方**，而且是最不能撒谎的那个：U12 的整套设计都建立在「学员点了重发就能知道结果」上。三段合起来说明一件事：一个「把失败当成功」的缺陷，边界不在出错的那行代码，而在**这条信息一路传到用户眼前的每一跳**。DEF-005 是「当时在猜」—— 关于目标库的判断只能来自控制台或 `→ target:` 那一行。
 
 ### 最大的覆盖缺口
 
