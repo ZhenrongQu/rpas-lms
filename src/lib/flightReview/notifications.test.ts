@@ -98,7 +98,40 @@ describe("flight review notifications (PRD U12)", () => {
   });
 
   it("reports failure rather than throwing for an unknown booking", async () => {
-    expect(await resendBookingConfirmation("no-such-booking", "en")).toBe(false);
+    expect(await resendBookingConfirmation("no-such-booking", "en")).toBe("no_address");
+  });
+
+  // DEF-004, third half. safeSend swallows the delivery error by design — a
+  // bounced email must not roll back a committed booking — but the resend path
+  // then reported "sent" for a message the provider had rejected. That is the
+  // original defect wearing the affordance built to recover from it.
+  it("tells a resend that the message was rejected, not that it was sent", async () => {
+    const bookingId = await bookedSlot();
+    sendMock.mockRejectedValue(new Error("Resend rejected the message: API key is invalid"));
+
+    expect(await resendBookingConfirmation(bookingId, "en")).toBe("delivery_failed");
+  });
+
+  it("reports a genuinely delivered resend as sent", async () => {
+    const bookingId = await bookedSlot();
+
+    expect(await resendBookingConfirmation(bookingId, "en")).toBe("sent");
+  });
+
+  // The admin copy is a courtesy to ops and is recorded either way; it must not
+  // decide what the student is told about their own confirmation.
+  it("still reports sent when only the admin copy is rejected", async () => {
+    const bookingId = await bookedSlot();
+    const previous = process.env.ADMIN_NOTIFICATION_EMAIL;
+    process.env.ADMIN_NOTIFICATION_EMAIL = "ops@test.local";
+    sendMock.mockReset();
+    sendMock.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("admin copy bounced"));
+
+    const outcome = await resendBookingConfirmation(bookingId, "en");
+
+    if (previous === undefined) delete process.env.ADMIN_NOTIFICATION_EMAIL;
+    else process.env.ADMIN_NOTIFICATION_EMAIL = previous;
+    expect(outcome).toBe("sent");
   });
 
   it("does not let a logging outage break the notification path", async () => {
@@ -117,7 +150,9 @@ describe("flight review notifications (PRD U12)", () => {
         bookingId,
         customerId: USER,
       }),
-    ).resolves.toBeUndefined();
+      // Still reports the send as delivered: the message did go out, it is only
+      // the record of it that was lost.
+    ).resolves.toBe(true);
 
     spy.mockRestore();
   });

@@ -168,6 +168,7 @@
     "verifyCode": "Verify code",
     "code": "6-digit code",
     "codeSent": "Verification code sent.",
+    "codeSendFailed": "We couldn't send the code — the email provider rejected it. Wait a moment, then try Resend.",
     "usernameUnavailable": "Username is unavailable.",
     "verificationFailed": "Invalid or expired code.",
     "emailVerificationRequired": "Check your email for the verification code.",
@@ -329,6 +330,7 @@
     "minutes": "min",
     "resend": "Resend confirmation",
     "resendSent": "Confirmation email sent.",
+    "resendFailed": "The email provider rejected the message. Your appointment is unaffected — please contact us if it does not arrive.",
     "resendTooSoon": "Just sent one — try again in a minute."
   },
   "modules": {

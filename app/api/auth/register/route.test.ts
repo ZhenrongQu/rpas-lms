@@ -1,5 +1,11 @@
-import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { prisma } from "../../../../src/lib/db";
+
+// The delivery layer is mocked so a provider rejection can be exercised: in test
+// NODE_ENV the real sender short-circuits to a console line and never throws.
+const { sendCodeMock } = vi.hoisted(() => ({ sendCodeMock: vi.fn() }));
+vi.mock("../../../../src/lib/auth/delivery", () => ({ sendVerificationCode: sendCodeMock }));
+
 import { POST as register } from "./route";
 
 function req(body: unknown) {
@@ -11,6 +17,8 @@ function req(body: unknown) {
 
 describe("POST /api/auth/register", () => {
   beforeEach(async () => {
+    sendCodeMock.mockReset();
+    await prisma.notificationLog.deleteMany();
     await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
     await prisma.examSession.deleteMany();
@@ -19,6 +27,7 @@ describe("POST /api/auth/register", () => {
   });
 
   afterAll(async () => {
+    await prisma.notificationLog.deleteMany();
     await prisma.verificationCode.deleteMany();
     await prisma.userIdentity.deleteMany();
     await prisma.customer.deleteMany();
@@ -47,6 +56,62 @@ describe("POST /api/auth/register", () => {
       where: { channel: "email", target: "pilot@example.com" },
     });
     expect(code.codeHash).toBeTruthy();
+  });
+
+  // DEF-004, second half. The sender now throws on a rejected send — and this
+  // route used to let that land in the catch and answer "registration failed",
+  // for an account it had already committed.
+  it("still reports the account as created when the provider rejects the code email", async () => {
+    sendCodeMock.mockRejectedValue(
+      new Error("Resend rejected the message (validation_error): API key is invalid"),
+    );
+
+    const res = await register(req({ email: "bounced@example.com", password: "correct-password" }));
+
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({
+      ok: true,
+      emailVerificationRequired: true,
+      codeDelivered: false,
+    });
+    const user = await prisma.customer.findUnique({ where: { email: "bounced@example.com" } });
+    expect(user).toBeTruthy();
+  });
+
+  it("records the rejected code email so a failing recovery path is queryable", async () => {
+    sendCodeMock.mockRejectedValue(new Error("Resend rejected the message: API key is invalid"));
+
+    await register(req({ email: "bounced@example.com", password: "correct-password" }));
+
+    const log = await prisma.notificationLog.findFirstOrThrow({
+      where: { kind: "auth_verification_code" },
+    });
+    expect(log.status).toBe("FAILED");
+    expect(log.recipient).toBe("bounced@example.com");
+    expect(log.error).toContain("API key is invalid");
+  });
+
+  // The provider's message is technical and untranslated; release criterion
+  // §1.8 keeps that kind of string off the client.
+  it("does not leak the provider's rejection message to the client", async () => {
+    sendCodeMock.mockRejectedValue(new Error("Resend rejected the message: API key is invalid"));
+
+    const res = await register(req({ email: "bounced@example.com", password: "correct-password" }));
+
+    expect(JSON.stringify(await res.json())).not.toContain("Resend");
+  });
+
+  // Why answering "registration failed" was the wrong call: the retry that fixes
+  // a transient outage is re-registering the same unverified account.
+  it("lets the same address retry and succeed once delivery recovers", async () => {
+    sendCodeMock.mockRejectedValueOnce(new Error("Resend rejected the message"));
+    await register(req({ email: "bounced@example.com", password: "correct-password" }));
+    await prisma.rateLimit.deleteMany(); // U8 allows one send per address per minute
+
+    const retry = await register(req({ email: "bounced@example.com", password: "correct-password" }));
+
+    expect(retry.status).toBe(201);
+    expect(await retry.json()).toEqual({ ok: true, emailVerificationRequired: true });
   });
 
   it("rejects invalid bodies with per-field error codes", async () => {

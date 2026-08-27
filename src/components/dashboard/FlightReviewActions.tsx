@@ -27,7 +27,17 @@ export default function FlightReviewActions({ locale }: { locale: string }) {
     setMsg(null);
     try {
       const res = await fetch(`/api/flight-review/resend?locale=${locale}`, { method: 'POST' });
-      setMsg(res.ok ? t('resendSent') : res.status === 429 ? t('resendTooSoon') : t('genericError'));
+      // 502 = the provider rejected it again. Saying "sent" here is the exact
+      // failure U12 exists to catch, so it gets its own message.
+      setMsg(
+        res.ok
+          ? t('resendSent')
+          : res.status === 429
+            ? t('resendTooSoon')
+            : res.status === 502
+              ? t('resendFailed')
+              : t('genericError'),
+      );
     } catch {
       setMsg(t('genericError'));
     } finally {

@@ -168,6 +168,7 @@
     "verifyCode": "验证",
     "code": "6 位验证码",
     "codeSent": "验证码已发送。",
+    "codeSendFailed": "验证码没能发出去 —— 邮件服务拒绝了这封邮件。请稍候点「重新发送」再试一次。",
     "usernameUnavailable": "用户名不可用。",
     "verificationFailed": "验证码无效或已过期。",
     "emailVerificationRequired": "请查看邮箱中的验证码。",
@@ -329,6 +330,7 @@
     "minutes": "分钟",
     "resend": "重新发送确认邮件",
     "resendSent": "确认邮件已发送。",
+    "resendFailed": "邮件服务拒绝了这封邮件。您的预约不受影响 —— 若仍未收到请联系我们。",
     "resendTooSoon": "刚刚已发送，请一分钟后再试。"
   },
   "modules": {

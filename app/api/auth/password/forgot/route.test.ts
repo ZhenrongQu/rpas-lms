@@ -19,6 +19,7 @@ function req(body: unknown) {
 }
 
 async function cleanup() {
+  await prisma.notificationLog.deleteMany();
   await prisma.verificationCode.deleteMany({ where: { target: { in: [EMAIL, MISSING] } } });
   await prisma.customer.deleteMany({ where: { email: { in: [EMAIL, MISSING] } } });
   await prisma.rateLimit.deleteMany(); // U8: reset the per-address send budget between cases
@@ -65,6 +66,38 @@ describe("POST /api/auth/password/forgot", () => {
       where: { channel: "email_reset", target: MISSING },
     });
     expect(token).toBeNull();
+  });
+
+  // DEF-004, second half. Swallowing the delivery error is correct — a 500 here
+  // would answer "is this email registered?" — but it used to leave the failure
+  // in a console line only, on the one path where the user has nowhere else to
+  // go if the mail never arrives.
+  it("keeps the uniform 200 but records a rejected reset link", async () => {
+    await prisma.customer.create({ data: { email: EMAIL, hashedPassword: "x" } });
+    sendMock.mockRejectedValue(
+      new Error("Resend rejected the message (validation_error): API key is invalid"),
+    );
+
+    const res = await forgot(req({ email: EMAIL, locale: "en" }));
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    const log = await prisma.notificationLog.findFirstOrThrow({
+      where: { kind: "auth_password_reset" },
+    });
+    expect(log.status).toBe("FAILED");
+    expect(log.recipient).toBe(EMAIL);
+    expect(log.error).toContain("API key is invalid");
+  });
+
+  // The record must not become the enumeration oracle the uniform response
+  // avoids: nothing is written for an address that has no account.
+  it("records nothing for an unknown address", async () => {
+    sendMock.mockRejectedValue(new Error("Resend rejected the message"));
+
+    await forgot(req({ email: MISSING, locale: "en" }));
+
+    expect(await prisma.notificationLog.count()).toBe(0);
   });
 
   it("rejects an invalid body", async () => {

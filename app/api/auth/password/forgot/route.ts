@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createPasswordResetToken } from "../../../../../src/lib/auth/localAccount";
 import { sendPasswordResetLink } from "../../../../../src/lib/auth/delivery";
+import { deliveryErrorMessage, recordNotificationAttempt } from "../../../../../src/lib/email/log";
 import { clientIp, enforceRateLimit } from "../../../../../src/lib/security/rateLimit";
 import { enforceCodeSendLimit } from "../../../../../src/lib/auth/codeSendLimit";
 
@@ -58,6 +59,15 @@ export async function POST(req: Request): Promise<Response> {
       // Swallow delivery errors so the response stays uniform whether or not an
       // account exists (a 500 here would leak existence). Logged for Sentry.
       console.error("Failed to send password reset link", error);
+      // DEF-004: but not only into a log line. Account recovery is the one path
+      // where a silent failure leaves the user with nowhere else to go, so the
+      // attempt is recorded — a failed reset becomes queryable, and the uniform
+      // response is unchanged because this write is invisible to the caller.
+      await recordNotificationAttempt({
+        kind: "auth_password_reset",
+        recipient: result.target,
+        error: deliveryErrorMessage(error),
+      });
     }
   }
 

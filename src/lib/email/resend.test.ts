@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const send = vi.fn();
 vi.mock("resend", () => ({
@@ -58,3 +60,35 @@ describe("deliverViaResend", () => {
   // in deliverViaResend, so that propagates by construction — a test for it would
   // be asserting how `await` works, not how this function does.
 });
+
+/**
+ * The defect was never one bad call site. Three of them — Flight Review
+ * notifications, verification codes, password-reset links — independently
+ * awaited `resend.emails.send(...)` and read "did not throw" as "delivered".
+ * Routing them through deliverViaResend fixes those three and does nothing to
+ * stop a fourth, so this asserts the chokepoint itself: the SDK is reachable
+ * from exactly one module, and that module checks the result.
+ */
+describe("the Resend SDK has one entry point", () => {
+  const ENTRY_POINT = join("src", "lib", "email", "resend.ts");
+  // `from "resend"`, `import("resend")`, `require("resend")` — but not
+  // `from "./resend"`, which is how everything is supposed to reach it.
+  const IMPORTS_SDK = /\b(?:from|import|require)\s*\(?\s*["']resend["']/;
+
+  it("is imported by src/lib/email/resend.ts and nothing else", () => {
+    const importers = applicationSources().filter((file) =>
+      IMPORTS_SDK.test(readFileSync(file, "utf8")),
+    );
+
+    expect(importers).toEqual([ENTRY_POINT]);
+  });
+});
+
+/** Every .ts/.tsx under src/ and app/, excluding tests (a mock is not a send). */
+function applicationSources(): string[] {
+  return ["src", "app"]
+    .flatMap((root) =>
+      readdirSync(root, { recursive: true, encoding: "utf8" }).map((entry) => join(root, entry)),
+    )
+    .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file));
+}
