@@ -38,6 +38,7 @@
     "messages",
     "middleware.ts",
     "next.config.ts",
+    "scripts",
     "src",
     "tailwind.config.ts",
     "types",
