@@ -19,6 +19,8 @@ pnpm db:push          # prisma db push (sync schema to DATABASE_URL)
 pnpm db:indexes       # apply prisma/sql/*.sql — partial unique indexes db push CANNOT create
 pnpm db:verify        # deploy gate: exits non-zero if indexes or the credit migration are missing
 pnpm seed:content     # tsx scripts/seed-content.ts (loads lessons/questions into DB)
+pnpm eval:assistant   # offline assistant eval (real API calls — costs money)
+pnpm assistant:stats  # read-only: assistant failure rates, cost, P50/P95 latency
 ```
 
 **`db:push` is not sufficient on its own.** `db:indexes` applies `prisma/sql/*` —
@@ -160,7 +162,78 @@ The codebase tags hardening decisions with `SEC-NN` markers — grep for them an
 
 ### Paid AI study assistant (`/api/chat`)
 
-`POST /api/chat` (Node runtime, streams plain UTF-8 text deltas). Gating order matters and happens before any tokens are spent: session `userId` required (401) → `hasPaidAccess` paywall (402) → per-user rate limit (429, with `Retry-After`). Returns 503 if `ANTHROPIC_API_KEY` is unset (the rest of the app is unaffected). `src/lib/chat/loop.ts` (`runAssistant`) is a server-side agent loop: model `claude-sonnet-4-6`, adaptive thinking, `MAX_STEPS` cap; the model calls tools (`src/lib/chat/tools.ts`, executed server-side), only text deltas are forwarded to the client. System prompt in `systemPrompt.ts`. Offline eval harness: `scripts/eval/` via `pnpm eval:assistant` (LLM-judge in `judge.ts`).
+`POST /api/chat` (Node runtime, streams plain UTF-8 text deltas). Gating order
+matters and happens before any tokens are spent: session `userId` required (401)
+→ `hasPaidAccess` paywall (402) → per-user rate limit (429, with `Retry-After`)
+→ body validation → `ANTHROPIC_API_KEY` present (503) → the scope gate (one
+embedding call, off unless `SCOPE_MAX_COSINE_DISTANCE` is set).
+`src/lib/agents/chat/loop.ts` (`runAssistant`) is a server-side agent loop: model
+`claude-sonnet-4-6`, adaptive thinking, `MAX_STEPS` cap; the model calls tools
+(`src/lib/agents/chat/tools.ts`, executed server-side), only text deltas are
+forwarded to the client. System prompt in `systemPrompt.ts`. Retrieval is hybrid
+(Voyage + pgvector, RRF-fused with a keyword branch) over `KnowledgeChunk`.
+
+**Three budgets, because none of them are the same budget.** `MAX_STEPS` bounds
+round-trips, `REQUEST_TIMEOUT_MS` (30s) bounds one model call, and `DEADLINE_MS`
+(50s, checked between steps) bounds the whole loop — eight calls each finishing
+inside their own limit still blow the function budget. All three sit under the
+route's `maxDuration` so the loop, not the platform, is what stops a long turn;
+the difference is whether the turn gets recorded.
+
+**`runAssistant` returns an `AssistantRun`** — usage, steps, tool calls, TTFT,
+total ms, and three failure flags (`truncated`, `exhaustedSteps`, `timedOut`).
+`truncated` exists because `stop_reason: "max_tokens"` used to fall through the
+"not a tool call, so we're done" branch and deliver a half-finished answer as a
+complete one.
+
+The cache breakpoint is on the **last message**, not the system block: `[tools +
+system]` is ~700 tokens, under the 1024-token minimum, so a breakpoint there
+silently never cached and `cache_read` was structurally always 0.
+
+#### Observability (`AssistantTurn`)
+
+One row per turn, written on **every** path including failure and scope refusal.
+This matters more than it sounds: the route streams, so a turn that dies halfway
+has already sent HTTP 200 and looks like a success to anything watching status
+codes — `completed` is the field that tells the truth, which is why the write is
+awaited in a `finally` before the stream closes.
+
+- `src/lib/agents/chat/turnLog.ts` — `recordTurn` never rethrows. The student
+  already has their answer; a logging fault must not become a new source of the
+  failures this exists to measure.
+- `cost.ts` — usage → integer **micro-USD** (list prices are dollars per million
+  tokens, so micro-USD needs no division and no floats). An unpriced model
+  returns `null`, never `0`.
+- `redact.ts` — strips emails and 10+ digit runs before storage. The threshold is
+  high on purpose: this domain is short numbers (CAR 901.11, 400 ft, squawk 1200,
+  121.5 MHz). It is a floor, not anonymisation.
+- `stats.ts` + `pnpm assistant:stats` — failure rates by mode, cost per turn and
+  per conversation, P50/P95 TTFT and total. Read-only, so it announces its target
+  without needing `ALLOW_REMOTE_DB_WRITE`.
+- `POST /api/chat/feedback` — 👍/👎 on a turn. The **only** signal here that is
+  not the product grading itself; without it every failure rate is self-assessed.
+  The turn id is allocated before the stream opens and returned as `X-Turn-Id`,
+  since the row is written after headers are gone.
+
+#### Offline eval (`scripts/eval/`, `pnpm eval:assistant`)
+
+Deterministic checks (must-call-tools, forbidden substrings) plus an LLM judge
+(`judge.ts`). It drives the real loop in-process against a seeded student, and it
+makes real API calls — it costs money, so it is not wired into CI.
+
+**It silently failed to load for two months** after `62c5878` moved
+`src/lib/chat` → `src/lib/agents/chat` and fixed only two of the three importers.
+Nothing caught it because `tsconfig.json`'s `include` had no `scripts` entry, so
+`pnpm typecheck` — the gate CI runs first *because* it is cheapest — never
+compiled the directory. `scripts` is now included; that is the actual guard, and
+it is why a change under `scripts/` must still be typechecked rather than assumed
+covered by a green CI.
+
+Deliberately NOT changed, and why: model, `temperature` (unset → 1.0), the
+client-supplied full-transcript context strategy, the RAG distance cutoffs, and
+the scope gate's default-off state. Each is an unmeasured decision, and each is a
+single-variable experiment to run **against a baseline** — changing them while
+building the measurement would destroy the thing being built.
 
 ### Mobile (native iOS API)
 
