@@ -224,7 +224,7 @@ export default async function DashboardPage({ params }: Props) {
         {userId && <IdentifyUser userId={userId} />}
 
         {/* ── Study assistant (paid feature; free users see an upsell) ── */}
-        {userId && <StudyAssistant locale={locale} isPaid={isPaid} />}
+        {userId && <StudyAssistant locale={locale} isPaid={isPaid} userId={userId} />}
 
         {/* ── Account & security ── */}
         <details className="dash-account">

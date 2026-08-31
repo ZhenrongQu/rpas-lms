@@ -273,7 +273,8 @@
       "error": "Something went wrong. Please try again.",
     "helpful": "This answer was helpful",
     "notHelpful": "This answer was not helpful",
-    "thanks": "Thanks — noted."
+    "thanks": "Thanks — noted.",
+    "newChat": "Start a new conversation"
     }
   },
   "billing": {

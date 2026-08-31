@@ -273,7 +273,8 @@
       "error": "出错了，请稍后再试。",
     "helpful": "这个回答有帮助",
     "notHelpful": "这个回答没帮上忙",
-    "thanks": "收到，谢谢反馈。"
+    "thanks": "收到，谢谢反馈。",
+    "newChat": "开始新对话"
     }
   },
   "billing": {

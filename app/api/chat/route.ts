@@ -67,6 +67,12 @@ export async function POST(req: Request): Promise<Response> {
   if (messages[messages.length - 1]!.role !== "user") {
     return Response.json({ error: "last_message_must_be_user" }, { status: 400 });
   }
+  // The model API rejects a transcript that opens on an assistant turn. Reachable
+  // now that the client restores and trims a saved conversation, and a 400 here
+  // beats a 200 whose body is an apology.
+  if (messages[0]!.role !== "user") {
+    return Response.json({ error: "first_message_must_be_user" }, { status: 400 });
+  }
 
   // 5. The assistant can't run without a key — fail clearly, don't 500.
   if (!process.env.ANTHROPIC_API_KEY) {

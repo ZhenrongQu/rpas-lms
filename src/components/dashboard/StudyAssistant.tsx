@@ -1,9 +1,18 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { IconSparkles, IconSend, IconLock, IconThumbUp, IconThumbDown } from '@tabler/icons-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import {
+  IconSparkles,
+  IconSend,
+  IconLock,
+  IconThumbUp,
+  IconThumbDown,
+  IconPlus,
+} from '@tabler/icons-react';
 
 type Msg = {
   role: 'user' | 'assistant';
@@ -12,6 +21,18 @@ type Msg = {
   turnId?: string;
   rating?: -1 | 1;
 };
+
+/** Matches the route's zod cap. Trimming here rather than letting the server
+ *  reject keeps a long-running restored conversation usable. */
+const MAX_TRANSCRIPT = 40;
+
+/** Keep the newest messages, but never open on an assistant turn — the model API
+ *  rejects a transcript that does, and slicing a tail can easily produce one. */
+function trimTranscript(msgs: Msg[]): Msg[] {
+  const tail = msgs.slice(-MAX_TRANSCRIPT);
+  const firstUser = tail.findIndex((m) => m.role === 'user');
+  return firstUser <= 0 ? tail : tail.slice(firstUser);
+}
 
 /** Patch the last assistant message (the one being streamed, or the one just rated). */
 function patchLastAssistant(msgs: Msg[], patch: Partial<Msg>): Msg[] {
@@ -22,17 +43,61 @@ function patchLastAssistant(msgs: Msg[], patch: Partial<Msg>): Msg[] {
   return copy;
 }
 
-export default function StudyAssistant({ locale, isPaid }: { locale: string; isPaid: boolean }) {
+export default function StudyAssistant({
+  locale,
+  isPaid,
+  userId,
+}: {
+  locale: string;
+  isPaid: boolean;
+  userId: string;
+}) {
   const t = useTranslations('dashboard.assistant');
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  // Nothing is written back until the saved conversation has been read, so the
+  // empty first render cannot overwrite it.
+  const [hydrated, setHydrated] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
-  // One id for the whole mounted conversation, so turns can be grouped back into a
-  // session server-side. Only ever used for grouping — every row is scoped by the
-  // session's userId, so a forged id can mislabel nothing but the forger's own turns.
   const conversationId = useRef<string>('');
-  if (!conversationId.current) conversationId.current = crypto.randomUUID();
+
+  // Keyed by user: one browser can be shared, and a restored conversation must
+  // never surface to whoever logs in next.
+  const storageKey = `rpas.assistant.${userId}`;
+
+  // Restore. In an effect, not a state initialiser — localStorage does not exist
+  // during the server render, and reading it inline would mismatch on hydration.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (raw) {
+        const saved = JSON.parse(raw) as { conversationId?: string; messages?: Msg[] };
+        if (Array.isArray(saved.messages)) setMessages(trimTranscript(saved.messages));
+        if (saved.conversationId) conversationId.current = saved.conversationId;
+      }
+    } catch {
+      // Private mode, cleared site data, corrupt JSON — start fresh rather than fail.
+    }
+    if (!conversationId.current) conversationId.current = crypto.randomUUID();
+    setHydrated(true);
+  }, [storageKey]);
+
+  // Persist. This is what makes a refresh stop ending the conversation — which is
+  // also what lets the prompt cache pay for itself: production showed cache_read
+  // rising 1210 → 4701 across a multi-turn conversation, and every single-turn one
+  // writes a cache entry nothing ever reads.
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(
+        storageKey,
+        JSON.stringify({ conversationId: conversationId.current, messages: trimTranscript(messages) }),
+      );
+    } catch {
+      // Quota or disabled storage. The conversation still works for this page view.
+    }
+  }, [messages, hydrated, storageKey]);
 
   // Free users see a locked upsell — the real gate is the 402 on /api/chat; this
   // is just the experience. Upgrade CTA matches the dashboard's existing path.
@@ -56,6 +121,12 @@ export default function StudyAssistant({ locale, isPaid }: { locale: string; isP
     );
   }
 
+  function newConversation() {
+    if (busy) return;
+    conversationId.current = crypto.randomUUID();
+    setMessages([]);
+  }
+
   async function rate(turnId: string, rating: -1 | 1) {
     // Optimistic: a rating that fails to save is not worth interrupting the
     // student over, and the row simply stays unrated.
@@ -76,7 +147,7 @@ export default function StudyAssistant({ locale, isPaid }: { locale: string; isP
     const text = input.trim();
     if (!text || busy) return;
 
-    const next: Msg[] = [...messages, { role: 'user', content: text }];
+    const next = trimTranscript([...messages, { role: 'user', content: text }]);
     setMessages([...next, { role: 'assistant', content: '' }]);
     setInput('');
     setBusy(true);
@@ -117,6 +188,11 @@ export default function StudyAssistant({ locale, isPaid }: { locale: string; isP
     <section className="dash-block">
       <h2 className="dash-block-title">
         <IconSparkles size={18} stroke={2} /> {t('title')}
+        {messages.length > 0 && (
+          <button type="button" className="assistant-new" onClick={newConversation} disabled={busy} title={t('newChat')}>
+            <IconPlus size={14} stroke={2} /> {t('newChat')}
+          </button>
+        )}
       </h2>
       <div className="assistant">
         <div className="assistant-log" ref={logRef}>
@@ -133,7 +209,30 @@ export default function StudyAssistant({ locale, isPaid }: { locale: string; isP
               return (
                 <div key={i} className={`assistant-turn ${m.role}`}>
                   <div className={`assistant-msg ${m.role}`}>
-                    {streaming ? <span className="assistant-typing">{t('thinking')}</span> : m.content}
+                    {m.role === 'user' || streaming ? (
+                      streaming ? <span className="assistant-typing">{t('thinking')}</span> : m.content
+                    ) : (
+                      // The model answers in markdown — headings, bold, bullets and
+                      // GFM tables all appeared in the first four production turns —
+                      // and this was rendering it as plain text, so students read
+                      // literal "##" and raw "|---|" table pipes. No raw HTML is
+                      // enabled, so model output cannot inject markup.
+                      <div className="assistant-md">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            a: ({ ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+                            table: ({ ...props }) => (
+                              <div className="assistant-md-table">
+                                <table {...props} />
+                              </div>
+                            ),
+                          }}
+                        >
+                          {m.content}
+                        </ReactMarkdown>
+                      </div>
+                    )}
                   </div>
                   {canRate && (
                     <div className="assistant-feedback">
