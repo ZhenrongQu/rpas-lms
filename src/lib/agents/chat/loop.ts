@@ -50,6 +50,13 @@ export type Callbacks = {
 /** What the turn actually did. The route persists this: every field here is a
  *  question the audit could not answer from production ("how often do we
  *  truncate?", "what did one answer cost?", "what is P95?"). */
+/** One tool call as the model made it, with what came back. The OUTPUT is the
+ *  part that matters: without the retrieved passages there is no way to tell a
+ *  grounded answer from a fluent invention, so "did it hallucinate" stays a
+ *  question only a human can answer. Judging production traffic is the whole
+ *  point of recording it. */
+export type ToolInvocation = { step: number; name: string; input: unknown; output: string };
+
 export type AssistantRun = {
   model: string;
   steps: number;
@@ -60,7 +67,7 @@ export type AssistantRun = {
   exhaustedSteps: boolean;
   /** The wall-clock budget ran out between steps. */
   timedOut: boolean;
-  toolCalls: string[];
+  toolCalls: ToolInvocation[];
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
@@ -120,6 +127,21 @@ export async function runAssistant(
   const messages: Anthropic.MessageParam[] = [...history];
   const system: Anthropic.TextBlockParam[] = [{ type: "text", text: buildSystemPrompt(ctx.locale) }];
 
+  // Each step's text is streamed straight through, so a preamble before a tool
+  // call ran directly into the next step's first word — production shows
+  // "right away!Let me search" and "for you.Here's a checklist". The model emits
+  // no separator because as far as it knows those are different messages.
+  let stepEmittedText = false;
+  let separatorPending = false;
+  const emit = (text: string) => {
+    if (separatorPending) {
+      onText("\n\n");
+      separatorPending = false;
+    }
+    stepEmittedText = true;
+    onText(text);
+  };
+
   const startedAt = now();
   const run: AssistantRun = {
     model: MODEL,
@@ -163,12 +185,16 @@ export async function runAssistant(
       messages: withCacheBreakpoint(messages),
     });
 
+    stepEmittedText = false;
     for await (const event of stream) {
       if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
         if (run.ttftMs === null) run.ttftMs = now() - startedAt;
-        onText(event.delta.text);
+        emit(event.delta.text);
       }
     }
+    // Arm a blank line for whatever the NEXT step says. Armed rather than emitted
+    // now, so a step that turns out to be the last one adds no trailing blank.
+    if (stepEmittedText) separatorPending = true;
 
     const final = await stream.finalMessage();
     run.steps = step + 1;
@@ -201,9 +227,9 @@ export async function runAssistant(
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
     for (const block of final.content) {
       if (block.type === "tool_use") {
-        run.toolCalls.push(block.name);
         onTool?.(block.name);
         const out = await runTool(block.name, block.input, ctx);
+        run.toolCalls.push({ step, name: block.name, input: block.input, output: out });
         toolResults.push({ type: "tool_result", tool_use_id: block.id, content: out });
       }
     }

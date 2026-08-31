@@ -10,7 +10,10 @@ const run: AssistantRun = {
   truncated: false,
   exhaustedSteps: false,
   timedOut: false,
-  toolCalls: ["search_course_content", "get_my_progress"],
+  toolCalls: [
+    { step: 0, name: "search_course_content", input: { query: "visibility" }, output: "<retrieved_passages>VLOS requires…</retrieved_passages>" },
+    { step: 1, name: "get_my_progress", input: {}, output: "Completed lessons (0): none yet" },
+  ],
   inputTokens: 1200,
   outputTokens: 400,
   cacheReadTokens: 2000,
@@ -103,6 +106,62 @@ describe("recordTurn", () => {
     expect(row.stopReason).toBe("scope_refused");
     expect(row.steps).toBe(0);
     expect(row.costMicroUsd).toBe(0);
+  });
+
+  // The field that makes hallucination gradeable: an answer citing "CAR 901.67"
+  // is only a failure if the retrieved passages did not contain it, and without
+  // the passages nobody — human or judge — can tell.
+  it("stores what each tool returned, not just that it was called", async () => {
+    await recordTurn({ ...base, run });
+
+    const row = await prisma.assistantTurn.findFirstOrThrow();
+    const trace = JSON.parse(row.toolTrace!) as { name: string; output: string }[];
+    expect(trace).toHaveLength(2);
+    expect(trace[0]!.name).toBe("search_course_content");
+    expect(trace[0]!.output).toContain("VLOS requires");
+  });
+
+  it("redacts the tool input but keeps the output whole", async () => {
+    await recordTurn({
+      ...base,
+      run: {
+        ...run,
+        toolCalls: [
+          {
+            step: 0,
+            name: "search_course_content",
+            input: { query: "reach me at pilot@example.com" },
+            // Course material, and the evidence a grounding call rests on — a
+            // redactor eating a figure here would manufacture false failures.
+            output: "Minimum visibility is 3 statute miles; contact 604-555-0134 is not in here",
+          },
+        ],
+      },
+    });
+
+    const row = await prisma.assistantTurn.findFirstOrThrow();
+    const trace = JSON.parse(row.toolTrace!) as { input: string; output: string }[];
+    expect(trace[0]!.input).toContain("[email]");
+    expect(trace[0]!.input).not.toContain("pilot@example.com");
+    expect(trace[0]!.output).toContain("3 statute miles");
+  });
+
+  it("caps an oversized tool output rather than storing it whole", async () => {
+    await recordTurn({
+      ...base,
+      run: { ...run, toolCalls: [{ step: 0, name: "search_course_content", input: {}, output: "x".repeat(20_000) }] },
+    });
+
+    const row = await prisma.assistantTurn.findFirstOrThrow();
+    const trace = JSON.parse(row.toolTrace!) as { output: string }[];
+    expect(trace[0]!.output).toContain("[truncated 12000 chars]");
+    expect(trace[0]!.output.length).toBeLessThan(20_000);
+  });
+
+  it("leaves toolTrace null when no model call happened", async () => {
+    await recordTurn({ ...base, stopReason: "scope_refused" });
+    const row = await prisma.assistantTurn.findFirstOrThrow();
+    expect(row.toolTrace).toBeNull();
   });
 
   // Property 1: the student already has their answer. Logging must not be able to

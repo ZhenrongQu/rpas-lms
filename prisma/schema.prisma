@@ -648,7 +648,14 @@ model AssistantTurn {
   errorKind      String? // constructor name of whatever escaped, when it didn't
 
   steps     Int    @default(0)
-  toolCalls String @default("[]") // JSON array of tool names, in call order
+  toolCalls String @default("[]") // JSON array of tool names, in call order — cheap to aggregate
+  // JSON [{step, name, input, output}]: the tool calls WITH what came back.
+  // Without the retrieved passages there is no way to separate a grounded answer
+  // from a fluent invention, so "did it hallucinate" stays a question only a human
+  // can answer — the first attempt to judge production traffic failed on exactly
+  // this. Outputs are stored unredacted on purpose: they are course material, and
+  // they are the evidence. Inputs are redacted, being derived from the student's text.
+  toolTrace String?
 
   inputTokens      Int  @default(0)
   outputTokens     Int  @default(0)
