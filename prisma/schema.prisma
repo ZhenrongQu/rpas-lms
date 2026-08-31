@@ -614,3 +614,57 @@ model KnowledgeChunk {
   @@unique([source, sourceId, locale, chunkIndex])
   @@index([locale])
 }
+
+// One turn of the study assistant: one user message, one assistant reply, and
+// everything the audit could not answer about it from production — what it cost,
+// how long it took, which tools it called, and whether it actually finished.
+//
+// Written once the stream closes, on EVERY path including failure. That matters
+// more than it sounds: the route streams, so a turn that dies halfway has already
+// sent HTTP 200 and looks like a success to anything watching status codes.
+// `completed` is the field that tells the truth, and it is why the row is written
+// in a `finally` rather than on the happy path.
+//
+// `question`/`answer` pass through redact() first (see redact.ts) — a floor, not
+// anonymisation. `rating` is the only human signal in the system; without it every
+// failure rate is one person's opinion of their own product.
+model AssistantTurn {
+  id             String @id @default(cuid())
+  conversationId String // groups turns into a session; client-supplied, scoped by userId
+  turnIndex      Int // 0-based position within the conversation
+  userId         String
+  locale         String // "EN" | "ZH"
+
+  question     String
+  answer       String
+  historyTurns Int    @default(0) // prior messages sent with this request — the context-growth signal
+
+  model          String
+  stopReason     String?
+  truncated      Boolean @default(false) // stop_reason was max_tokens: the answer is cut off
+  exhaustedSteps Boolean @default(false) // the model was still calling tools at MAX_STEPS
+  timedOut       Boolean @default(false) // the loop's wall-clock budget ran out
+  completed      Boolean @default(false) // the stream closed without throwing
+  errorKind      String? // constructor name of whatever escaped, when it didn't
+
+  steps     Int    @default(0)
+  toolCalls String @default("[]") // JSON array of tool names, in call order
+
+  inputTokens      Int  @default(0)
+  outputTokens     Int  @default(0)
+  cacheReadTokens  Int  @default(0)
+  cacheWriteTokens Int  @default(0)
+  costMicroUsd     Int? // null = the model has no price on file, which is not the same as free
+
+  ttftMs  Int? // time to first text delta — what the student actually perceives
+  totalMs Int  @default(0)
+
+  rating  Int? // -1 or 1, set later via the feedback route
+  ratedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([conversationId, turnIndex])
+  @@index([createdAt])
+}
