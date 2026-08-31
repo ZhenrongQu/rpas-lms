@@ -17,6 +17,9 @@ import type { AssistantRun } from "./loop";
  *     drops — the route already returned 200, so nothing else will notice.
  */
 export type RecordTurnInput = {
+  /** Allocated by the route before streaming, so the client can be handed it in a
+   *  response header and rate this exact turn later. */
+  id?: string;
   conversationId: string;
   turnIndex: number;
   userId: string;
@@ -44,6 +47,7 @@ export async function recordTurn(
     const run = t.run;
     await db.assistantTurn.create({
       data: {
+        ...(t.id ? { id: t.id } : {}),
         conversationId: t.conversationId,
         turnIndex: t.turnIndex,
         userId: t.userId,

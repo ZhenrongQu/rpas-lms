@@ -270,7 +270,10 @@
       "lockedTitle": "Study Assistant — Premium",
       "lockedBody": "Upgrade to unlock a personal AI study assistant that answers your questions and tailors advice to your progress.",
       "upgrade": "Upgrade to unlock",
-      "error": "Something went wrong. Please try again."
+      "error": "Something went wrong. Please try again.",
+    "helpful": "This answer was helpful",
+    "notHelpful": "This answer was not helpful",
+    "thanks": "Thanks — noted."
     }
   },
   "billing": {

@@ -80,12 +80,18 @@ export async function POST(req: Request): Promise<Response> {
   // than accepted from the client, so it stays consistent even if the client
   // reuses or fabricates a conversation id.
   const conversationId = parsed.data.conversationId ?? crypto.randomUUID();
+  // Allocated before the stream opens, not after it closes: the row is written at
+  // the end, but the client needs the id in a header — and headers are long gone
+  // by then. Sending it lets the student rate this specific answer, which is the
+  // only signal in the system that does not come from us grading ourselves.
+  const turnId = crypto.randomUUID();
   const turnIndex = messages.filter((m) => m.role === "user").length - 1;
   const question = messages[messages.length - 1]!.content;
 
   const textHeaders = {
     "Content-Type": "text/plain; charset=utf-8",
     "Cache-Control": "no-cache, no-transform",
+    "X-Turn-Id": turnId,
   };
 
   // 6. Scope gate — this assistant answers RPAS study questions only, and the
@@ -103,6 +109,7 @@ export async function POST(req: Request): Promise<Response> {
     // Recorded like any other turn: the refusal rate is the measurement this gate
     // needs before it can responsibly be turned on for paying students.
     await recordTurn({
+      id: turnId,
       conversationId,
       turnIndex,
       userId,
@@ -155,6 +162,7 @@ export async function POST(req: Request): Promise<Response> {
         // response completes may simply not run, and the failed turns are the
         // ones worth keeping.
         await recordTurn({
+          id: turnId,
           conversationId,
           turnIndex,
           userId,
