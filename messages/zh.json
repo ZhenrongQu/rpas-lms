@@ -270,7 +270,10 @@
       "lockedTitle": "学习助教 — 会员专享",
       "lockedBody": "升级后解锁专属 AI 学习助教，解答疑问并根据你的进度给出建议。",
       "upgrade": "升级解锁",
-      "error": "出错了，请稍后再试。"
+      "error": "出错了，请稍后再试。",
+    "helpful": "这个回答有帮助",
+    "notHelpful": "这个回答没帮上忙",
+    "thanks": "收到，谢谢反馈。"
     }
   },
   "billing": {

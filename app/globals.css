@@ -1583,6 +1583,19 @@ html, body {
 .assistant-msg { max-width: 88%; padding: 10px 14px; border-radius: var(--r-ctl); font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
 .assistant-msg.user { align-self: flex-end; background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--text-1); }
 .assistant-msg.assistant { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); }
+/* A turn is the bubble plus its rating control, so the two stay together and
+   the bubble keeps its own alignment. */
+.assistant-turn { display: flex; flex-direction: column; gap: 4px; max-width: 88%; }
+.assistant-turn.user { align-self: flex-end; align-items: flex-end; }
+.assistant-turn.assistant { align-self: flex-start; align-items: flex-start; }
+.assistant-turn .assistant-msg { max-width: 100%; }
+.assistant-feedback { display: flex; align-items: center; gap: 2px; padding-left: 2px; min-height: 22px; }
+.assistant-rate {
+  display: inline-flex; padding: 3px; border: 0; background: none;
+  color: var(--text-3); cursor: pointer; border-radius: var(--r-ctl);
+}
+.assistant-rate:hover { color: var(--text-1); background: var(--surface-2); }
+.assistant-feedback-thanks { font-size: 12px; color: var(--text-3); }
 .assistant-typing { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); }
 .assistant-input { display: flex; gap: 8px; }
 .assistant-field {

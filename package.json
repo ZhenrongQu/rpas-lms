@@ -17,6 +17,7 @@
     "db:verify": "tsx scripts/verify-schema.ts",
     "seed:content": "tsx scripts/seed-content.ts",
     "eval:assistant": "tsx scripts/eval/run.ts",
+    "assistant:stats": "tsx scripts/assistant-stats.ts",
     "remediation:smoke": "tsx scripts/agents/remediation-smoke.ts",
     "remediation:real-smoke": "tsx scripts/agents/remediation-real-smoke.ts",
     "eval:repair": "tsx scripts/agents/repair-eval.ts",
