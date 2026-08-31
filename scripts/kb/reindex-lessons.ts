@@ -16,6 +16,7 @@
  * protected endpoint), it is a MANUAL ops step, not automatic compensation.
  */
 import { prisma } from "../../src/lib/db";
+import { guardDbWrite } from "../../src/lib/ops/dbTarget";
 import { voyageConfigured } from "../../src/lib/agents/chat/rag/embed";
 import { reindexLesson, ensureVectorIndex } from "./_shared";
 
@@ -31,6 +32,7 @@ async function needsReindex(lessonId: string, updatedAt: Date): Promise<boolean>
 }
 
 async function main(): Promise<void> {
+  guardDbWrite();
   // reindexLesson is best-effort (falls back to keyword-only), so guard here to keep
   // this bulk script's "requires VOYAGE_API_KEY" contract loud — an operator running
   // a full rebuild without a key should fail fast, not silently get a vectorless index.

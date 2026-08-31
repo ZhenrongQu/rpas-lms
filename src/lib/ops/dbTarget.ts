@@ -16,11 +16,29 @@ import { readFileSync } from "node:fs";
  *     ALLOW_REMOTE_DB_WRITE=1 pnpm db:indexes
  */
 
+/**
+ * The Supabase project a pooled URL belongs to, or null for anything else.
+ *
+ * Region is part of the pooler hostname, so today `ca-central-1` vs
+ * `us-west-1` is what tells this project's two databases apart at a glance.
+ * Two projects in the SAME region print an identical host, and the only thing
+ * left to separate them is the ref — which lives in the username
+ * (`postgres.<ref>`) and so gets stripped along with the password.
+ *
+ * The ref is not a credential: it is the public project identifier, the same
+ * string in every https://<ref>.supabase.co URL.
+ */
+function supabaseProjectRef(parsed: URL): string | null {
+  const [role, ref] = parsed.username.split(".");
+  return role === "postgres" && ref ? ref : null;
+}
+
 /** "host:port/database", safe to log — never includes credentials. */
 export function describeDbTarget(url: string): string {
   const parsed = new URL(url);
   const database = parsed.pathname.replace(/^\//, "") || "(default)";
-  return `${parsed.hostname}:${parsed.port || "5432"}/${database}`;
+  const ref = supabaseProjectRef(parsed);
+  return `${parsed.hostname}:${parsed.port || "5432"}/${database}${ref ? ` (project ${ref})` : ""}`;
 }
 
 export function isLocalDbTarget(url: string): boolean {
@@ -71,4 +89,31 @@ export function loadEnvFile(path = ".env"): void {
     if (process.env[key] !== undefined) continue;
     process.env[key] = raw.trim().replace(/^(['"])(.*)\1$/s, "$2");
   }
+}
+
+/**
+ * What a mutating ops script runs before its first query: resolve the URL it is
+ * about to use, print it, and refuse a non-local target without an explicit
+ * opt-in. Returns the target for a caller that builds its own client.
+ *
+ * `@prisma/client` loads `.env` itself the moment it is imported — even under
+ * `tsx`, which does not — so a plain `tsx scripts/whatever.ts` connects to
+ * whatever that file names with nothing on screen to say which database that
+ * is. The four deploy-path commands got this guard on 2026-08-26; every other
+ * script that writes was still resolving the same ambient URL in silence.
+ *
+ * Throws rather than exiting: each script's entry point already catches, prints
+ * and sets a non-zero status, and a function that exits cannot be tested.
+ */
+export function guardDbWrite(options: { dryRun?: boolean } = {}): string {
+  // Only matters when the guard runs before @prisma/client is imported; it does
+  // not override what is already set, so an inline DATABASE_URL still wins.
+  loadEnvFile();
+  const url = resolveDbUrl();
+  const dryRun = options.dryRun ?? false;
+  console.log(`→ target: ${describeDbTarget(url)}${dryRun ? " (dry run, read-only)" : ""}`);
+  // A dry run needs no opt-in: it reads, and "look before you write" should cost
+  // nothing. Matches the credit migration's CLI.
+  if (!dryRun) assertWritableDbTarget(url, process.env.ALLOW_REMOTE_DB_WRITE === "1");
+  return url;
 }

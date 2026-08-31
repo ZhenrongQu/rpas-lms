@@ -62,7 +62,7 @@ export default function RegisterPage() {
   // Re-requesting /api/auth/register for an unverified account re-issues the
   // email code (it invalidates the old one), so both the initial request and
   // the resend hit the same endpoint.
-  async function requestCode(): Promise<{ ok: boolean; fields?: Record<string, string> }> {
+  async function requestCode(): Promise<{ ok: boolean; codeDelivered?: boolean; fields?: Record<string, string> }> {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -80,7 +80,11 @@ export default function RegisterPage() {
       // U7 conversion funnel. identifyUser() runs at first sign-in, once there is
       // a Customer id to stitch the anonymous history onto.
       track('user_registered');
-      return { ok: true };
+      // DEF-004: the account exists either way; `codeDelivered: false` means the
+      // provider rejected the email, so the code screen must say so rather than
+      // leave the user waiting for a message that is never coming.
+      const data = await res.json().catch(() => null);
+      return { ok: true, codeDelivered: data?.codeDelivered !== false };
     }
     const data = await res.json().catch(() => null);
     return { ok: false, fields: data?.fields };
@@ -124,6 +128,7 @@ export default function RegisterPage() {
       return;
     }
     setVerificationRequested(true);
+    if (!result.codeDelivered) setError(t('codeSendFailed'));
     setResendIn(60);
   }
 
@@ -138,6 +143,7 @@ export default function RegisterPage() {
       applyRequestError(result);
       return;
     }
+    if (!result.codeDelivered) setError(t('codeSendFailed'));
     setResendIn(60);
   }
 

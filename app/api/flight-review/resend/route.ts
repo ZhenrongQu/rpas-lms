@@ -21,8 +21,14 @@ export async function POST(req: Request): Promise<Response> {
   if (!booking) return Response.json({ error: "no booking" }, { status: 404 });
 
   const locale = new URL(req.url).searchParams.get("locale") === "zh" ? "zh" : "en";
-  if (!(await resendBookingConfirmation(booking.id, locale))) {
+  const outcome = await resendBookingConfirmation(booking.id, locale);
+  if (outcome === "no_address") {
     return Response.json({ error: "no address on file" }, { status: 409 });
+  }
+  // DEF-004: answering ok:true for a message the provider rejected would make
+  // the recovery affordance repeat the defect it exists to recover from.
+  if (outcome === "delivery_failed") {
+    return Response.json({ error: "delivery_failed" }, { status: 502 });
   }
   return Response.json({ ok: true }, { status: 200 });
 }

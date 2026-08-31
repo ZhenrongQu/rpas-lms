@@ -1,6 +1,7 @@
 import type { FlightReviewSlot } from "@prisma/client";
 import { prisma } from "../db";
 import { sendEmail } from "../email/send";
+import { deliveryErrorMessage, recordNotificationAttempt } from "../email/log";
 import { formatSlotDateTime } from "./format";
 
 /** Escapes HTML so user-controlled text (e.g. a student's display name) cannot
@@ -37,29 +38,23 @@ type SendContext = { kind: string; bookingId?: string | null; customerId?: strin
 async function safeSend(
   message: Parameters<typeof sendEmail>[0],
   ctx: SendContext,
-): Promise<void> {
+): Promise<boolean> {
   let error: string | null = null;
   try {
     await sendEmail(message);
   } catch (err) {
-    error = err instanceof Error ? err.message : String(err);
+    error = deliveryErrorMessage(err);
     console.error(`[flight-review] email failed (to=${message.to}):`, err);
   }
 
-  try {
-    await prisma.notificationLog.create({
-      data: {
-        kind: ctx.kind,
-        recipient: message.to,
-        bookingId: ctx.bookingId ?? null,
-        customerId: ctx.customerId ?? null,
-        status: error ? "FAILED" : "SENT",
-        error: error?.slice(0, 500) ?? null,
-      },
-    });
-  } catch (logErr) {
-    console.error("[flight-review] could not record notification attempt:", logErr);
-  }
+  await recordNotificationAttempt({
+    kind: ctx.kind,
+    recipient: message.to,
+    bookingId: ctx.bookingId,
+    customerId: ctx.customerId,
+    error,
+  });
+  return error === null;
 }
 
 /** Failed sends for a booking, so the UI can offer a resend where it matters. */
@@ -97,7 +92,11 @@ export async function notifyBookingChange(opts: {
   kind: ChangeKind;
   bookingId?: string | null;
   customerId?: string | null;
-}): Promise<void> {
+  /** Whether the STUDENT's copy was accepted. The admin copy is a courtesy to
+   *  ops and is recorded either way; it must not decide what the student is
+   *  told about their own email. Booking callers ignore this — a bounced email
+   *  must never roll back a committed booking. */
+}): Promise<boolean> {
   const { student, locale, slot, kind } = opts;
   const ctx = {
     kind: `flight_review_${kind}`,
@@ -119,7 +118,7 @@ export async function notifyBookingChange(opts: {
     ? `${student.name} 您好，\n\n您的飞行考核预约详情如下：\n\n${details.zh}\n\n如需取消或改期，请登录学员中心操作。`
     : `Hi ${student.name},\n\nYour Flight Review appointment is confirmed:\n\n${details.en}\n\nTo cancel or reschedule, visit your dashboard.`;
 
-  await safeSend(
+  const delivered = await safeSend(
     {
       to: student.email,
       subject: studentSubject,
@@ -145,6 +144,8 @@ export async function notifyBookingChange(opts: {
       ctx,
     );
   }
+
+  return delivered;
 }
 
 /** Cancellation notice to the student + admin. */
@@ -200,17 +201,24 @@ export async function notifyCancellation(opts: {
  * so a resend can never differ from the original. Returns false when the booking
  * is gone or the customer has no address to send to.
  */
+/**
+ * The U12 recovery path. It reports what actually happened, because a resend
+ * that answers "sent" for a message the provider rejected is DEF-004 all over
+ * again — this time on the affordance that exists to recover from it.
+ */
+export type ResendOutcome = "sent" | "delivery_failed" | "no_address";
+
 export async function resendBookingConfirmation(
   bookingId: string,
   locale: string,
-): Promise<boolean> {
+): Promise<ResendOutcome> {
   const booking = await prisma.flightReviewBooking.findUnique({
     where: { id: bookingId },
     include: { slot: true, customer: { select: { email: true, displayName: true } } },
   });
-  if (!booking?.customer.email) return false;
+  if (!booking?.customer.email) return "no_address";
 
-  await notifyBookingChange({
+  const delivered = await notifyBookingChange({
     student: {
       email: booking.customer.email,
       name: booking.customer.displayName ?? booking.customer.email,
@@ -222,5 +230,5 @@ export async function resendBookingConfirmation(
     bookingId: booking.id,
     customerId: booking.customerId,
   });
-  return true;
+  return delivered ? "sent" : "delivery_failed";
 }

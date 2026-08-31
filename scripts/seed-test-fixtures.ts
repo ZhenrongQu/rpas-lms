@@ -7,6 +7,7 @@
  * Not idempotent — assumes empty tables (force-reset).
  */
 import { prisma } from "../src/lib/db";
+import { guardDbWrite } from "../src/lib/ops/dbTarget";
 import { MODULE_IDS, questionBankPrefix } from "../src/lib/content/types";
 
 const FOUR_OPTIONS = [
@@ -143,6 +144,7 @@ async function seedKnowledgeChunks(): Promise<number> {
 }
 
 async function main() {
+  guardDbWrite();
   const basicQ = await seedBank("basic");
   const advancedQ = await seedBank("advanced");
   const lessons = await seedLessons();

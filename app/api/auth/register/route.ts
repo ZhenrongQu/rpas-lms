@@ -5,6 +5,7 @@ import { requestVerificationCode } from "../../../../src/lib/auth/verificationCo
 import { clientIp, enforceRateLimit } from "../../../../src/lib/security/rateLimit";
 import { claimGuestSession } from "../../../../src/lib/exam/guestClaim";
 import { enforceCodeSendLimit } from "../../../../src/lib/auth/codeSendLimit";
+import { deliveryErrorMessage, recordNotificationAttempt } from "../../../../src/lib/email/log";
 
 // Each rule's message is a stable error code (not prose) so the client can map
 // it to a localized hint via the `auth.err.*` i18n keys.
@@ -70,13 +71,40 @@ export async function POST(req: Request): Promise<Response> {
       channel: "email",
       target: user.email ?? parsed.data.email,
     });
-    await sendVerificationCode({
-      channel: "email",
-      target: requested.target,
-      code: requested.code,
-    });
+    // DEF-004: the account is committed by this point. A rejected send used to
+    // fall into the catch below and answer "registration failed" — a lie the
+    // user cannot act on, since re-registering an unverified account is exactly
+    // the retry they need. Report the account as created, say the code did not
+    // go out, and let the client offer its existing resend.
+    let deliveryError: string | null = null;
+    try {
+      await sendVerificationCode({
+        channel: "email",
+        target: requested.target,
+        code: requested.code,
+      });
+    } catch (err) {
+      deliveryError = deliveryErrorMessage(err);
+      console.error(`[auth] verification code delivery failed (to=${requested.target}):`, err);
+      await recordNotificationAttempt({
+        kind: "auth_verification_code",
+        recipient: requested.target,
+        customerId: user.id,
+        error: deliveryError,
+      });
+    }
 
-    return Response.json({ ok: true, emailVerificationRequired: true }, { status: 201 });
+    // Only present when something went wrong: a client that does not know the
+    // field still behaves correctly on the success path. The provider's own
+    // message stays server-side — it is untranslated technical text.
+    return Response.json(
+      {
+        ok: true,
+        emailVerificationRequired: true,
+        ...(deliveryError ? { codeDelivered: false } : {}),
+      },
+      { status: 201 },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "registration_failed";
     // SEC-13: surface a weak password as a per-field hint under the password input.
