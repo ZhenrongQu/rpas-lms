@@ -12,8 +12,8 @@ import "./loadEnv";
 import { writeFileSync } from "node:fs";
 import { prisma } from "../../src/lib/db";
 import { guardDbWrite } from "../../src/lib/ops/dbTarget";
-import { runAssistant } from "../../src/lib/chat/loop";
-import type { ToolContext } from "../../src/lib/chat/tools";
+import { runAssistant } from "../../src/lib/agents/chat/loop";
+import type { ToolContext } from "../../src/lib/agents/chat/tools";
 import { buildCases, type Fixtures } from "./cases";
 import { judge } from "./judge";
 
