@@ -121,7 +121,7 @@ describe("runAssistant", () => {
     expect(run.exhaustedSteps).toBe(true);
     expect(run.steps).toBe(8);
     expect(calls).toHaveLength(8);
-    expect(run.toolCalls).toHaveLength(8);
+    expect(run.toolCalls.map((c) => c.name)).toEqual(Array(8).fill("nope"));
     expect(run.inputTokens).toBe(800); // accumulated across every step
     expect(sink.read()).toContain("too many steps");
   });
@@ -140,6 +140,52 @@ describe("runAssistant", () => {
     expect(run.exhaustedSteps).toBe(false);
     expect(calls.length).toBeLessThan(8);
     expect(sink.read()).toContain("taking too long");
+  });
+
+  // Production showed "right away!Let me search" and "for you.Here's a checklist":
+  // one step's closing word glued to the next step's opening one.
+  it("separates the text of one step from the next", async () => {
+    const sink = collect();
+    const { factory } = scriptedModel([
+      { text: "Let me look that up!", stopReason: "tool_use", toolUse: true },
+      { text: "Here is what I found.", stopReason: "end_turn" },
+    ]);
+    await runAssistant(ctx, [{ role: "user", content: "hi" }], {
+      onText: sink.onText,
+      createStream: factory,
+    });
+
+    expect(sink.read()).toBe("Let me look that up!\n\nHere is what I found.");
+  });
+
+  it("adds no separator when a step produced no text of its own", async () => {
+    const sink = collect();
+    const { factory } = scriptedModel([
+      { stopReason: "tool_use", toolUse: true }, // straight to the tool, says nothing
+      { text: "Here is what I found.", stopReason: "end_turn" },
+    ]);
+    await runAssistant(ctx, [{ role: "user", content: "hi" }], {
+      onText: sink.onText,
+      createStream: factory,
+    });
+
+    expect(sink.read()).toBe("Here is what I found.");
+  });
+
+  it("records what each tool returned, not just its name", async () => {
+    const { factory } = scriptedModel([
+      { stopReason: "tool_use", toolUse: true },
+      { text: "done", stopReason: "end_turn" },
+    ]);
+    const run = await runAssistant(ctx, [{ role: "user", content: "hi" }], {
+      onText: () => {},
+      createStream: factory,
+    });
+
+    expect(run.toolCalls).toHaveLength(1);
+    expect(run.toolCalls[0]).toMatchObject({ step: 0, name: "nope" });
+    // runTool's default case, fed back to the model exactly as the harness would.
+    expect(run.toolCalls[0]!.output).toContain("Unknown tool");
   });
 
   it("puts the cache breakpoint on the last message, not the system block", async () => {

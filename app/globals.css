@@ -1580,8 +1580,8 @@ html, body {
 }
 .assistant-log { display: flex; flex-direction: column; gap: 10px; min-height: 120px; max-height: 360px; overflow-y: auto; }
 .assistant-intro { margin: 0; color: var(--text-3); font-size: 14px; }
-.assistant-msg { max-width: 88%; padding: 10px 14px; border-radius: var(--r-ctl); font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
-.assistant-msg.user { align-self: flex-end; background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--text-1); }
+.assistant-msg { max-width: 88%; padding: 10px 14px; border-radius: var(--r-ctl); font-size: 14px; line-height: 1.6; }
+.assistant-msg.user { align-self: flex-end; background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--text-1); white-space: pre-wrap; }
 .assistant-msg.assistant { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); }
 /* A turn is the bubble plus its rating control, so the two stay together and
    the bubble keeps its own alignment. */
@@ -1596,6 +1596,40 @@ html, body {
 }
 .assistant-rate:hover { color: var(--text-1); background: var(--surface-2); }
 .assistant-feedback-thanks { font-size: 12px; color: var(--text-3); }
+/* The assistant answers in markdown — headings, bold, bullets and GFM tables all
+   turned up in the first four production turns. These keep it readable inside a
+   chat bubble: tight vertical rhythm, no oversized headings, tables that scroll
+   instead of widening the page. */
+.assistant-md > :first-child { margin-top: 0; }
+.assistant-md > :last-child { margin-bottom: 0; }
+.assistant-md p { margin: 0 0 8px; }
+.assistant-md h1, .assistant-md h2, .assistant-md h3, .assistant-md h4 {
+  margin: 14px 0 6px; font-family: var(--font-display); font-weight: 700; color: var(--text-1); line-height: 1.3;
+}
+.assistant-md h1, .assistant-md h2 { font-size: 15px; }
+.assistant-md h3, .assistant-md h4 { font-size: 14px; }
+.assistant-md ul, .assistant-md ol { margin: 0 0 8px; padding-left: 20px; }
+.assistant-md li { margin: 2px 0; }
+.assistant-md li > p { margin: 0; }
+.assistant-md strong { color: var(--text-1); font-weight: 700; }
+.assistant-md a { color: var(--accent); text-decoration: underline; }
+.assistant-md hr { margin: 12px 0; border: 0; border-top: 1px solid var(--border); }
+.assistant-md blockquote { margin: 0 0 8px; padding-left: 10px; border-left: 2px solid var(--border); color: var(--text-3); }
+.assistant-md code { font-family: var(--font-mono); font-size: 12.5px; padding: 1px 4px; border-radius: 4px; background: var(--surface); }
+.assistant-md pre { margin: 0 0 8px; padding: 10px; border-radius: var(--r-ctl); background: var(--surface); overflow-x: auto; }
+.assistant-md pre code { padding: 0; background: none; }
+/* Wide content must scroll inside the bubble, never widen the dashboard. */
+.assistant-md-table { overflow-x: auto; margin: 0 0 8px; }
+.assistant-md table { border-collapse: collapse; font-size: 13px; }
+.assistant-md th, .assistant-md td { padding: 5px 9px; border: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.assistant-md th { background: var(--surface); color: var(--text-1); font-weight: 700; }
+.assistant-new {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; font-family: var(--font-ui); font-size: 12px; font-weight: 500;
+  color: var(--text-3); background: none; border: 1px solid var(--border); border-radius: var(--r-ctl); cursor: pointer;
+}
+.assistant-new:hover:not(:disabled) { color: var(--text-1); border-color: var(--border-strong); }
+.assistant-new:disabled { opacity: 0.5; cursor: default; }
 .assistant-typing { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); }
 .assistant-input { display: flex; gap: 8px; }
 .assistant-field {

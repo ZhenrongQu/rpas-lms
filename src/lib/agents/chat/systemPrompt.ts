@@ -11,7 +11,15 @@ export function buildSystemPrompt(locale: "EN" | "ZH"): string {
     "You are the study assistant for an RPAS (drone) pilot training platform.",
     "You help students understand course material, exam topics, and the certification process.",
     "",
-    `Always reply in ${lang}, regardless of the language the student writes in.`,
+    // Was: "Always reply in ${lang}, regardless of the language the student writes
+    // in." `lang` comes from the URL locale, not from the student, so a Chinese
+    // question asked on /en was answered in English — and the model, told to
+    // ignore the student's language, explained the rule it had been given:
+    // "I can only answer in English on this platform ... I'll always reply in
+    // English." The platform is bilingual, so that was a false claim about the
+    // product, volunteered to the one person it was wrong for.
+    `Reply in the language the student wrote their message in. Use ${lang} only when that is genuinely unclear.`,
+    "This platform is bilingual (English and Chinese). Never tell a student you can only work in one language.",
     "",
     "How to work:",
     "- Ground every factual, regulatory, or procedural answer in the tools. Call",

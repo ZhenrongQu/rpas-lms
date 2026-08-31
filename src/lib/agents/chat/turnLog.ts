@@ -1,7 +1,7 @@
 import { prisma } from "../../db";
 import { costMicroUsd } from "./cost";
 import { redact } from "./redact";
-import type { AssistantRun } from "./loop";
+import type { AssistantRun, ToolInvocation } from "./loop";
 
 /**
  * Persist one assistant turn.
@@ -36,6 +36,29 @@ export type RecordTurnInput = {
   stopReason?: string;
 };
 
+// One tool result can be several kilobytes (a search returns four chunks, each
+// truncated to 1500 chars). Cap it so one pathological turn cannot bloat the row,
+// but keep the cap generous: a passage cut short is a passage the judge cannot
+// check a citation against, which is the whole reason this column exists.
+const MAX_TOOL_OUTPUT_CHARS = 8000;
+
+/** Serialise the trace for storage. Inputs are redacted (the model derives them
+ *  from the student's text); outputs are not (course material, and the evidence a
+ *  grounding judgement rests on). */
+function serialiseTrace(calls: ToolInvocation[]): string {
+  return JSON.stringify(
+    calls.map((c) => ({
+      step: c.step,
+      name: c.name,
+      input: redact(JSON.stringify(c.input ?? null)),
+      output:
+        c.output.length > MAX_TOOL_OUTPUT_CHARS
+          ? `${c.output.slice(0, MAX_TOOL_OUTPUT_CHARS)}\n…[truncated ${c.output.length - MAX_TOOL_OUTPUT_CHARS} chars]`
+          : c.output,
+    })),
+  );
+}
+
 /** Injectable for the test that proves a failing write cannot escape. */
 type TurnWriter = { assistantTurn: { create: (args: { data: object }) => Promise<unknown> } };
 
@@ -65,7 +88,8 @@ export async function recordTurn(
         completed: t.completed,
         errorKind: t.errorKind ?? null,
         steps: run?.steps ?? 0,
-        toolCalls: JSON.stringify(run?.toolCalls ?? []),
+        toolCalls: JSON.stringify((run?.toolCalls ?? []).map((c) => c.name)),
+        toolTrace: run ? serialiseTrace(run.toolCalls) : null,
         inputTokens: run?.inputTokens ?? 0,
         outputTokens: run?.outputTokens ?? 0,
         cacheReadTokens: run?.cacheReadTokens ?? 0,
